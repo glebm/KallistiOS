@@ -22,6 +22,9 @@
 #include <arch/timer.h>
 #include <arch/arch.h>
 
+extern int _tdata_start, _tdata_size;
+extern int _tbss_size;
+
 /*
 
 This module supports thread scheduling in KOS. The timer interrupt is used
@@ -358,12 +361,23 @@ kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
     tid = thd_next_free();
 
     if(tid >= 0) {
-        /* Create a new thread structure */
-        nt = malloc(sizeof(kthread_t));
+        uint8 * tdata_start = (uint8 *)(&_tdata_start);
+        size_t tdata_size   = (size_t)(&_tdata_size);
+        size_t tbss_size    = (size_t)(&_tbss_size);
+
+        /* Create a new thread structure 
+           with space for TLS BSS and Data Secions */
+        nt = malloc(sizeof(kthread_t) + tdata_size + tbss_size);
 
         if(nt != NULL) {
             /* Clear out potentially unused stuff */
             memset(nt, 0, sizeof(kthread_t));
+
+            /* Init TLS Data Section */
+            memcpy(&nt->static_tls_data, tdata_start, tdata_size);
+                        
+            /* Clear TLS BSS Section */
+            memset(nt->static_tls_data + tdata_size, 0, tbss_size);
 
             /* Create a new thread stack */
             if(!real_attr.stack_ptr) {
@@ -390,6 +404,8 @@ kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
                                ((uint32)nt->stack) + nt->stack_size,
                                (uint32)thd_birth, params, 0);
 
+            /* Set Thread Pointer */
+            nt->context.gbr = &nt->tcbhead;
             nt->tid = tid;
             nt->prio = real_attr.prio;
             nt->flags = THD_DEFAULTS;

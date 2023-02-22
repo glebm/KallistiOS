@@ -164,6 +164,18 @@ typedef struct kthread {
     /** \brief  Return value of the thread function.
         This is only used in joinable threads.  */
     void *rv;
+
+    /** \brief  Control Block Header
+        This is where the GBR register points for TLS 
+        support at the compiler level */
+    struct tcbhead_t {
+        /* Since neither of these are supported at the moment
+           we just initialize them to NULL */
+        void *dtv; /* only for dynamic TLS */
+        uintptr_t pointer_guard;
+    } tcbhead;
+
+    uint8_t static_tls_data[]; /* FAM for all STATIC TLS data */
 } kthread_t;
 
 /** \defgroup thd_flags             Thread flag values
