@@ -19,8 +19,8 @@ clean:
 rm-elf:
 	-rm -f $(EXAMPLE_NAME).elf
 
-general_threading_test.elf: $(OBJS) 
-	$(KOS_CC) $(KOS_CFLAGS) $(KOS_LDFLAGS) -o $(EXAMPLE_NAME).elf -ftls-model=local-exec $(KOS_START) $(OBJS) $(DATAOBJS) $(OBJEXTRA) $(KOS_LIBS) 
+$(EXAMPLE_NAME).elf: $(OBJS) 
+	$(KOS_CC) $(KOS_CFLAGS) $(KOS_LDFLAGS) -o $(EXAMPLE_NAME).elf -ftls-model=local-exec $(KOS_START) $(OBJS) $(DATAOBJS) $(OBJEXTRA) $(KOS_LIBS) -Wl,-Map=$(EXAMPLE_NAME).map
 
 run: $(EXAMPLE_NAME).elf
 	$(KOS_LOADER) $(EXAMPLE_NAME).elf

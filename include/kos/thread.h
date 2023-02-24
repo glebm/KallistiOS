@@ -18,6 +18,7 @@ __BEGIN_DECLS
 #include <arch/arch.h>
 #include <sys/queue.h>
 #include <sys/reent.h>
+#include <stdint.h>
 
 /** \file   kos/thread.h
     \brief  Threading support.

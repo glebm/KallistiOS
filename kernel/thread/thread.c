@@ -405,7 +405,7 @@ kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
                                (uint32)thd_birth, params, 0);
 
             /* Set Thread Pointer */
-            nt->context.gbr = &nt->tcbhead;
+            nt->context.gbr = (uint32) &nt->tcbhead;
             nt->tid = tid;
             nt->prio = real_attr.prio;
             nt->flags = THD_DEFAULTS;
