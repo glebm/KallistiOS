@@ -957,10 +957,10 @@ int thd_init(int mode) {
         /* Schedule our first wakeup */
         timer_primary_wakeup(1000 / HZ);
 
-        printf("thd: pre-emption enabled, HZ=%d\n", HZ);
+        dbglog(DBG_KDEBUG, "thd: pre-emption enabled, HZ=%d\n", HZ);
     }
     else
-        printf("thd: pre-emption disabled\n");
+        dbglog(DBG_KDEBUG, "thd: pre-emption disabled\n");
 
     return 0;
 }
