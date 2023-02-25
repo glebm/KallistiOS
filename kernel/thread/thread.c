@@ -379,6 +379,10 @@ kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
             /* Clear TLS BSS Section */
             memset(nt->static_tls_data + tdata_size, 0, tbss_size);
 
+            /* Initialize Thread Control Block Header */
+            nt->tcbhead.dtv = NULL;
+            nt->tcbhead.pointer_guard = (uintptr_t) NULL;
+
             /* Create a new thread stack */
             if(!real_attr.stack_ptr) {
                 nt->stack = (uint32*)malloc(real_attr.stack_size);
