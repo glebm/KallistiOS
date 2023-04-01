@@ -91,8 +91,18 @@ SECTIONS
   .eh_frame       : ONLY_IF_RW { KEEP (*(.eh_frame)) }
   .gcc_except_table   : ONLY_IF_RW { *(.gcc_except_table .gcc_except_table.*) }
   /* Thread Local Storage sections  */
-  .tdata	  : { *(.tdata .tdata.* .gnu.linkonce.td.*) }
-  .tbss		  : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) }
+  .tdata	  : 
+  { 
+    __tdata_start = .;
+    *(.tdata .tdata.* .gnu.linkonce.td.*) 
+  }
+  __tdata_size = SIZEOF(.tdata);
+  .tbss	(NOLOAD)	  : 
+  { 
+    *(.tbss .tbss.* .gnu.linkonce.tb.*) 
+    *(.tcommon)
+  }
+  __tbss_size = SIZEOF(.tbss);
   .preinit_array     :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
