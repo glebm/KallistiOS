@@ -26,10 +26,27 @@ __BEGIN_DECLS
 #include <arch/types.h>
 #include <arch/irq.h>
 
-/* Timer sources -- we get four on the SH4 */
+/** \defgroup   timers Timers
+ * This API exposes 3 of the 4 hardware timer peripherals.
+ * 
+ * \note 
+ * These timers are used internally by KOS for various
+ * tasks such as thread scheduling and implementing 
+ * high-level timing functions and should not typically
+ * be accessed directly.
+ * 
+ * \note The watchdog timer is not supported.
+ * \sa perf_counters
+*/
 
+/** \defgroup   timer_sources Timer Sources
+    The SH4 has 4 hardware timer peripherals. 
+    The fourth is a watchdog timer, which is unsupported.
+    \ingroup timers
+    @{
+*/
 /** \brief  SH4 Timer 0.
-
+ * 
     This timer is used for thread operation, and thus is off limits if you want
     that to work properly.
 */
@@ -52,11 +69,15 @@ __BEGIN_DECLS
     KallistiOS does not currently support using this timer.
 */
 #define WDT     3
+/** }@ **/
 
-/** \brief  Which timer does the thread system use? */
+/** \brief  Which timer does the thread system use?
+ *  \ingroup timers 
+ **/
 #define TIMER_ID TMU0
 
 /** \brief  Pre-initialize a timer, but do not start it.
+    \ingroup timers
 
     This function sets up a timer for use, but does not start it.
 
@@ -68,6 +89,7 @@ __BEGIN_DECLS
 int timer_prime(int which, uint32 speed, int interrupts);
 
 /** \brief  Start a timer.
+    \ingroup timers
 
     This function starts a timer that has been initialized with timer_prime(),
     starting raising interrupts if applicable.
@@ -78,6 +100,7 @@ int timer_prime(int which, uint32 speed, int interrupts);
 int timer_start(int which);
 
 /** \brief  Stop a timer.
+    \ingroup timers
 
     This function stops a timer that was started with timer_start(), and as a
     result stops interrupts coming in from the timer.
@@ -87,7 +110,8 @@ int timer_start(int which);
 */
 int timer_stop(int which);
 
-/** \brief  Obtain the count of a timer.
+/** \brief  Obtain the count of a timer.   
+    \ingroup timers
 
     This function simply returns the count of the timer.
 
@@ -97,6 +121,7 @@ int timer_stop(int which);
 uint32 timer_count(int which);
 
 /** \brief  Clear the underflow bit of a timer.
+    \ingroup timers
 
     This function clears the underflow bit of a timer if it was set.
 
@@ -116,6 +141,7 @@ int timer_clear(int which);
 void timer_spin_sleep(int ms);
 
 /** \brief  Enable high-priority timer interrupts.
+    \ingroup timers
 
     This function enables interrupts on the specified timer.
 
@@ -124,6 +150,7 @@ void timer_spin_sleep(int ms);
 void timer_enable_ints(int which);
 
 /** \brief  Disable timer interrupts.
+    \ingroup timers
 
     This function disables interrupts on the specified timer.
 
@@ -132,6 +159,7 @@ void timer_enable_ints(int which);
 void timer_disable_ints(int which);
 
 /** \brief  Check whether interrupts are enabled on a timer.
+    \ingroup timers
 
     This function checks whether or not interrupts are enabled on the specified
     timer.
@@ -143,21 +171,24 @@ void timer_disable_ints(int which);
 int timer_ints_enabled(int which);
 
 /** \brief  Enable the millisecond timer.
+    \ingroup timers
 
     This function enables the timer used for the gettime functions. This is on
     by default. These functions use \ref TMU2 to do their work.
 */
-void timer_ms_enable();
+void timer_ms_enable(void);
 
 /** \brief  Disable the millisecond timer.
+    \ingroup timers
 
     This function disables the timer used for the gettime functions. Generally,
     you will not want to do this, unless you have some need to use the timer
     \ref TMU2 for something else.
 */
-void timer_ms_disable();
+void timer_ms_disable(void);
 
 /** \brief  Get the current uptime of the system.
+    \ingroup timers
 
     This function retrieves the number of seconds and milliseconds since KOS was
     started.
@@ -173,6 +204,7 @@ void timer_ms_disable();
 void timer_ms_gettime(uint32 *secs, uint32 *msecs);
 
 /** \brief  Get the current uptime of the system (in milliseconds).
+    \ingroup timers
 
     This function retrieves the number of milliseconds since KOS was started. It
     is equivalent to calling timer_ms_gettime() and combining the number of
@@ -180,9 +212,10 @@ void timer_ms_gettime(uint32 *secs, uint32 *msecs);
 
     \return                 The number of milliseconds since KOS started.
 */
-uint64 timer_ms_gettime64();
+uint64 timer_ms_gettime64(void);
 
 /** \brief  Get the current uptime of the system (in microseconds).
+    \ingroup timers
 
     This function retrieves the number of microseconds since KOS was started. It
     should be more precise, in theory, than timer_ms_gettime64(), but the exact
@@ -190,12 +223,48 @@ uint64 timer_ms_gettime64();
 
     \return                 The number of microseconds since KOS started.
 */
-uint64 timer_us_gettime64();
+uint64 timer_us_gettime64(void);
 
-/** \brief  Primary timer callback type. */
+/** \brief  Enable the nanosecond timer.
+    \ingroup timers
+
+    This function enables the performance counter used for the timer_ns_gettime64() 
+    function. This is on by default. The function uses \ref PRFC0 to do the work.
+
+    \sa perf_counters
+*/
+void timer_ns_enable(void);
+
+/** \brief  Disable the nanosecond timer.
+    \ingroup timers
+
+    This function disables the performance counter used for the timer_ns_gettime64() 
+    function. Generally, you will not want to do this, unless you have some need to use 
+    the counter \ref PRFC0 for something else.
+
+    \sa perf_counters
+*/
+void timer_ns_disable(void);
+
+/** \brief  Get the current uptime of the system (in nanoseconds).
+    \ingroup timers
+
+    This function retrieves the number of nanoseconds since KOS was started.
+
+    \return                 The number of nanoseconds since KOS started.
+
+    \sa perf_counters
+*/
+uint64 timer_ns_gettime64(void);
+
+
+/** \brief  Primary timer callback type.
+ *  \ingroup timers
+ **/
 typedef void (*timer_primary_callback_t)(irq_context_t *);
 
 /** \brief  Set the primary timer callback.
+    \ingroup timers
 
     This function sets the primary timer callback to the specified function
     pointer. Generally, you should not do this, as the threading system relies
@@ -207,6 +276,7 @@ typedef void (*timer_primary_callback_t)(irq_context_t *);
 timer_primary_callback_t timer_primary_set_callback(timer_primary_callback_t callback);
 
 /** \brief  Request a primary timer wakeup.
+    \ingroup timers
 
     This function will wake the caller (by calling the primary timer callback)
     in approximately the number of milliseconds specified. You can only have one
@@ -218,35 +288,47 @@ timer_primary_callback_t timer_primary_set_callback(timer_primary_callback_t cal
 void timer_primary_wakeup(uint32 millis);
 
 /* \cond */
-/* Init function */
-int timer_init();
+/* Init function. Automatically called by KOS during initialization */
+int timer_init(void);
 
-/* Shutdown */
-void timer_shutdown();
+/* Shutdown function. Automatically called by KOS during shutdown */
+void timer_shutdown(void);
 /* \endcond */
 
 /** \defgroup   perf_counters Performance Counters
     The performance counter API exposes the SH4's hardware profiling registers, 
     which consist of two different sets of independently operable 64-bit 
     counters.  
+    \sa timers
 */
 
-/** \brief  SH4 Performance Counter.
-    \ingroup perf_counters
+/** \defgroup perf_counters_sources
+ *  \brief Performance Counter Sources 
+ *  \ingroup perf_counters
+ * @{
+ */
 
-    This counter is used by the ns_gettime function in this header.
-*/
+ /** \brief  SH4 Performance Counter.
+  * 
+    \note 
+    By default this peformance counter is used to 
+    enable the ns timer and to increase the precision
+    of applicable standard C/C++ timing functions.
+
+    \sa timers
+*/  
 #define PRFC0   0
 
 /** \brief  SH4 Performance Counter.
-    \ingroup perf_counters
-
+   
     A counter that is not used by KOS.
 */
 #define PRFC1   1
+/** }@
+ */
 
 /** \brief  CPU Cycles Count Type.
-    \ingroup perf_counters
+    \inroup perf_counters
 
     Count cycles. At 5 ns increments, a 48-bit cycle counter can 
     run continuously for 16.33 days.
@@ -363,31 +445,6 @@ int perf_cntr_clear(int which);
 */
 uint64 perf_cntr_count(int which);
 
-/** \brief  Enable the nanosecond timer.
-    \ingroup perf_counters
-
-    This function enables the performance counter used for the timer_ns_gettime64() 
-    function. This is on by default. The function uses \ref PRFC0 to do the work.
-*/
-void timer_ns_enable();
-
-/** \brief  Disable the nanosecond timer.
-    \ingroup perf_counters
-
-    This function disables the performance counter used for the timer_ns_gettime64() 
-    function. Generally, you will not want to do this, unless you have some need to use 
-    the counter \ref PRFC0 for something else.
-*/
-void timer_ns_disable();
-
-/** \brief  Get the current uptime of the system (in nanoseconds).
-    \ingroup perf_counters
-
-    This function retrieves the number of nanoseconds since KOS was started.
-
-    \return                 The number of nanoseconds since KOS started.
-*/
-uint64 timer_ns_gettime64();
 
 __END_DECLS
 
