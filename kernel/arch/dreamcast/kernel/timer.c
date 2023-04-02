@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <arch/arch.h>
 #include <arch/timer.h>
 #include <arch/perfcntr.h>
@@ -188,20 +189,16 @@ uint64 timer_ms_gettime64(void) {
     return msec;
 }
 
+/* Return the number of microseconds since KOS was booted */
+void timer_us_gettime(uint32 *secs, uint32 *usecs) {
+    timer_ns_gettime(secs, usecs);
+
+    if(usecs)
+        *usecs /= 1000;
+}
+
 uint64 timer_us_gettime64(void) {
-    uint32 cnt, scnt;
-    uint64 usec;
-    uint64 used;
-
-    scnt = timer_ms_counter;
-    cnt = timer_count(TMU2);
-
-    assert(timer_ms_countdown > 0);
-    used = timer_ms_countdown - cnt;
-    usec = scnt * 1000000;
-    usec += used * 1000000 / timer_ms_countdown;
-
-    return usec;
+    return timer_ns_gettime64() / 1000;
 }
 
 void timer_ns_enable(void) {
@@ -214,6 +211,28 @@ void timer_ns_disable(void) {
     /* If timer is running, disable it */
     if((config & PMCR_ELAPSED_TIME_MODE)) {
         perf_cntr_clear(PRFC0);
+    }
+}
+
+/* Return the number of nanoseconds since KOS was booted */
+void timer_ns_gettime(uint32 *secs, uint32 *nsecs) {
+    const uint16 config = perf_cntr_get_config(PRFC0);
+    
+    /* If nanosecond timer is running */
+    if((config & PMCR_ELAPSED_TIME_MODE)) {
+        /* Perform both modulo and division simultaneously */ 
+        const lldiv_t result = lldiv(timer_ns_gettime64(), 1000000000);
+        
+        if(secs) 
+            *secs = (uint32)result.quot;
+        if(nsecs)
+            *nsecs = (uint32)result.rem;
+    }
+    else { /* Fall back to the msec timer */
+        timer_ms_gettime(secs, nsecs);
+        
+        if(nsecs) 
+            *nsecs *= 1000000;
     }
 }
 
