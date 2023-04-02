@@ -219,10 +219,20 @@ void timer_ns_gettime(uint32 *secs, uint32 *nsecs) {
     const uint16 config = perf_cntr_get_config(PRFC0);
     
     /* If nanosecond timer is running */
-    if((config & PMCR_ELAPSED_TIME_MODE)) {
+    if(1/*(config & PMCR_ELAPSED_TIME_MODE)*/) {
         /* Perform both modulo and division simultaneously */ 
-        const lldiv_t result = lldiv(timer_ns_gettime64(), 1000000000);
-        
+    #if 1
+        const uint64 time = timer_ns_gettime64();
+        struct {
+            uint32 quot;
+            uint32 rem;
+        } result = {
+            time / 1000000000,
+            time % 1000000000
+        };
+        #else 
+        //const lldiv_t result = lldiv(timer_ns_gettime64(), 1000000000);
+        #endif
         if(secs) 
             *secs = (uint32)result.quot;
         if(nsecs)
@@ -240,13 +250,13 @@ uint64 timer_ns_gettime64(void) {
     const uint16 config = perf_cntr_get_config(PRFC0);
 
     /* If timer is running */
-    if((config & PMCR_ELAPSED_TIME_MODE)) {
-        uint64 cycles = perf_cntr_count(PRFC0);
+    if(1/*(config & PMCR_ELAPSED_TIME_MODE)*/) {
+        const uint64 cycles = perf_cntr_count(PRFC0);
         return cycles * PMCR_NS_PER_CYCLE;
     }
     else {
-        uint64 micro_secs = timer_us_gettime64();
-        return micro_secs * 1000;
+        const uint64 milli_secs = timer_ms_gettime64();
+        return milli_secs * 1000000;
     }
 }
 

@@ -2,10 +2,15 @@
 // Ported to Dreamcast/KOS by Peter Hatch
 // read_input () code from KOS examples
 // Converted to a clock by Megan Potter
+// Timer functionality added by Falco Girgis
 
 #include <kos.h>
-#include <time.h>
+#include <ctime>
 #include <dcplib/fnt.h>
+#include <chrono>
+#include <sstream>
+#include <string>
+#include <sys/time.h>
 
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
@@ -58,15 +63,14 @@ void bgframe() {
 }
 
 void drawFrame() {
-    time_t t;
-    struct tm tm;
     char tmpbuf[256];
     int y = 50;
 
     bgframe();
 
-    t = time(NULL);
-    localtime_r(&t, &tm);
+    struct timespec spec;
+    timespec_get(&spec, TIME_UTC);
+    struct tm *brokenDown = localtime(&spec.tv_sec);
 
     pvr_wait_ready();
     pvr_scene_begin();
@@ -80,11 +84,15 @@ void drawFrame() {
     text->begin();
     text->setColor(1, 1, 1);
     text->start2f(20, y);
-    text->puts("Simple DC Clock");
+    text->puts("(Not So) Simple DC Clock");
     text->end();
     y += 50;
 
-    sprintf(tmpbuf, "Unix Time: %d", t);
+    sprintf(tmpbuf, "%s %s %02u %04u",
+            days[brokenDown->tm_wday], 
+            months[brokenDown->tm_mon], 
+            brokenDown->tm_mday, 
+            1900 + brokenDown->tm_year);
 
     text->begin();
     text->setColor(1, 1, 1);
@@ -93,8 +101,7 @@ void drawFrame() {
     text->end();
     y += 50;
 
-    sprintf(tmpbuf, "%s %s %02d %04d",
-            days[tm.tm_wday], months[tm.tm_mon], tm.tm_mday, 1900 + tm.tm_year);
+    sprintf(tmpbuf, "Unix Time: %llu.%.9lu", spec.tv_sec, spec.tv_nsec);
 
     text->begin();
     text->setColor(1, 1, 1);
@@ -103,8 +110,8 @@ void drawFrame() {
     text->end();
     y += 50;
 
-    sprintf(tmpbuf, "%02d:%02d:%02d",
-            tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(tmpbuf, "C Time: %2u:%02u:%02u.%.9lu",
+            brokenDown->tm_hour, brokenDown->tm_min, brokenDown->tm_sec, spec.tv_nsec);
 
     text->begin();
     text->setColor(1, 1, 1);
@@ -112,6 +119,77 @@ void drawFrame() {
     text->puts(tmpbuf);
     text->end();
     y += 50;
+
+    std::stringstream ss;
+
+    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::high_resolution_clock::now();
+    auto duration = now.time_since_epoch();
+
+    typedef std::chrono::duration<int> Days; /* UTC: +0:00 */
+
+    Days days = std::chrono::duration_cast<Days>(duration);
+        duration -= days;
+    auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+        duration -= hours;
+    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+        duration -= minutes;
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+        duration -= seconds;
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+        duration -= milliseconds;
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration);
+        duration -= microseconds;
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+
+    std::time_t nowTime = std::chrono::high_resolution_clock::to_time_t(now);
+
+    ss << std::ctime(&nowTime);
+#if 0
+    ss        << "C++ Chrono: " 
+              << hours.count() << ":"
+              << minutes.count() << ":"
+              << seconds.count() << ":"
+              << milliseconds.count() << ":"
+              << microseconds.count() << ":"
+              << nanoseconds.count() << std::endl;
+#endif
+    std::string cppStr = ss.str();
+    text->begin();
+    text->setColor(1, 1, 1);
+    text->start2f(20, y);
+    text->puts(cppStr.c_str());
+    text->end();
+    y += 50;
+
+    char buffer[100];
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    brokenDown = localtime(&tv.tv_sec);
+    strftime(buffer, sizeof(buffer), "%I:%M:%S %p", brokenDown);
+
+    ss.str("");
+
+    ss << "POSIX Time: " << buffer; 
+
+    cppStr = ss.str();
+    text->begin();
+    text->setColor(1, 1, 1);
+    text->start2f(20, y);
+    text->puts(cppStr.c_str());
+    text->end();
+    y += 50;
+
+    const clock_t clockValue = clock();
+    const unsigned clockSecs = clockValue / CLOCKS_PER_SEC;
+    const unsigned clockUSecs = clockValue % CLOCKS_PER_SEC;
+    sprintf(tmpbuf, "C clock: %u.%.6u", clockSecs, clockUSecs);
+    text->begin();
+    text->setColor(1, 1, 1);
+    text->start2f(20, y);
+    text->puts(tmpbuf);
+    text->end();
+    y += 50;
+
 
     pvr_list_finish();
     pvr_scene_finish();

@@ -27,15 +27,31 @@ __BEGIN_DECLS
 #include <arch/irq.h>
 
 /** \defgroup   timers Timers
+ *  \brief Driver for Hardware Timer Peripherals
  * This API exposes 3 of the 4 hardware timer peripherals.
+ * The peripherals are used by KOS to implement the various
+ * timing query functions. The 4th timer is the Watchdog timer,
+ * and is not supported by KOS.
  * 
- * \note 
+ * \warning 
  * These timers are used internally by KOS for various
  * tasks such as thread scheduling and implementing 
  * high-level timing functions and should not typically
- * be accessed directly.
+ * be reconfigured or manipulated directly. Instead, you
+ * should simply be utilizing the various high-level 
+ * gettime queries, if you wish to use this API directly:
  * 
- * \note The watchdog timer is not supported.
+ * - timer_ms_gettime()
+ * - timer_us_gettime()
+ * - timer_ns_gettime()
+ * 
+ * \note
+ * Ideally, as an application-level developer, you would 
+ * not ever need to directly use this API within your code.
+ * This API is utilized by our Newlib implementation, 
+ * allowing you to leverage them via platform independent
+ * C or C++ standard library (time/chrono) or POSIX calls.
+ * 
  * \sa perf_counters
 */
 

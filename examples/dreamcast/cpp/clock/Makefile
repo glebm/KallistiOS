@@ -18,7 +18,7 @@ rm-elf:
 	-rm -f $(TARGET) romdisk.*
 
 $(TARGET): $(OBJS) romdisk.o
-	kos-c++ -o $(TARGET) $(OBJS) romdisk.o -ldcplib -lm
+	kos-c++ -o $(TARGET) $(OBJS) romdisk.o -ldcplib -lm -std=c++11
 
 romdisk.img:
 	$(KOS_GENROMFS) -f romdisk.img -d romdisk -v
