@@ -72,6 +72,48 @@ void * sq_cpy(void *dest, const void *src, int n) {
     return dest;
 }
 
+/* copies n bytes from src to dest, dest must be 64-byte aligned */
+void* sq_cpy64(void *dest, const void *src, int n)
+{
+
+  uint32 *sq;
+  uint32 *d, *s;
+  
+  d = (uint32 *)(0xe0000000 | (((uint32)dest) & 0x03ffffe0));
+  s = (uint32 *)(src);
+  
+  
+  *((volatile unsigned int*)0xFF000038) = ((((uint32)dest)>>26)<<2)&0x1c;
+  *((volatile unsigned int*)0xFF00003C) = ((((uint32)dest)>>26)<<2)&0x1c;
+  
+  n >>= 6;
+  while (n--) 
+  {
+    // sq0 
+    sq = d;
+    *sq++ = *s++; *sq++ = *s++;
+    *sq++ = *s++; *sq++ = *s++;
+    *sq++ = *s++; *sq++ = *s++;
+    *sq++ = *s++; *sq++ = *s++;
+    __asm__("pref @%0" : : "r" (d));
+    d += 8;
+    
+    // sq1 
+    sq = d;
+    *sq++ = *s++; *sq++ = *s++;
+    *sq++ = *s++; *sq++ = *s++;
+    *sq++ = *s++; *sq++ = *s++;
+    *sq++ = *s++; *sq++ = *s++;
+    __asm__("pref @%0" : : "r" (d));
+    d += 8;
+  }
+
+  *((uint32 *)(0xe0000000)) = 0;
+  *((uint32 *)(0xe0000020)) = 0;
+
+  return dest;
+}
+
 /* fills n bytes at s with byte c, s must be 32-byte aligned */
 void * sq_set(void *s, uint32 c, int n) {
     unsigned int *d = (unsigned int *)(void *)
