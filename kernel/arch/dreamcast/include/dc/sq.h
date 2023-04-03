@@ -75,12 +75,13 @@ void sq_clr(void *dest, int n);
     \param  n               The number of bytes to copy (multiple of 32).
     \return                 The original value of dest.
 
-    \sa sq_cpy64()
+    \sa sq_cpy64(), sq_cpy_pvr()
 */
 void * sq_cpy(void *dest, const void *src, int n);
 
 /** \brief   Copy a block of memory.
     \ingroup store_queues
+    \authors Pascal, Heliophobe
 
     This function is similar to sq_cpy(), but it operates on 64-bit 
     rather than 32-bit words, using the store queues to copy memory.
@@ -97,6 +98,31 @@ void * sq_cpy(void *dest, const void *src, int n);
     \sa sq_cpy()
 */
 void * sq_cpy64(void *dest, const void *src, int n);
+
+/** \brief   Copy a block of memory to VRAM
+    \ingroup store_queues
+    \author  TapamN
+
+    This function is similar to sq_cpy(), but it has been
+    optimized for writing to a destination residing within VRAM.
+
+    \note
+    TapamN has reported over a 2x speedup versus the regular
+    sq_cpy() when using this function to write to VRAM.
+
+    \warning
+    The dest pointer must be at least 32-byte aligned and reside 
+    in video memory, the src pointer must be at least 8-byte aligned, 
+    and n must be a multiple of 32.
+
+    \param  dest            The address to copy to (32-byte aligned).
+    \param  src             The address to copy from (32-bit (8-byte) aligned).
+    \param  n               The number of bytes to copy (multiple of 32).
+    \return                 The original value of dest.
+
+    \sa sq_cpy(), sq_cpy64()
+*/
+void * sq_cpy_pvr(void *dst, const void *src, size_t len);
 
 /** \brief   Set a block of memory to an 8-bit value.
     \ingroup store_queues

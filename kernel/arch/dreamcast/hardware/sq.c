@@ -5,6 +5,7 @@
 */
 
 #include <dc/sq.h>
+#include <stdint.h>
 
 /*
     Functions to clear, copy, and set memory using the sh4 store queues
@@ -112,6 +113,19 @@ void* sq_cpy64(void *dest, const void *src, int n)
   *((uint32 *)(0xe0000020)) = 0;
 
   return dest;
+}
+
+/* copies n bytes from src to dest (in VRAM), dest must be 32-byte aligned */
+void * sq_cpy_pvr(void *dst, const void *src, size_t len) {
+   //Set PVR DMA register
+   *(volatile int *)0xA05F6888 = 1;
+   
+   //Convert read/write area pointer to DMA write only area pointer
+   void *dmaareaptr = (void*)(((uintptr_t)dst & 0xffffff) | 0x11000000);
+   
+   sq_cpy(dmaareaptr, src, len);
+
+   return dst;
 }
 
 /* fills n bytes at s with byte c, s must be 32-byte aligned */
