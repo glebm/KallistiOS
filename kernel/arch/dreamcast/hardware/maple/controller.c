@@ -26,15 +26,29 @@ static void * btn_callback_wrapper(void* args) {
 
     for(;;) {
         btn_callback(btn_callback_arg_addr, btn_callback_arg_btns);
-        thd_remove_from_runnable(btn_callback_thd);
         thd_pass();
     }
 
     return NULL;
 }
 
+void cont_btn_callback_shutdown(void) {
+    thd_destroy(btn_callback_thd);
+    btn_callback_thd = NULL;
+    btn_callback = NULL;
+    btn_callback_addr = 0;
+    btn_callback_btns = 0;
+    btn_callback_arg_addr = 0;
+    btn_callback_arg_btns = 0;
+
+    return;
+}
+
 /* Set a controller callback for a button combo; set addr=0 for any controller */
 void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb) {
+    /* The callback has to have something in it */
+    if(cb == NULL) return;
+
     btn_callback_addr = addr;
     btn_callback_btns = btns;
     btn_callback = cb;
@@ -86,14 +100,14 @@ static void cont_reply(maple_frame_t *frm) {
         frm->dev->status_valid = 1;
 
         /* Check for magic button sequences, as long as no check is still processing */
-        if(btn_callback && (btn_callback_thd->flags & THD_QUEUED)) {
+        if(btn_callback_thd && (thd_get_current()->tid != btn_callback_thd->tid)) {
             if(!btn_callback_addr ||
                     (btn_callback_addr &&
                      btn_callback_addr == maple_addr(frm->dev->port, frm->dev->unit))) {
                 if((cooked->buttons & btn_callback_btns) == btn_callback_btns) {
                     btn_callback_arg_addr = maple_addr(frm->dev->port, frm->dev->unit);
                     btn_callback_arg_btns = cooked->buttons;
-                    thd_add_to_runnable(btn_callback_thd, 0);
+                    thd_schedule_next(btn_callback_thd);
                 }
             }
         }
@@ -142,4 +156,8 @@ int cont_init(void) {
 
 void cont_shutdown(void) {
     maple_driver_unreg(&controller_drv);
+    /* If we're in the callback then it just has to run its course, 
+    otherwise, we need to close it down */
+    if(thd_get_current()->tid != btn_callback_thd->tid)
+        cont_btn_callback_shutdown();
 }
