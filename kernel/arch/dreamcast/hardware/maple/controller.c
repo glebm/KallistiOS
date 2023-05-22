@@ -11,9 +11,30 @@
 #include <string.h>
 #include <assert.h>
 
+#include <kos/thread.h>
+#include <kos/mutex.h>
+
 static cont_btn_callback_t btn_callback = NULL;
 static uint8 btn_callback_addr = 0;
 static uint32 btn_callback_btns = 0;
+
+typedef struct {
+    uint8 addr;
+    uint32 btns;
+} btn_callback_args;
+
+/* Mutex to restrict multiple callback threads from running */
+mutex_t btn_callback_mutex = RECURSIVE_MUTEX_INITIALIZER;
+
+void * btn_callback_wrapper(void* args) {
+    btn_callback_args * thd_args = (btn_callback_args *) args;
+
+    mutex_lock(&btn_callback_mutex);
+    btn_callback(thd_args->addr, thd_args->btns);
+    mutex_unlock(&btn_callback_mutex);
+
+    return NULL;
+}
 
 /* Set a controller callback for a button combo; set addr=0 for any controller */
 void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb) {
@@ -65,8 +86,9 @@ static void cont_reply(maple_frame_t *frm) {
                     (btn_callback_addr &&
                      btn_callback_addr == maple_addr(frm->dev->port, frm->dev->unit))) {
                 if((cooked->buttons & btn_callback_btns) == btn_callback_btns) {
-                    btn_callback(maple_addr(frm->dev->port, frm->dev->unit),
-                                 cooked->buttons);
+                    btn_callback_args thd_args = {maple_addr(frm->dev->port, frm->dev->unit), cooked->buttons};
+                    kthread_t * thd = thd_create(1, btn_callback_wrapper, (void*) &thd_args);
+                    thd_set_label(thd, "cont_reply cb");
                 }
             }
         }
