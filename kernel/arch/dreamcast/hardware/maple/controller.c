@@ -18,20 +18,17 @@ static cont_btn_callback_t btn_callback = NULL;
 static uint8 btn_callback_addr = 0;
 static uint32 btn_callback_btns = 0;
 
-typedef struct {
-    uint8 addr;
-    uint32 btns;
-} btn_callback_args;
+static kthread_t * btn_callback_thd = NULL;
+static uint8 btn_callback_arg_addr = 0;
+static uint32 btn_callback_arg_btns = 0;
 
-/* Mutex to restrict multiple callback threads from running */
-mutex_t btn_callback_mutex = RECURSIVE_MUTEX_INITIALIZER;
+static void * btn_callback_wrapper(void* args) {
 
-void * btn_callback_wrapper(void* args) {
-    btn_callback_args * thd_args = (btn_callback_args *) args;
-
-    mutex_lock(&btn_callback_mutex);
-    btn_callback(thd_args->addr, thd_args->btns);
-    mutex_unlock(&btn_callback_mutex);
+    for(;;) {
+        btn_callback(btn_callback_arg_addr, btn_callback_arg_btns);
+        thd_remove_from_runnable(btn_callback_thd);
+        thd_pass();
+    }
 
     return NULL;
 }
@@ -41,6 +38,14 @@ void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb) {
     btn_callback_addr = addr;
     btn_callback_btns = btns;
     btn_callback = cb;
+
+    btn_callback_thd = thd_create(0, btn_callback_wrapper, (void*) &thd_args);
+
+    /* This may require an update to thd_create to be able to send custom flags. 
+       Otherwise it might run before it gets removed. */
+    thd_remove_from_runnable(btn_callback_thd);
+
+    thd_set_label(btn_callback_thd, "cont_reply cb");
 }
 
 static void cont_reply(maple_frame_t *frm) {
@@ -80,15 +85,15 @@ static void cont_reply(maple_frame_t *frm) {
         cooked->joy2y = ((int)raw->joy2y) - 128;
         frm->dev->status_valid = 1;
 
-        /* Check for magic button sequences */
-        if(btn_callback) {
+        /* Check for magic button sequences, as long as no check is still processing */
+        if(btn_callback && (btn_callback_thd->flags & THD_QUEUED)) {
             if(!btn_callback_addr ||
                     (btn_callback_addr &&
                      btn_callback_addr == maple_addr(frm->dev->port, frm->dev->unit))) {
                 if((cooked->buttons & btn_callback_btns) == btn_callback_btns) {
-                    btn_callback_args thd_args = {maple_addr(frm->dev->port, frm->dev->unit), cooked->buttons};
-                    kthread_t * thd = thd_create(1, btn_callback_wrapper, (void*) &thd_args);
-                    thd_set_label(thd, "cont_reply cb");
+                    btn_callback_arg_addr = maple_addr(frm->dev->port, frm->dev->unit);
+                    btn_callback_arg_btns = cooked->buttons;
+                    thd_add_to_runnable(btn_callback_thd, 0);
                 }
             }
         }
