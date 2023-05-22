@@ -33,6 +33,11 @@ static void * btn_callback_wrapper(void* args) {
 }
 
 void cont_btn_callback_shutdown(void) {
+
+    /* This means either the callback is shutting down the 
+       whole system, or some jerk called this in the callback. */
+    if(thd_get_current()->tid == btn_callback_thd->tid) return;
+
     thd_destroy(btn_callback_thd);
     btn_callback_thd = NULL;
     btn_callback = NULL;
@@ -46,8 +51,12 @@ void cont_btn_callback_shutdown(void) {
 
 /* Set a controller callback for a button combo; set addr=0 for any controller */
 void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb) {
-    /* The callback has to have something in it */
-    if(cb == NULL) return;
+    /* Setting to NULL clears the current callback. */
+    if(cb == NULL) {
+        if(btn_callback_thd !=NULL)
+            cont_btn_callback_shutdown();
+        return;
+    }
 
     btn_callback_addr = addr;
     btn_callback_btns = btns;
@@ -156,8 +165,6 @@ int cont_init(void) {
 
 void cont_shutdown(void) {
     maple_driver_unreg(&controller_drv);
-    /* If we're in the callback then it just has to run its course, 
-    otherwise, we need to close it down */
-    if(thd_get_current()->tid != btn_callback_thd->tid)
-        cont_btn_callback_shutdown();
+
+    cont_btn_callback_shutdown();
 }

@@ -133,6 +133,7 @@ typedef void (*cont_btn_callback_t)(uint8 addr, uint32 btns);
                             obtained by using maple_addr().
     \param  btns            The buttons bitmask to match.
     \param  cb              The callback to call when the buttons are pressed.
+                            Or NULL to un-set the current callback.
 */
 void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb);
 
