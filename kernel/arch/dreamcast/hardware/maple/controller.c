@@ -39,7 +39,7 @@ void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb) {
     btn_callback_btns = btns;
     btn_callback = cb;
 
-    btn_callback_thd = thd_create(0, btn_callback_wrapper, (void*) &thd_args);
+    btn_callback_thd = thd_create(0, btn_callback_wrapper, NULL);
 
     /* This may require an update to thd_create to be able to send custom flags. 
        Otherwise it might run before it gets removed. */
