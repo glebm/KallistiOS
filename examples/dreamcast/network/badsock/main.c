@@ -38,6 +38,7 @@
 #include <dc/maple.h>
 #include <dc/maple/controller.h>
 
+#include <arch/arch.h>
 #include <arch/timer.h>
 
 /* This first chunk is all identical to the httpd example */
