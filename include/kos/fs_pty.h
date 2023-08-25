@@ -26,7 +26,6 @@
 __BEGIN_DECLS
 
 #include <arch/types.h>
-#include <kos/limits.h>
 #include <kos/fs.h>
 
 /** \brief  Create a new pseudo-terminal.
@@ -52,8 +51,8 @@ __BEGIN_DECLS
 int fs_pty_create(char * buffer, int maxbuflen, file_t * master_out, file_t * slave_out);
 
 /** \cond */
-int fs_pty_init();
-int fs_pty_shutdown();
+int fs_pty_init(void);
+int fs_pty_shutdown(void);
 /** \endcond */
 
 __END_DECLS

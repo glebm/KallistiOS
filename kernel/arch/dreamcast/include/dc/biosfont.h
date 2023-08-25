@@ -36,7 +36,7 @@ __BEGIN_DECLS
 /** @} */
 
 #define JISX_0208_ROW_SIZE  94
-/** \defgroup bfont_indecies Structure of the Bios Font
+/** \defgroup bfont_indicies Structure of the Bios Font
     @{
 */
 #define BFONT_NARROW_START          0   /**< \brief Start of Narrow Characters in Font Block */
@@ -78,8 +78,17 @@ __BEGIN_DECLS
 #define BFONT_VMUICON               BFONT_DREAMCAST_SPECIFIC+(21*BFONT_WIDE_WIDTH*BFONT_HEIGHT/8)
 
 #define BFONT_ICON_DIMEN                 32    /**< \brief Dimension of vmu icons */
-#define BFONT_VMU_DREAMCAST_SPECIFIC    BFONT_DREAMCAST_SPECIFIC+(22*BFONT_WIDE_WIDTH*BFONT_HEIGHT/8)
+#define BFONT_VMU_DREAMCAST_SPECIFIC     BFONT_DREAMCAST_SPECIFIC+(22*BFONT_WIDE_WIDTH*BFONT_HEIGHT/8)
+/** @} */
 
+/** \defgroup vmu_icons Builtin VMU Icons
+    \ingroup  bfont_indicies
+
+    Builtin VMU volume user icons. The Dreamcast's
+    BIOS allows the user to set these when formatting the VMU.
+
+    @{
+*/
 #define BFONT_ICON_INVALID_VMU           0x00
 #define BFONT_ICON_HOURGLASS_ONE         0x01
 #define BFONT_ICON_HOURGLASS_TWO         0x02
@@ -209,7 +218,6 @@ __BEGIN_DECLS
 #define BFONT_ICON_PACMAN_GRID           0x7E
 #define BFONT_ICON_DARK_GRAY             0x7F
 #define BFONT_ICON_EMBROIDERY            0x80
-
 /** @} */
 
 /** \brief  Set the font foreground color.
@@ -388,7 +396,7 @@ unsigned char bfont_draw_wide(void *buffer, uint32 bufwidth, uint8 opaque,
 
 */
 void bfont_draw_str_ex(void *b, uint32 width, uint32 fg, uint32 bg, uint8 bpp,
-                       uint8 opaque, char *str);
+                       uint8 opaque, const char *str);
 
 /** \brief  Draw a full string to a buffer.
 
@@ -403,7 +411,7 @@ void bfont_draw_str_ex(void *b, uint32 width, uint32 fg, uint32 bg, uint8 bpp,
                             otherwise do not change them from what they are.
     \param  str             The string to draw.
 */
-void bfont_draw_str(void *b, uint32 width, uint8 opaque, char *str);
+void bfont_draw_str(void *b, uint32 width, uint8 opaque, const char *str);
 
 /** \brief  Find a VMU icon.
 
