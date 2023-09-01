@@ -14,7 +14,7 @@ __BEGIN_DECLS
 
 #include <sys/lock.h>
 #include <newlib.h>
-#include <sys/_pthread_types.h>
+#include <sys/_pthreadtypes.h>
 
 // This part copied from newlib's sys/_types.h.
 #ifndef __off_t_defined
