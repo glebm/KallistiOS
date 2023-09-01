@@ -77,7 +77,7 @@ void cont_btn_callback_shutdown(void) {
 
 /* Set a controller callback for a button combo; set addr=0 for any controller */
 void cont_btn_callback(uint8_t addr, uint32_t btns, cont_btn_callback_t cb) {
-	
+
     /* Setting to NULL clears the current callback. */
     if(cb == NULL) {
         if(btn_callback_thd !=NULL)
