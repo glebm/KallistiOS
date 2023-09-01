@@ -14,6 +14,20 @@
 #include <kos/thread.h>
 #include <kos/mutex.h>
 
+/* Location of controller capabilities within function_data array */
+#define CONT_FUNCTION_DATA_INDEX  0
+
+/* Raw controller condition structure */
+typedef struct cont_cond {
+    uint16_t buttons;  /* buttons bitfield */
+    uint8_t rtrig;     /* right trigger */
+    uint8_t ltrig;     /* left trigger */
+    uint8_t joyx;      /* joystick X */
+    uint8_t joyy;      /* joystick Y */
+    uint8_t joy2x;     /* second joystick X */
+    uint8_t joy2y;     /* second joystick Y */
+} cont_cond_t;
+
 static cont_btn_callback_t btn_callback = NULL;
 static uint8 btn_callback_addr = 0;
 static uint32 btn_callback_btns = 0;
@@ -50,7 +64,7 @@ void cont_btn_callback_shutdown(void) {
 }
 
 /* Set a controller callback for a button combo; set addr=0 for any controller */
-void cont_btn_callback(uint8 addr, uint32 btns, cont_btn_callback_t cb) {
+void cont_btn_callback(uint8_t addr, uint32_t btns, cont_btn_callback_t cb) {
     /* Setting to NULL clears the current callback. */
     if(cb == NULL) {
         if(btn_callback_thd !=NULL)
