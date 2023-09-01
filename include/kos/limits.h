@@ -16,8 +16,21 @@
 #ifndef __KOS_LIMITS_H
 #define __KOS_LIMITS_H
 
-#define MAX_FN_LEN  256     /**< \brief Max filename length */
-#define PATH_MAX    4095    /**< \brief Max path length */
+#ifndef NAME_MAX
+#define NAME_MAX    256     /**< \brief Max filename length */
+#endif
+
+/* MAX_FN_LEN defined for legacy code compatibility */
+#ifndef MAX_FN_LEN
+#define MAX_FN_LEN  NAME_MAX
+#endif
+
+#ifndef PATH_MAX
+#define PATH_MAX    4096    /**< \brief Max path length */
+#endif
+
+#ifndef SYMLOOP_MAX
 #define SYMLOOP_MAX 16      /**< \brief Max number of symlinks resolved */
+#endif
 
 #endif  /* __KOS_LIMITS_H */

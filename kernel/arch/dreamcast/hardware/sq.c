@@ -4,6 +4,7 @@
    Copyright (C) 2001 Andrew Kieschnick
 */
 
+#include <arch/memory.h>
 #include <dc/sq.h>
 
 /*
@@ -15,7 +16,7 @@
 /* clears n bytes at dest, dest must be 32-byte aligned */
 void sq_clr(void *dest, int n) {
     unsigned int *d = (unsigned int *)(void *)
-                      (0xe0000000 | (((unsigned long)dest) & 0x03ffffe0));
+                      (MEM_AREA_SQ_BASE | (((unsigned long)dest) & 0x03ffffe0));
 
     /* Set store queue memory area as desired */
     QACR0 = ((((unsigned int)dest) >> 26) << 2) & 0x1c;
@@ -23,7 +24,7 @@ void sq_clr(void *dest, int n) {
 
     /* Fill both store queues with zeroes */
     d[0] = d[1] = d[2] = d[3] = d[4] = d[5] = d[6] = d[7] =
-                                           d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = 0;
+        d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = 0;
 
     /* Write them as many times necessary */
     n >>= 5;
@@ -34,14 +35,14 @@ void sq_clr(void *dest, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (unsigned int *)0xe0000000;
+    d = (unsigned int *)MEM_AREA_SQ_BASE;
     d[0] = d[8] = 0;
 }
 
 /* copies n bytes from src to dest, dest must be 32-byte aligned */
 void * sq_cpy(void *dest, const void *src, int n) {
     unsigned int *d = (unsigned int *)(void *)
-                      (0xe0000000 | (((unsigned long)dest) & 0x03ffffe0));
+                      (MEM_AREA_SQ_BASE | (((unsigned long)dest) & 0x03ffffe0));
     const unsigned int *s = src;
 
     /* Set store queue memory area as desired */
@@ -52,7 +53,7 @@ void * sq_cpy(void *dest, const void *src, int n) {
     n >>= 5;
 
     while(n--) {
-        __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
+        __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes */
         d[0] = *(s++);
         d[1] = *(s++);
         d[2] = *(s++);
@@ -66,7 +67,7 @@ void * sq_cpy(void *dest, const void *src, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (unsigned int *)0xe0000000;
+    d = (unsigned int *)MEM_AREA_SQ_BASE;
     d[0] = d[8] = 0;
 
     return dest;
@@ -75,7 +76,7 @@ void * sq_cpy(void *dest, const void *src, int n) {
 /* fills n bytes at s with byte c, s must be 32-byte aligned */
 void * sq_set(void *s, uint32 c, int n) {
     unsigned int *d = (unsigned int *)(void *)
-                      (0xe0000000 | (((unsigned long)s) & 0x03ffffe0));
+                      (MEM_AREA_SQ_BASE | (((unsigned long)s) & 0x03ffffe0));
 
     /* Set store queue memory area as desired */
     QACR0 = ((((unsigned int)s) >> 26) << 2) & 0x1c;
@@ -87,7 +88,7 @@ void * sq_set(void *s, uint32 c, int n) {
 
     /* Fill both store queues with c */
     d[0] = d[1] = d[2] = d[3] = d[4] = d[5] = d[6] = d[7] =
-                                           d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = c;
+        d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = c;
 
     /* Write them as many times necessary */
     n >>= 5;
@@ -98,7 +99,7 @@ void * sq_set(void *s, uint32 c, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (unsigned int *)0xe0000000;
+    d = (unsigned int *)MEM_AREA_SQ_BASE;
     d[0] = d[8] = 0;
 
     return s;
@@ -107,7 +108,7 @@ void * sq_set(void *s, uint32 c, int n) {
 /* fills n bytes at s with short c, s must be 32-byte aligned */
 void * sq_set16(void *s, uint32 c, int n) {
     unsigned int *d = (unsigned int *)(void *)
-                      (0xe0000000 | (((unsigned long)s) & 0x03ffffe0));
+                      (MEM_AREA_SQ_BASE | (((unsigned long)s) & 0x03ffffe0));
 
     /* Set store queue memory area as desired */
     QACR0 = ((((unsigned int)s) >> 26) << 2) & 0x1c;
@@ -119,7 +120,7 @@ void * sq_set16(void *s, uint32 c, int n) {
 
     /* Fill both store queues with c */
     d[0] = d[1] = d[2] = d[3] = d[4] = d[5] = d[6] = d[7] =
-                                           d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = c;
+        d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = c;
 
     /* Write them as many times necessary */
     n >>= 5;
@@ -130,7 +131,7 @@ void * sq_set16(void *s, uint32 c, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (unsigned int *)0xe0000000;
+    d = (unsigned int *)MEM_AREA_SQ_BASE;
     d[0] = d[8] = 0;
 
     return s;
@@ -139,7 +140,7 @@ void * sq_set16(void *s, uint32 c, int n) {
 /* fills n bytes at s with int c, s must be 32-byte aligned */
 void * sq_set32(void *s, uint32 c, int n) {
     unsigned int *d = (unsigned int *)(void *)
-                      (0xe0000000 | (((unsigned long)s) & 0x03ffffe0));
+                      (MEM_AREA_SQ_BASE | (((unsigned long)s) & 0x03ffffe0));
 
     /* Set store queue memory area as desired */
     QACR0 = ((((unsigned int)s) >> 26) << 2) & 0x1c;
@@ -147,7 +148,7 @@ void * sq_set32(void *s, uint32 c, int n) {
 
     /* Fill both store queues with c */
     d[0] = d[1] = d[2] = d[3] = d[4] = d[5] = d[6] = d[7] =
-                                           d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = c;
+        d[8] = d[9] = d[10] = d[11] = d[12] = d[13] = d[14] = d[15] = c;
 
     /* Write them as many times necessary */
     n >>= 5;
@@ -158,7 +159,7 @@ void * sq_set32(void *s, uint32 c, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (unsigned int *)0xe0000000;
+    d = (unsigned int *)MEM_AREA_SQ_BASE;
     d[0] = d[8] = 0;
 
     return s;

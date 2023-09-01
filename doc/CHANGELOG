@@ -169,6 +169,23 @@ KallistiOS version 2.1.0 -----------------------------------------------
 - DC  Cleaned up asic functions and corrected potential bugs [DH]
 - DC  Removed cooperative threading mode -- threading is always preemptive [DH]
 - DC  Added early user init function [PC]
+- *** Added Objective-C example testing/demonstrating C Runtime [FG]
+- *** Updated Objective-C examples to include more thorough testing of the
+      runtime aspects of the language [Andrew Apperley == AA]
+- DC  Improve fipr() and fipr_magnitude_sqr() functions [PC]
+- DC  Add optimized bit-reverse function && vmu_draw_lcd_rotated() [PC]
+- DC  Update bfont example for Dreamcast-specific characters [DH]
+- DC  Add example for VMU speaker use [DH && FG]
+- DC  Add example for rumble accessory use [DH]
+- *** Split init flags from <arch/arch.h> into <kos/init.h> [LS]
+- *** Implemented posix_memalign() from stdlib.h [FG]
+- *** Added clock_gettime(), clock_settime(), clock_getres() [FG]
+- DC  Refactored controller API, added capability groups and types [FG]
+- DC  VMU driver update for date/time, buttons, buzzer, and docs [FG]
+- DC  Add spinlock_trylock macro [LS]
+- *** Simplify kthread_once_t into a simple variable rather than a struct [LS]
+- *** Simplify sync primitive structures to remove initialized member [LS]
+- *** Move definition of __RESTRICT from <sys/_types.h> to <kos/cdefs.h> [LS]
 
 KallistiOS version 2.0.0 -----------------------------------------------
 - DC  Broadband Adapter driver fixes [Megan Potter == MP]

@@ -203,16 +203,6 @@ typedef _CLOCK_T_   __clock_t;
 /* Include stuff to make pthreads work as well. */
 #include <sys/_pthread.h>
 
-#ifndef __RESTRICT
-#if (__STDC_VERSION__ >= 199901L)
-#define __RESTRICT restrict
-#elif defined(__GNUC__) || defined(__GNUG__)
-#define __RESTRICT __restrict
-#else /* < C99 and not GCC */
-#define __RESTRICT
-#endif
-#endif /* !__RESTRICT */
-
 #if __GNUC_MINOR__ > 95 || __GNUC__ >= 3
 typedef __builtin_va_list   __va_list;
 #else
@@ -226,4 +216,8 @@ __END_DECLS
 /* Grab our C11 time stuff if we got here from <time.h>. */
 #ifdef _TIME_H_
 #include <kos/time.h>
+#endif
+
+#ifdef _STDLIB_H_
+#include <kos/stdlib.h>
 #endif
