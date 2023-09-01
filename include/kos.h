@@ -112,7 +112,13 @@ __BEGIN_DECLS
 #   include <dc/video.h>
 #   include <dc/vmu_pkg.h>
 #   include <dc/vmufs.h>
-#else   /* _arch_dreamcast */
+#elif _arch_gba
+#   include <gba/keys.h>
+#   include <gba/sprite.h>
+#   include <gba/video.h>
+#   include <gba/dma.h>
+#   include <gba/sound.h>
+#else
 #   error Invalid architecture or no architecture specified
 #endif
 
