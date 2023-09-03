@@ -32,9 +32,9 @@ static cont_btn_callback_t btn_callback = NULL;
 static uint8_t btn_callback_addr = 0;
 static uint32_t btn_callback_btns = 0;
 
-static kthread_t * btn_callback_thd = NULL;
-static uint8 btn_callback_arg_addr = 0;
-static uint32 btn_callback_arg_btns = 0;
+static kthread_t *btn_callback_thd = NULL;
+static uint8_t btn_callback_arg_addr = 0;
+static uint32_t btn_callback_arg_btns = 0;
 
 /* Check whether the controller has EXACTLY the given capabilties. */
 int cont_is_type(const maple_device_t *cont, uint32_t type) {
@@ -48,7 +48,8 @@ int cont_has_capabilities(const maple_device_t *cont, uint32_t capabilities) {
                    & capabilities) == capabilities) : -1;
 }
 
-static void * btn_callback_wrapper(void* args) {
+static void *btn_callback_wrapper(void *args) {
+    (void)args;
 
     for(;;) {
         btn_callback(btn_callback_arg_addr, btn_callback_arg_btns);
@@ -59,10 +60,10 @@ static void * btn_callback_wrapper(void* args) {
 }
 
 void cont_btn_callback_shutdown(void) {
-
     /* This means either the callback is shutting down the 
        whole system, or some jerk called this in the callback. */
-    if(thd_get_current()->tid == btn_callback_thd->tid) return;
+    if(thd_get_current()->tid == btn_callback_thd->tid)
+        return;
 
     thd_destroy(btn_callback_thd);
     btn_callback_thd = NULL;
@@ -71,13 +72,10 @@ void cont_btn_callback_shutdown(void) {
     btn_callback_btns = 0;
     btn_callback_arg_addr = 0;
     btn_callback_arg_btns = 0;
-
-    return;
 }
 
 /* Set a controller callback for a button combo; set addr=0 for any controller */
 void cont_btn_callback(uint8_t addr, uint32_t btns, cont_btn_callback_t cb) {
-
     /* Setting to NULL clears the current callback. */
     if(cb == NULL) {
         if(btn_callback_thd !=NULL)
@@ -95,7 +93,7 @@ void cont_btn_callback(uint8_t addr, uint32_t btns, cont_btn_callback_t cb) {
        Otherwise it might run before it gets removed. */
     thd_remove_from_runnable(btn_callback_thd);
 
-    thd_set_label(btn_callback_thd, "cont_reply cb");
+    thd_set_label(btn_callback_thd, "cont_btn_callback");
 }
 
 /* Response callback for the GETCOND Maple command. */
@@ -193,6 +191,5 @@ int cont_init(void) {
 
 void cont_shutdown(void) {
     maple_driver_unreg(&controller_drv);
-
     cont_btn_callback_shutdown();
 }
