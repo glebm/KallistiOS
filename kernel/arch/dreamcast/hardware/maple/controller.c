@@ -60,13 +60,16 @@ static void *btn_callback_wrapper(void *args) {
 }
 
 void cont_btn_callback_shutdown(void) {
-    /* This means either the callback is shutting down the 
-       whole system, or some jerk called this in the callback. */
-    if(thd_get_current()->tid == btn_callback_thd->tid)
-        return;
+    if(btn_callback_thd != NULL) {
+        /* This means either the callback is shutting down the 
+           whole system, or some jerk called this in the callback. */
+        if(thd_get_current()->tid == btn_callback_thd->tid)
+            return;
 
-    thd_destroy(btn_callback_thd);
-    btn_callback_thd = NULL;
+        thd_destroy(btn_callback_thd);
+        btn_callback_thd = NULL;
+    }
+
     btn_callback = NULL;
     btn_callback_addr = 0;
     btn_callback_btns = 0;
@@ -78,8 +81,7 @@ void cont_btn_callback_shutdown(void) {
 void cont_btn_callback(uint8_t addr, uint32_t btns, cont_btn_callback_t cb) {
     /* Setting to NULL clears the current callback. */
     if(cb == NULL) {
-        if(btn_callback_thd !=NULL)
-            cont_btn_callback_shutdown();
+        cont_btn_callback_shutdown();
         return;
     }
 
