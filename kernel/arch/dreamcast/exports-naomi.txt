@@ -5,6 +5,9 @@
 # aware that if you try to load someone else's module later, they might
 # be needing something in here.
 
+include kos.h
+include dc/sound/sound.h
+
 # ASIC
 asic_evt_set_handler
 asic_evt_disable_all
@@ -155,6 +158,7 @@ vmu_set_icon
 pvr_txr_load_dma
 pvr_dma_ready
 pvr_dma_load_ta
+pvr_dma_yuv_conv
 pvr_fog_table_color
 pvr_fog_vertex_color
 pvr_fog_far_depth

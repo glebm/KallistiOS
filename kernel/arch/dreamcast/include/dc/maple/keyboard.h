@@ -202,7 +202,7 @@ __BEGIN_DECLS
 #define MAX_PRESSED_KEYS 6
 
 /** \brief Maximum number of keys a DC keyboard can have.
-	This is a hardware constant. The define prevents the magic number '256' from appearing.
+    This is a hardware constant. The define prevents the magic number '256' from appearing.
 **/
 #define MAX_KBD_KEYS 256
 
@@ -276,7 +276,7 @@ typedef struct kbd_state {
     int queue_tail;                     /**< \brief Key queue tail. */
     int queue_head;                     /**< \brief Key queue head. */
     int queue_len;                      /**< \brief Current length of queue. */
-    
+
     uint8 kbd_repeat_key;           /**< \brief Key that is repeating. */
     uint64 kbd_repeat_timer;        /**< \brief Time that the next repeat will trigger. */
 } kbd_state_t;
@@ -319,7 +319,7 @@ void kbd_set_queue(int active) __attribute__((deprecated));
                             keyboards.
     \see                    kbd_queue_pop()
 */
-int kbd_get_key() __attribute__((deprecated));
+int kbd_get_key(void) __attribute__((deprecated));
 
 /** \brief  Pop a key off a specific keyboard's queue.
 
@@ -349,8 +349,8 @@ int kbd_queue_pop(maple_device_t *dev, int xlat);
 
 /* \cond */
 /* Init / Shutdown */
-int kbd_init();
-void kbd_shutdown();
+int kbd_init(void);
+void kbd_shutdown(void);
 /* \endcond */
 
 __END_DECLS

@@ -50,7 +50,7 @@ typedef LIST_HEAD(nmmgr_list, nmmgr_handler) nmmgr_list_t;
     \headerfile kos/nmmgr.h
 */
 typedef struct nmmgr_handler {
-    char    pathname[MAX_FN_LEN];   /* Path name */
+    char    pathname[NAME_MAX];   /* Path name */
     int pid;            /* Process table ID for handler (0 == static) */
     uint32  version;        /* Version code */
     uint32  flags;          /* Bitmask of flags */
@@ -104,7 +104,7 @@ nmmgr_handler_t * nmmgr_lookup(const char *name);
 
     \return                 The head of the name handler list
 */
-nmmgr_list_t * nmmgr_get_list();
+nmmgr_list_t * nmmgr_get_list(void);
 
 /** \brief  Add a name handler.
 
@@ -127,8 +127,8 @@ int nmmgr_handler_remove(nmmgr_handler_t *hnd);
 
 /** \cond */
 /* Name manager init */
-int nmmgr_init();
-void    nmmgr_shutdown();
+int nmmgr_init(void);
+void nmmgr_shutdown(void);
 /** \endcond */
 
 __END_DECLS

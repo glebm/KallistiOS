@@ -141,6 +141,10 @@ int net_arp_insert(netif_t *nif, const uint8 mac[6], const uint8 ip[4],
 
     /* It's not there, add an entry */
     cur = (netarp_t *)malloc(sizeof(netarp_t));
+
+    if(cur == NULL)
+        return -1;
+
     memcpy(cur->mac, mac, 6);
     memcpy(cur->ip, ip, 4);
     cur->timestamp = timestamp;
@@ -186,6 +190,10 @@ int net_arp_lookup(netif_t *nif, const uint8 ip_in[4], uint8 mac_out[6],
 
     /* It's not there... Add an incomplete ARP entry */
     cur = (netarp_t *)malloc(sizeof(netarp_t));
+
+    if(cur == NULL)
+        return -3;
+
     memset(cur, 0, sizeof(netarp_t));
     memcpy(cur->ip, ip_in, 4);
     cur->timestamp = timer_ms_gettime64();
@@ -242,7 +250,7 @@ int net_arp_revlookup(netif_t *nif, uint8 ip_out[4], const uint8 mac_in[6]) {
 }
 
 /* Send an ARP reply packet on the specified network adapter */
-static int net_arp_send(netif_t *nif, arp_pkt_t *pkt)   {
+static int net_arp_send(netif_t *nif, arp_pkt_t *pkt) {
     arp_pkt_t pkt_out;
     eth_hdr_t eth_hdr;
     uint8 buf[sizeof(arp_pkt_t) + sizeof(eth_hdr_t)];
@@ -287,7 +295,9 @@ int net_arp_input(netif_t *nif, const uint8 *pkt_in, int len) {
 
     switch(pkt->opcode[1]) {
         case 1: /* ARP Request */
-            net_arp_send(nif, pkt);
+            /* Send reply if we are the intended recipient */
+            if(!memcmp(nif->ip_addr, pkt->pr_recv, 4))
+                net_arp_send(nif, pkt);
             __fallthrough; /* Yes, this really should fall through here. */
 
         case 2: /* ARP Reply */

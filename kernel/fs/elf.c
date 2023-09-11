@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <arch/cache.h>
+#include <arch/arch.h>
 #include <kos/fs.h>
 #include <kos/elf.h>
 #include <kos/exports.h>
@@ -374,7 +375,7 @@ int elf_load(const char * fn, klibrary_t * shell, elf_prog_t * out) {
 
 #define DO_ONE(symname, outp) \
     sym = find_sym(ELF_SYM_PREFIX symname, symtab, symtabsize); \
-    if (sym < 0) { \
+    if(sym < 0) { \
         dbglog(DBG_ERROR, "elf_load: ELF contains no %s()\n", symname); \
         goto error3; \
     } \

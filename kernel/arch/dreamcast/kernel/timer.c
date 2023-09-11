@@ -17,18 +17,18 @@
 #define TIMER8(o) ( *((volatile uint8*)(0xffd80000 + (o))) )
 #define TIMER16(o) ( *((volatile uint16*)(0xffd80000 + (o))) )
 #define TIMER32(o) ( *((volatile uint32*)(0xffd80000 + (o))) )
-#define TOCR    0x00
-#define TSTR    0x04
-#define TCOR0   0x08
-#define TCNT0   0x0c
-#define TCR0    0x10
-#define TCOR1   0x14
-#define TCNT1   0x18
-#define TCR1    0x1c
-#define TCOR2   0x20
-#define TCNT2   0x24
-#define TCR2    0x28
-#define TCPR2   0x2c
+#define TOCR    0x00       /* Timer Output Control Register */
+#define TSTR    0x04       /* Timer Start Register */
+#define TCOR0   0x08       /* Timer Constant Register 0 */
+#define TCNT0   0x0c       /* Timer Counter Register 0 */
+#define TCR0    0x10       /* Timer Control Register 0 */
+#define TCOR1   0x14       /* Timer Constant Register 1 */
+#define TCNT1   0x18       /* Timer Counter Register 1 */
+#define TCR1    0x1c       /* Timer Control Register 1 */
+#define TCOR2   0x20       /* Timer Constant Register 2 */
+#define TCNT2   0x24       /* Timer Counter Register 2 */
+#define TCR2    0x28       /* Timer Control Register 2 */
+#define TCPR2   0x2c       /* Timer Input Capture */
 
 static int tcors[] = { TCOR0, TCOR1, TCOR2 };
 static int tcnts[] = { TCNT0, TCNT1, TCNT2 };
@@ -247,14 +247,14 @@ void timer_ns_gettime(uint32 *secs, uint32 *nsecs) {
 }
 
 uint64 timer_ns_gettime64(void) {
-    const uint16 config = perf_cntr_get_config(PRFC0);
+    const uint16_t config = perf_cntr_get_config(PRFC0);
 
-    /* If timer is running */
-    if(1/*(config & PMCR_ELAPSED_TIME_MODE)*/) {
+    /* If pefcounters are running as an NS timer */
+    if(config & PMCR_ELAPSED_TIME_MODE) {
         const uint64 cycles = perf_cntr_count(PRFC0);
         return cycles * PMCR_NS_PER_CYCLE;
     }
-    else {
+    else { /* Gracefully fall back to MS resolution if not */
         const uint64 milli_secs = timer_ms_gettime64();
         return milli_secs * 1000000;
     }

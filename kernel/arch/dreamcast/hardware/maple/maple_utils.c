@@ -8,31 +8,32 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <arch/memory.h>
 #include <dc/maple.h>
 
 /* Enable / Disable the bus */
-void maple_bus_enable() {
+void maple_bus_enable(void) {
     maple_write(MAPLE_ENABLE, MAPLE_ENABLE_ENABLED);
 }
-void maple_bus_disable() {
+void maple_bus_disable(void) {
     maple_write(MAPLE_ENABLE, MAPLE_ENABLE_DISABLED);
 }
 
 /* Start / Stop DMA */
-void maple_dma_start() {
+void maple_dma_start(void) {
     maple_write(MAPLE_STATE, MAPLE_STATE_DMA);
 }
-void maple_dma_stop() {
+void maple_dma_stop(void) {
     maple_write(MAPLE_STATE, MAPLE_STATE_IDLE);
 }
 
-int maple_dma_in_progress() {
+int maple_dma_in_progress(void) {
     return maple_read(MAPLE_STATE) & MAPLE_STATE_DMA;
 }
 
 /* Set the DMA Address */
 void maple_dma_addr(void *ptr) {
-    maple_write(MAPLE_DMAADDR, ((uint32) ptr) & 0x1fffffff);
+    maple_write(MAPLE_DMAADDR, ((uint32) ptr) & MEM_AREA_CACHE_MASK);
 }
 
 /* Return a "maple address" for a port,unit pair */

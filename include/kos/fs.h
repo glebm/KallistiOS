@@ -43,7 +43,7 @@ __BEGIN_DECLS
 */
 typedef struct kos_dirent {
     int size;               /**< \brief Size of the file in bytes. */
-    char name[MAX_FN_LEN];  /**< \brief Name of the file. */
+    char name[NAME_MAX];  /**< \brief Name of the file. */
     time_t time;            /**< \brief Last access/mod/change time (depends on VFS) */
     uint32 attr;            /**< \brief Attributes of the file. */
 } dirent_t;
@@ -645,7 +645,7 @@ void *fs_get_handle(file_t fd);
 /** \brief  Get the current working directory of the running thread.
     \return                 The current working directory.
 */
-const char *fs_getwd();
+const char *fs_getwd(void);
 
 /* Couple of util functions */
 
@@ -700,14 +700,14 @@ ssize_t fs_path_append(char *dst, const char *src, size_t len);
 
     \retval 0               On success.
 */
-int fs_init();
+int fs_init(void);
 
 /** \brief  Shut down the virtual filesystem.
 
     This is done for you by the normal shutdown procedure of KOS. There should
     not really be any reason for you to call this function yourself.
 */
-void fs_shutdown();
+void fs_shutdown(void);
 
 __END_DECLS
 

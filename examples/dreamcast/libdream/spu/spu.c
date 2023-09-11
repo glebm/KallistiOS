@@ -31,7 +31,7 @@ void copy_s3m(char *song, int len) {
         ;
 }
 
-void wait_start() {
+void wait_start(void) {
     maple_device_t *cont;
     cont_state_t *state;
 
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     song = fs_mmap(f);
 
     /* Start a song playing */
-    copy_s3m(song, len);
+    copy_s3m((char *)song, len);
 
     /* Close the file */
     fs_close(f);

@@ -14,7 +14,7 @@
 #include <kos/genwait.h>
 
 /* Allocate a new reader/writer semaphore */
-rw_semaphore_t *rwsem_create() {
+rw_semaphore_t *rwsem_create(void) {
     rw_semaphore_t *s;
 
     dbglog(DBG_WARNING, "Creating reader/writer semaphore with deprecated "
@@ -25,7 +25,7 @@ rw_semaphore_t *rwsem_create() {
         return NULL;
     }
 
-    s->initialized = 2;
+    s->dynamic = 1;
     s->read_count = 0;
     s->write_lock = NULL;
     s->reader_waiting = NULL;
@@ -34,7 +34,7 @@ rw_semaphore_t *rwsem_create() {
 }
 
 int rwsem_init(rw_semaphore_t *s) {
-    s->initialized = 1;
+    s->dynamic = 0;
     s->read_count = 0;
     s->write_lock = NULL;
     s->reader_waiting = NULL;
@@ -52,11 +52,8 @@ int rwsem_destroy(rw_semaphore_t *s) {
         errno = EBUSY;
         rv = -1;
     }
-    else if(s->initialized == 2) {
+    else if(s->dynamic) {
         free(s);
-    }
-    else {
-        s->initialized = 0;
     }
 
     irq_restore(old);
@@ -67,8 +64,11 @@ int rwsem_destroy(rw_semaphore_t *s) {
 int rwsem_read_lock_timed(rw_semaphore_t *s, int timeout) {
     int old, rv = 0;
 
-    if(irq_inside_int()) {
-        dbglog(DBG_WARNING, "rwsem_read_lock_timed: called inside interrupt\n");
+    if((rv = irq_inside_int())) {
+        dbglog(DBG_WARNING, "%s: called inside an interrupt with code: "
+               "%x evt: %.4x\n",
+               timeout ? "rwsem_read_lock_timed" : "rwsem_read_lock",
+               ((rv >> 16) & 0xf), (rv & 0xffff));
         errno = EPERM;
         return -1;
     }
@@ -79,12 +79,6 @@ int rwsem_read_lock_timed(rw_semaphore_t *s, int timeout) {
     }
 
     old = irq_disable();
-
-    if(s->initialized != 1 && s->initialized != 2) {
-        irq_restore(old);
-        errno = EINVAL;
-        return -1;
-    }
 
     /* If the write lock is not held, let the thread proceed */
     if(!s->write_lock) {
@@ -131,12 +125,6 @@ int rwsem_write_lock_timed(rw_semaphore_t *s, int timeout) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        irq_restore(old);
-        errno = EINVAL;
-        return -1;
-    }
-
     /* If the write lock is not held and there are no readers in their critical
        sections, let the thread proceed. */
     if(!s->write_lock && !s->read_count) {
@@ -172,12 +160,6 @@ int rwsem_read_unlock(rw_semaphore_t *s) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        irq_restore(old);
-        errno = EINVAL;
-        return -1;
-    }
-
     if(!s->read_count) {
         irq_restore(old);
         errno = EPERM;
@@ -208,12 +190,6 @@ int rwsem_write_unlock(rw_semaphore_t *s) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        irq_restore(old);
-        errno = EINVAL;
-        return -1;
-    }
-
     if(s->write_lock != thd_current) {
         irq_restore(old);
         errno = EPERM;
@@ -240,11 +216,7 @@ int rwsem_unlock(rw_semaphore_t *s) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        errno = EINVAL;
-        rv = -1;
-    }
-    else if(!s->write_lock && !s->read_count) {
+    if(!s->write_lock && !s->read_count) {
         errno = EPERM;
         rv = -1;
     }
@@ -266,13 +238,9 @@ int rwsem_read_trylock(rw_semaphore_t *s) {
     int old, rv;
 
     old = irq_disable();
-    
-    if(s->initialized != 1 && s->initialized != 2) {
-        rv = -1;
-        errno = EINVAL;
-    }
+
     /* Is the write lock held? */
-    else if(s->write_lock) {
+    if(s->write_lock) {
         rv = -1;
         errno = EWOULDBLOCK;
     }
@@ -291,13 +259,9 @@ int rwsem_write_trylock(rw_semaphore_t *s) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        rv = -1;
-        errno = EINVAL;
-    }
     /* Are there any readers in their critical sections, or is the write lock
        already held, if so we can't do anything about that now. */
-    else if(s->read_count || s->write_lock) {
+    if(s->read_count || s->write_lock) {
         rv = -1;
         errno = EWOULDBLOCK;
     }
@@ -328,13 +292,9 @@ int rwsem_read_upgrade_timed(rw_semaphore_t *s, int timeout) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        rv = -1;
-        errno = EINVAL;
-    }
     /* If there are still other readers, see if any other readers have tried to
        upgrade or not... */
-    else if(s->read_count > 1) {
+    if(s->read_count > 1) {
         if(s->reader_waiting) {
             /* We've got someone ahead of us, so there's really not anything
                that can be done at this point... */
@@ -381,11 +341,7 @@ int rwsem_read_tryupgrade(rw_semaphore_t *s) {
 
     old = irq_disable();
 
-    if(s->initialized != 1 && s->initialized != 2) {
-        rv = -1;
-        errno = EINVAL;
-    }
-    else if(s->reader_waiting) {
+    if(s->reader_waiting) {
         rv = -1;
         errno = EBUSY;
     }

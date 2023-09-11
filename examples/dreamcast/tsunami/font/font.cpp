@@ -13,6 +13,8 @@
 #include <tsu/texture.h>
 #include <plx/sprite.h>
 
+#include <memory>
+
 /*
   Shows off some very basic usage of the font and texture objects
   with Parallax as the vertex system rather than the Tsunami scene
@@ -27,14 +29,14 @@ int main(int argc, char **argv) {
     int done = 0;
 
     cont_btn_callback(0, CONT_START | CONT_A | CONT_B | CONT_X | CONT_Y,
-                      (void (*)(unsigned char, long  unsigned int))arch_exit);
+                      (cont_btn_callback_t)arch_exit);
 
     pvr_init_defaults();
 
-    RefPtr<Font> fnt = new Font("/rd/axaxax.txf");
+    auto fnt = std::make_shared<Font>("/rd/axaxax.txf");
     fnt->setSize(24.0f);
 
-    RefPtr<Texture> txr = new Texture("/rd/logo.png", true);
+    auto txr = std::make_shared<Texture>("/rd/logo.png", true);
 
     pvr_set_bg_color(0.2f, 0.0f, 0.4f);
 

@@ -1,7 +1,7 @@
 /* KallistiOS ##version##
 
    spudma.c
-   Copyright (C)2001,2002,2004 Megan Potter
+   Copyright (C) 2001, 2002, 2004 Megan Potter
  */
 
 #include <assert.h>
@@ -10,6 +10,7 @@
 #include <dc/spu.h>
 #include <dc/asic.h>
 #include <kos/sem.h>
+#include <kos/thread.h>
 
 /* testing */
 #define ASIC_IRQ ASIC_IRQB
@@ -233,7 +234,7 @@ int spu_dma_transfer(void *from, uint32 dest, uint32 length, int block,
 }
 
 static int init;
-int spu_dma_init() {
+int spu_dma_init(void) {
     int i;
 
     if(init)
@@ -263,7 +264,7 @@ int spu_dma_init() {
     return 0;
 }
 
-void spu_dma_shutdown() {
+void spu_dma_shutdown(void) {
     int i;
 
     if(!init)
@@ -283,4 +284,3 @@ void spu_dma_shutdown() {
         dma_disable(i);
     }
 }
-

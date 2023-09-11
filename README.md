@@ -1,20 +1,20 @@
 # KallistiOS
 
-KOS is an unofficial development environment for the SEGA Dreamcast game console with some support for the NAOMI and NAOMI 2 arcade boards.  
+KOS is an unofficial development environment for the SEGA Dreamcast game console with some support for the NAOMI and NAOMI 2 arcade boards.
 
 KOS was developed from scratch over the internet by a group of free software developers and has no relation to the official Sega Katana or Microsoft Windows CE Dreamcast development kits. This has allowed it to fuel a thriving Dreamcast homebrew scene, powering many commercial releases for the platform over the years. It supports a signficiant portion of the Dreamcast's hardware capabilities and a wide variety of peripherals, accessories, and add-ons for the console, including custom hardware modifications that have been created by the scene. 
 
-Despite the console's age, KOS offers an extremely modern, programmer-friendly development environment, supporting C17 and C++20, with the majority of their standard libraries fully supported and additional support for many POSIX APIs. Additionally, KOS-ports offers a rich set of add-on libraries such as SDL, OpenGL, and Lua for the platform. 
+Despite the console's age, KOS offers an extremely modern, programmer-friendly development environment, supporting portions of C23 and C++23, with the majority of their standard libraries fully supported and additional support for many POSIX APIs. Additionally, KOS-ports offers a rich set of add-on libraries such as SDL, OpenGL, and Lua for the platform.
 
 ## Features
-##### Core Functionality
-* Concurrency with Kernel Threads, C11 Threads, pthreads
+### Core Functionality
+* Concurrency with Kernel Threads, C11 Threads, C++11 `std::thread`, Pthreads
 * Virtual filesystem abstraction 
 * IPv4/IPv6 Network stack
 * Dynamically loading libraries/modules
 * GDB Debug stubs
 
-##### Dreamcast Hardware Support
+### Dreamcast Hardware Support
 * GD-Rom driver
 * Low-level 3D PowerVR Graphics 
 * SH4 ASM-Optimized Math Routines
@@ -27,7 +27,7 @@ Despite the console's age, KOS offers an extremely modern, programmer-friendly d
 * MMU Management API 
 * BIOS Font Rendering
 
-##### Peripherals and Accessory Support
+### Peripherals and Accessory Support
 * Visual Memory Unit
 * Puru Puru Vibration Pack
 * Seaman Microphone
@@ -41,13 +41,13 @@ Despite the console's age, KOS offers an extremely modern, programmer-friendly d
 * VGA Adapter
 * SD Card Reader
 
-##### Hardware Modification Support
+### Hardware Modification Support
 * IDE Hard Drive
 * 32MB RAM Upgrade
 * Custom BIOS Flashroms
 
 ## Getting Started 
-A beginner's guide to development for the Sega Dreamcast along with detailed instructions for installing KOS and the required toolchains can be found on the  [Dreamcast Wiki](https://dreamcast.wiki/Getting_Started_with_Dreamcast_development). Additional documentation can be found in the docs folder. 
+A beginner's guide to development for the Sega Dreamcast along with detailed instructions for installing KOS and the required toolchains can be found on the [Dreamcast Wiki](https://dreamcast.wiki/Getting_Started_with_Dreamcast_development). Additional documentation can be found in the docs folder. 
 
 ## Examples 
 Once you've set up the environment and are ready to begin developing, a good place to start learning is the examples directory, which provides demos for the various KOS APIs and for interacting with the Dreamcast's hardware. Examples include:
@@ -79,5 +79,5 @@ Once you've set up the environment and are ready to begin developing, a good pla
 [DCEmulation Forums](http://dcemulation.org/phpBB/viewforum.php?f=29): Goldmine of Dreamcast development information and history  
 [Dreamcast Wiki](http://dreamcast.wiki): Large collection of tutorials and articles for beginners  
 [Simulant Discord Chat](https://discord.gg/bpDZHT78PA): Home to the official Discord channel of KOS  
-IRC Channel: irc.libera.chat #dreamcastdev 
+IRC Channel: irc.libera.chat `#dreamcastdev`
 

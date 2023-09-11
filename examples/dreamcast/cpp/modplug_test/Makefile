@@ -1,28 +1,23 @@
 TARGET = example.elf
-OBJS = example.o
+OBJS = example.o romdisk.o
+KOS_ROMDISK_DIR = romdisk
 
 all: rm-elf $(TARGET)
 
 include $(KOS_BASE)/Makefile.rules
 
-clean:
-	-rm -f $(TARGET) $(OBJS) romdisk.*
+clean: rm-elf
+	-rm -f $(OBJS) 
 
 rm-elf:
 	-rm -f $(TARGET) romdisk.*
 
-$(TARGET): $(OBJS) romdisk.o
-	kos-c++ -o $(TARGET) $(OBJS) romdisk.o $(OBJEXTRA) -lmodplug -lm
-
-romdisk.img:
-	$(KOS_GENROMFS) -f romdisk.img -d romdisk -v
-
-romdisk.o: romdisk.img
-	$(KOS_BASE)/utils/bin2o/bin2o romdisk.img romdisk romdisk.o
+$(TARGET): $(OBJS)
+	kos-c++ -o $(TARGET) $(OBJS) -lmodplug -lm
 
 run: $(TARGET)
 	$(KOS_LOADER) $(TARGET)
 
-dist:
-	rm -f $(OBJS) romdisk.o romdisk.img
+dist: $(TARGET)
+	-rm -f $(OBJS) romdisk.img
 	$(KOS_STRIP) $(TARGET)

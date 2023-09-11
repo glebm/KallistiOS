@@ -47,7 +47,7 @@ static void sphere(sphere_t *s) { /* {{{ */
     int i, j;
     float   pitch, pitch2;
     float   r, g, b;
-    float   yaw, yaw2;
+    float   yaw;
     pvr_vertex_t *v;
 
     v = (pvr_vertex_t *)malloc(s->stacks * (s->slices + 2) * sizeof(pvr_vertex_t) + 32);
@@ -67,7 +67,6 @@ static void sphere(sphere_t *s) { /* {{{ */
            long triangle strip. */
         for(j = 0; j <= s->slices / 2; j++) {
             yaw = 2 * M_PI * ((float)j / (float)s->slices);
-            yaw2 = 2 * M_PI * ((float)(j + 1) / (float)s->slices);
 
             /* x, y+1 */
             v->x = s->radius * fcos(yaw) * fcos(pitch2);
@@ -150,9 +149,9 @@ static void draw_sphere(sphere_t *s, int list) {
 
 #define SPHERE_CNT 32
 static float r = 0;
-static void sphere_frame() {
+static void sphere_frame(void) {
     int i;
-    uint64 start;
+    //uint64 start;
     static sphere_t big_sphere = { 1.2f, 20, 20, NULL };
     static sphere_t small_sphere = { 0.8f, 20, 20, NULL };
 
@@ -165,7 +164,7 @@ static void sphere_frame() {
     pvr_wait_ready();
     pvr_scene_begin();
 
-    start = timer_ms_gettime64();
+    //start = timer_ms_gettime64();
 
     plx_mat3d_identity();
     plx_mat3d_translate(0.0f, 0.0f, -12.0f);
@@ -220,7 +219,7 @@ static void sphere_frame() {
     pvr_scene_finish();
 }
 
-void do_sphere_test() {
+void do_sphere_test(void) {
     pvr_set_bg_color(0.2f, 0.0f, 0.4f);
 
     pvr_poly_cxt_col(&cxt[0], PVR_LIST_OP_POLY);

@@ -52,18 +52,12 @@ typedef struct fs_hnd {
 fs_hnd_t * fd_table[FD_SETSIZE] = { NULL };
 
 /* For some reason, Newlib doesn't seem to define this function in stdlib.h. */
-extern char *realpath(const char *, const char *);
+extern char *realpath(const char *, char[PATH_MAX]);
 
 
 /* Internal file commands for root dir reading */
-static fs_hnd_t * fs_root_opendir() {
-    fs_hnd_t    *hnd;
-
-    hnd = malloc(sizeof(fs_hnd_t));
-    hnd->handler = NULL;
-    hnd->hnd = 0;
-    hnd->refcnt = 0;
-    return hnd;
+static fs_hnd_t * fs_root_opendir(void) {
+    return calloc(1, sizeof(fs_hnd_t));
 }
 
 /* Not thread-safe right now */
@@ -217,7 +211,7 @@ static int fs_hnd_assign(fs_hnd_t * hnd) {
     return i;
 }
 
-int fs_fdtbl_destroy() {
+int fs_fdtbl_destroy(void) {
     int i;
 
     for(i = 0; i < FD_SETSIZE; i++) {
@@ -632,7 +626,7 @@ int fs_chdir(const char *fn) {
     return 0;
 }
 
-const char *fs_getwd() {
+const char *fs_getwd(void) {
     return thd_get_pwd(thd_get_current());
 }
 
@@ -914,9 +908,9 @@ int fs_fstat(file_t fd, struct stat *st) {
 }
 
 /* Initialize FS structures */
-int fs_init() {
+int fs_init(void) {
     return 0;
 }
 
-void fs_shutdown() {
+void fs_shutdown(void) {
 }

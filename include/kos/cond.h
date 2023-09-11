@@ -59,12 +59,12 @@ __BEGIN_DECLS
     \headerfile kos/cond.h
 */
 typedef struct condvar {
-    int initialized;
+    int dummy;
     int dynamic;
 } condvar_t;
 
 /** \brief  Initializer for a transient condvar. */
-#define COND_INITIALIZER    { 1, 0 }
+#define COND_INITIALIZER    { 0, 0 }
 
 /** \brief  Allocate a new condition variable.
 
@@ -80,7 +80,7 @@ typedef struct condvar {
     \par    Error Conditions:
     \em     ENOMEM - out of memory
 */
-condvar_t *cond_create() __depr("Use cond_init or COND_INTIALIZER.");
+condvar_t *cond_create() __depr("Use cond_init or COND_INITIALIZER.");
 
 /** \brief  Initialize a condition variable.
 

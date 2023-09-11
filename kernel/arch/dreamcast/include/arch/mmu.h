@@ -201,7 +201,7 @@ void mmu_use_table(mmucontext_t *context);
     own, that means you will only ever have one of these, if any.
 
     \param  asid            The address space ID of this process.
-    \return                 The newly created context.
+    \return                 The newly created context or NULL on fail.
 */
 mmucontext_t *mmu_context_create(int asid);
 
@@ -271,7 +271,7 @@ void mmu_page_map(mmucontext_t *context, int virtpage, int physpage,
     \param  srcaddr         Source, in the mapped memory space.
     \param  srccnt          The number of bytes to copy.
     \param  buffer          The kernel buffer to copy into (should be in P1).
-    \return                 The number of bytes copied.
+    \return                 The number of bytes copied (failure causes arch_panic).
 */
 int mmu_copyin(mmucontext_t *context, uint32 srcaddr, uint32 srccnt,
                void *buffer);
@@ -285,6 +285,7 @@ int mmu_copyin(mmucontext_t *context, uint32 srcaddr, uint32 srccnt,
     \param  context2        The destination's context.
     \param  iov2            The scatter/gather array to copy to.
     \param  iovcnt2         The number of entries in iov2.
+    \return                 The number of bytes copied (failure causes arch_panic).
 */
 int mmu_copyv(mmucontext_t *context1, struct iovec *iov1, int iovcnt1,
               mmucontext_t *context2, struct iovec *iov2, int iovcnt2);
@@ -305,7 +306,7 @@ typedef mmupage_t * (*mmu_mapfunc_t)(mmucontext_t * context, int virtpage);
 /** \brief  Get the current mapping function.
     \return                 The current function that maps pages.
 */
-mmu_mapfunc_t mmu_map_get_callback();
+mmu_mapfunc_t mmu_map_get_callback(void);
 
 /** \brief  Set a new MMU mapping handler.
 
@@ -325,7 +326,7 @@ mmu_mapfunc_t mmu_map_set_callback(mmu_mapfunc_t newfunc);
 
     \retval 0               On success (no error conditions defined).
 */
-int mmu_init();
+int mmu_init(void);
 
 /** \brief  Shutdown MMU support.
 
@@ -333,7 +334,10 @@ int mmu_init();
     gets done if you initialize the MMU in your program, so as to play nice with
     loaders and the like (that will not expect that its on, in general).
 */
-void mmu_shutdown();
+void mmu_shutdown(void);
+
+/** \brief  Reset ITLB. */
+void mmu_reset_itlb(void);
 
 __END_DECLS
 

@@ -25,7 +25,7 @@
 /*
 
 This module supports thread scheduling in KOS. The timer interrupt is used
-to re-schedule the processor HZ times per second in pre-emptive mode.
+to re-schedule the processor HZ times per second.
 This is a fairly simplistic scheduler, though it does employ some
 standard advanced OS tactics like priority scheduling and semaphores.
 
@@ -53,14 +53,14 @@ static struct ktqueue run_queue;
 /* The currently executing thread. This thread should not be on any queues. */
 kthread_t *thd_current = NULL;
 
-/* Thread mode: cooperative or pre-emptive. */
+/* Thread mode: uninitialized or pre-emptive. */
 static int thd_mode = THD_MODE_NONE;
 
 /* Reaper semaphore. Counts the number of threads waiting to be reaped. */
 static semaphore_t thd_reap_sem;
 
 /* Number of threads active in the system. */
-static uint32 thd_count = 0;
+static uint32_t thd_count = 0;
 
 /* The idle task */
 static kthread_t *thd_idle_thd = NULL;
@@ -68,7 +68,7 @@ static kthread_t *thd_idle_thd = NULL;
 /*****************************************************************************/
 /* Debug */
 
-static const char *thd_state_to_str(kthread_t * thd) {
+static const char *thd_state_to_str(kthread_t *thd) {
     switch(thd->state) {
         case STATE_ZOMBIE:
             return "zombie";
@@ -90,11 +90,13 @@ static const char *thd_state_to_str(kthread_t * thd) {
     }
 }
 
-int thd_each(int (*cb)(kthread_t* thd, void* user_data), void* data) {
+int thd_each(int (*cb)(kthread_t *thd, void *user_data), void *data) {
     kthread_t *cur;
+    int retval;
 
     LIST_FOREACH(cur, &thd_list, t_list) {
-        cb(cur, data);
+        if((retval = cb(cur, data)))
+            return retval;
     }
 
     return 0;
@@ -116,7 +118,7 @@ int thd_pslist(int (*pf)(const char *fmt, ...)) {
             pf("%d\t", cur->prio);
 
         pf("%08lx\t", cur->flags);
-        pf("%ld\t\t", (uint32)cur->wait_timeout);
+        pf("%ld\t\t", (uint32_t)cur->wait_timeout);
         pf("%10s", thd_state_to_str(cur));
         pf("%s\n", cur->label);
     }
@@ -140,7 +142,7 @@ int thd_pslist_queue(int (*pf)(const char *fmt, ...)) {
             pf("%d\t", cur->prio);
 
         pf("%08lx\t", cur->flags);
-        pf("%ld\t\t", (uint32)cur->wait_timeout);
+        pf("%ld\t\t", (uint32_t)cur->wait_timeout);
         pf("%10s", thd_state_to_str(cur));
         pf("%s\n", cur->label);
     }
@@ -156,7 +158,7 @@ static tid_t tid_highest;
 
 /* Return the next available thread id (assumes wraparound will not run
    into old processes). */
-static tid_t thd_next_free() {
+static tid_t thd_next_free(void) {
     int id;
     id = tid_highest++;
     return id;
@@ -226,7 +228,7 @@ static void *thd_reaper(void *param) {
 /* Thread execution wrapper; when the thd_create function below
    adds a new thread to the thread chain, this function is the one
    that gets called in the new context. */
-static void thd_birth(void * (*routine)(void *param), void *param) {
+static void thd_birth(void *(*routine)(void *param), void *param) {
     /* Call the thread function */
     void *rv = routine(param);
 
@@ -328,11 +330,11 @@ int thd_remove_from_runnable(kthread_t *thd) {
 /* New thread function; given a routine address, it will create a
    new kernel thread with the given attributes. When the routine
    returns, the thread will exit. Returns the new thread struct. */
-kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
-                         void *param) {
+kthread_t *thd_create_ex(const kthread_attr_t *restrict attr,
+                         void *(*routine)(void *param), void *param) {
     kthread_t *nt = NULL;
     tid_t tid;
-    uint32 params[4];
+    uint32_t params[4];
     int oldirq = 0;
     kthread_attr_t real_attr = { 0, THD_STACK_SIZE, NULL, PRIO_DEFAULT, NULL };
 
@@ -367,7 +369,7 @@ kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
 
             /* Create a new thread stack */
             if(!real_attr.stack_ptr) {
-                nt->stack = (uint32*)malloc(real_attr.stack_size);
+                nt->stack = (uint32_t*)malloc(real_attr.stack_size);
 
                 if(!nt->stack) {
                     free(nt);
@@ -376,19 +378,19 @@ kthread_t *thd_create_ex(kthread_attr_t *attr, void * (*routine)(void *param),
                 }
             }
             else {
-                nt->stack = (uint32*)real_attr.stack_ptr;
+                nt->stack = (uint32_t*)real_attr.stack_ptr;
             }
 
             nt->stack_size = real_attr.stack_size;
 
             /* Populate the context */
-            params[0] = (uint32)routine;
-            params[1] = (uint32)param;
+            params[0] = (uint32_t)routine;
+            params[1] = (uint32_t)param;
             params[2] = 0;
             params[3] = 0;
             irq_create_context(&nt->context,
-                               ((uint32)nt->stack) + nt->stack_size,
-                               (uint32)thd_birth, params, 0);
+                               ((uint32_t)nt->stack) + nt->stack_size,
+                               (uint32_t)thd_birth, params, 0);
 
             nt->tid = tid;
             nt->prio = real_attr.prio;
@@ -490,6 +492,12 @@ int thd_destroy(kthread_t *thd) {
 
 /* Set a thread's priority */
 int thd_set_prio(kthread_t *thd, prio_t prio) {
+    if(thd == NULL)
+        return -1;
+
+    if((prio < 0) || (prio > PRIO_MAX))
+        return -2;
+
     /* Set the new priority */
     thd->prio = prio;
     return 0;
@@ -514,7 +522,7 @@ int thd_set_prio(kthread_t *thd, prio_t prio) {
    to make sure the priorities are all straight before returning, but you
    don't want a full context switch inside the same priority group.
 */
-void thd_schedule(int front_of_line, uint64 now) {
+void thd_schedule(int front_of_line, uint64_t now) {
     int dontenq;
     kthread_t *thd;
 
@@ -619,10 +627,10 @@ void thd_schedule_next(kthread_t *thd) {
 }
 
 /* See kos/thread.h for description */
-irq_context_t * thd_choose_new() {
-    uint64 now = timer_ms_gettime64();
+irq_context_t *thd_choose_new(void) {
+    uint64_t now = timer_ms_gettime64();
 
-    //printf("thd_choose_new() woken at %d\n", (uint32)now);
+    //printf("thd_choose_new() woken at %d\n", (uint32_t)now);
 
     /* Do any re-scheduling */
     thd_schedule(0, now);
@@ -639,11 +647,11 @@ irq_context_t * thd_choose_new() {
    threads, swap out contexts, and sleep. */
 static void thd_timer_hnd(irq_context_t *context) {
     /* Get the system time */
-    uint64 now = timer_ms_gettime64();
+    uint64_t now = timer_ms_gettime64();
 
     (void)context;
 
-    //printf("timer woke at %d\n", (uint32)now);
+    //printf("timer woke at %d\n", (uint32_t)now);
 
     thd_schedule(0, now);
     timer_primary_wakeup(1000 / HZ);
@@ -655,7 +663,10 @@ static void thd_timer_hnd(irq_context_t *context) {
    sleep because it eases the load on the system for the other
    threads. */
 void thd_sleep(int ms) {
+    /* This should never happen. This should, perhaps, assert. */
     if(thd_mode == THD_MODE_NONE) {
+        dbglog(DBG_WARNING, "thd_sleep called when threading not "
+               "initialized.\n");
         timer_spin_sleep(ms);
         return;
     }
@@ -676,7 +687,7 @@ void thd_sleep(int ms) {
 }
 
 /* Manually cause a re-schedule */
-void thd_pass() {
+void thd_pass(void) {
     /* Makes no sense inside int */
     if(irq_inside_int()) return;
 
@@ -685,7 +696,7 @@ void thd_pass() {
 }
 
 /* Wait for a thread to exit */
-int thd_join(kthread_t * thd, void **value_ptr) {
+int thd_join(kthread_t *thd, void **value_ptr) {
     int old, rv;
     kthread_t * t = NULL;
 
@@ -693,9 +704,10 @@ int thd_join(kthread_t * thd, void **value_ptr) {
     if(thd == NULL)
         return -1;
 
-    if(irq_inside_int()) {
-        dbglog(DBG_WARNING, "thd_join(%p) called inside an interrupt!\n",
-               (void *)thd);
+    if((rv = irq_inside_int())) {
+        dbglog(DBG_WARNING, "thd_join(%p) called inside an interrupt with "
+               "code: %x evt: %.4x\n", (void *)thd, ((rv >> 16) & 0xf),
+               (rv & 0xffff));
         return -1;
     }
 
@@ -712,7 +724,7 @@ int thd_join(kthread_t * thd, void **value_ptr) {
     if(t != thd) {
         rv = -2;
     }
-    else if(thd->flags & THD_DETACHED) {
+    else if((thd->flags & THD_DETACHED)) {
         /* Can't join a detached thread */
         rv = -3;
     }
@@ -782,12 +794,12 @@ const char *thd_get_label(kthread_t *thd) {
     return thd->label;
 }
 
-void thd_set_label(kthread_t *thd, const char *label) {
+void thd_set_label(kthread_t *thd, const char *restrict label) {
     strncpy(thd->label, label, sizeof(thd->label) - 1);
 }
 
 /* Find the current thread */
-kthread_t *thd_get_current() {
+kthread_t *thd_get_current(void) {
     return thd_current;
 }
 
@@ -796,15 +808,15 @@ const char *thd_get_pwd(kthread_t *thd) {
     return thd->pwd;
 }
 
-void thd_set_pwd(kthread_t *thd, const char *pwd) {
+void thd_set_pwd(kthread_t *thd, const char *restrict pwd) {
     strncpy(thd->pwd, pwd, sizeof(thd->pwd) - 1);
 }
 
-int * thd_get_errno(kthread_t * thd) {
+int *thd_get_errno(kthread_t *thd) {
     return &thd->thd_errno;
 }
 
-struct _reent * thd_get_reent(kthread_t *thd) {
+struct _reent *thd_get_reent(kthread_t *thd) {
     return &thd->thd_reent;
 }
 
@@ -812,20 +824,10 @@ struct _reent * thd_get_reent(kthread_t *thd) {
 
 /* Change threading modes */
 int thd_set_mode(int mode) {
-    int old = thd_mode;
+    dbglog(DBG_WARNING, "thd_set_mode() has no effect. Cooperative threading "
+           "mode is deprecated. Threading is always in preemptive mode.\n");
 
-    /* Nothing to change? */
-    if(thd_mode == mode)
-        return thd_mode;
-
-    if(thd_mode == THD_MODE_COOP) {
-        /* Schedule our first pre-emption wakeup */
-        timer_primary_wakeup(1000 / HZ);
-    }
-
-    thd_mode = mode;
-
-    return old;
+    return mode;
 }
 
 int thd_get_mode(void) {
@@ -850,7 +852,7 @@ int kthread_key_delete(kthread_key_t key) {
     }
 
     /* Make sure we can actually use free below. */
-    if(!malloc_irq_safe())  {
+    if(!malloc_irq_safe()) {
         irq_restore(old);
         errno = EPERM;
         return -1;
@@ -877,7 +879,7 @@ int kthread_key_delete(kthread_key_t key) {
 /* Init/shutdown */
 
 /* Init */
-int thd_init(int mode) {
+int thd_init(void) {
     kthread_t *kern, *reaper;
 
     /* Make sure we're not already running */
@@ -885,7 +887,7 @@ int thd_init(int mode) {
         return -1;
 
     /* Setup our mode as appropriate */
-    thd_mode = mode;
+    thd_mode = THD_MODE_PREEMPT;
 
     /* Initialize handle counters */
     tid_highest = 1;
@@ -936,27 +938,20 @@ int thd_init(int mode) {
     /* Setup our pre-emption handler */
     timer_primary_set_callback(thd_timer_hnd);
 
-    /* If we're in pre-emptive mode, then schedule the first context switch */
-    if(thd_mode == THD_MODE_PREEMPT) {
-        /* Schedule our first wakeup */
-        timer_primary_wakeup(1000 / HZ);
+    /* Schedule our first wakeup */
+    timer_primary_wakeup(1000 / HZ);
 
-        printf("thd: pre-emption enabled, HZ=%d\n", HZ);
-    }
-    else
-        printf("thd: pre-emption disabled\n");
+    dbglog(DBG_INFO, "thd: pre-emption enabled, HZ=%d\n", HZ);
 
     return 0;
 }
 
 /* Shutdown */
-void thd_shutdown() {
+void thd_shutdown(void) {
     kthread_t *n1, *n2;
 
-    /* Disable pre-emption, if neccessary */
-    if(thd_mode == THD_MODE_PREEMPT) {
-        timer_primary_set_callback(NULL);
-    }
+    /* Remove our pre-emption handler */
+    timer_primary_set_callback(NULL);
 
     /* Kill remaining live threads */
     n1 = LIST_FIRST(&thd_list);

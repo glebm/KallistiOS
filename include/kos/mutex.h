@@ -78,7 +78,8 @@ typedef struct kos_mutex {
 
     @{
 */
-#define MUTEX_TYPE_NORMAL       1   /**< \brief Normal mutex type */
+#define MUTEX_TYPE_NORMAL       0   /**< \brief Normal mutex type */
+#define MUTEX_TYPE_OLDNORMAL    1   /**< \brief Alias for MUTEX_TYPE_NORMAL */
 #define MUTEX_TYPE_ERRORCHECK   2   /**< \brief Error-checking mutex type */
 #define MUTEX_TYPE_RECURSIVE    3   /**< \brief Recursive mutex type */
 
@@ -107,7 +108,7 @@ typedef struct kos_mutex {
                             be used in any future code, and may be removed in
                             the future. You should instead use mutex_init().
 */
-mutex_t *mutex_create() __depr("Use mutex_init or an initializer.");
+mutex_t *mutex_create(void) __depr("Use mutex_init or an initializer.");
 
 /** \brief  Initialize a new mutex.
 

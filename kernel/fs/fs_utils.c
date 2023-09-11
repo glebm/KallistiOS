@@ -78,6 +78,7 @@ ssize_t fs_copy(const char * src, const char * dst) {
 ssize_t fs_load(const char * src, void ** out_ptr) {
     file_t  f;
     void    * data;
+    void    * new_data;
     uint8   * out;
     ssize_t total, left, r;
 
@@ -94,6 +95,11 @@ ssize_t fs_load(const char * src, void ** out_ptr) {
     left = fs_total(f);
     total = 0;
     data = malloc(left);
+    if(data == NULL) {
+        fs_close(f);
+        return -1;
+    }
+
     out = (uint8 *)data;
 
     /* Load the data */
@@ -110,13 +116,13 @@ ssize_t fs_load(const char * src, void ** out_ptr) {
 
     /* Did we get it all? If not, realloc the buffer */
     if(left > 0) {
-        *out_ptr = realloc(data, total);
-
-        if(*out_ptr == NULL)
-            *out_ptr = data;
+        new_data = realloc(data, total);
+        if(new_data != NULL) {
+            data = new_data;
+        }
     }
-    else
-        *out_ptr = data;
+
+    *out_ptr = data;
 
     fs_close(f);
 
@@ -166,7 +172,7 @@ ssize_t fs_path_append(char *dst, const char *src, size_t len) {
     /* If dst ends with '/' and src starts with '/', ignore '/' from dst */
     if(dlen > 0 && dst[dlen - 1] == '/' && src[0] == '/')
         --dlen;
-        
+
     /* Concatenate the src string on the dst, copying the NUL terminator while
        we are at it. */
     memcpy(dst + dlen, src, slen + 1);

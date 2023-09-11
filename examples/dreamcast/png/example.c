@@ -14,19 +14,21 @@
 /* font data */
 extern char wfont[];
 
+extern int zlib_getlength(char*);
+
 /* textures */
 pvr_ptr_t font_tex;
 pvr_ptr_t back_tex;
 char *data;
 
 /* init background */
-void back_init() {
+void back_init(void) {
     back_tex = pvr_mem_malloc(512 * 512 * 2);
     png_to_texture("/rd/background.png", back_tex, PNG_NO_ALPHA);
 }
 
 /* init font */
-void font_init() {
+void font_init(void) {
     int i, x, y, c;
     unsigned short * temp_tex;
 
@@ -54,7 +56,7 @@ void font_init() {
     pvr_txr_load_ex(temp_tex, font_tex, 256, 256, PVR_TXRLOAD_16BPP);
 }
 
-void text_init() {
+void text_init(void) {
     int length = zlib_getlength("/rd/text.gz");
     gzFile f;
 
@@ -206,10 +208,10 @@ void draw_frame(void) {
 }
 
 /* romdisk */
-extern uint8 romdisk_boot[];
-KOS_INIT_ROMDISK(romdisk_boot);
+extern uint8 romdisk[];
+KOS_INIT_ROMDISK(romdisk);
 
-int main(void) {
+int main(int argc, char **argv) {
     int done = 0;
 
     /* init kos  */

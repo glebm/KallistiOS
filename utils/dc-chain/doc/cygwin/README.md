@@ -81,11 +81,12 @@ whole environment to build the toolchains.
    file).
    
 2. Enter the following to prepare **KallistiOS**:
-
-		mkdir -p /opt/toolchains/dc/
-		cd /opt/toolchains/dc/
-		git clone git://git.code.sf.net/p/cadcdev/kallistios kos
-		git clone git://git.code.sf.net/p/cadcdev/kos-ports
+	```
+	mkdir -p /opt/toolchains/dc/
+	cd /opt/toolchains/dc/
+	git clone git://git.code.sf.net/p/cadcdev/kallistios kos
+	git clone git://git.code.sf.net/p/cadcdev/kos-ports
+	```
 
 Everything is ready, now it's time to make the toolchains.
 
@@ -105,39 +106,31 @@ To make the toolchains, do the following:
 1. Start the **Cygwin Terminal** if not already done.
 
 2. Navigate to the `dc-chain` directory by entering:
-
-		cd /opt/toolchains/dc/kos/utils/dc-chain/
-	
-3. Enter the following to download all source packages for all components:
-
-		./download.sh
-
-4. Enter the following to unpack all source packages.
-
-		./unpack.sh
-
-5. Enter the following to launch the process:
-
-		make
-
+	```
+	cd /opt/toolchains/dc/kos/utils/dc-chain/
+	```
+3. Enter the following to start downloading and building toolchain:
+	```
+	make
+	```
 Now it's time to take a coffee as this process is really long: several hours
 will be needed to make the full toolchains!
 
 ### Making the GNU Debugger (gdb) ###
 
 If you want to install the **GNU Debugger** (`gdb`), just enter:
-
-	make gdb
-
+```
+make gdb
+```
 This will install `sh-elf-gdb` and can be used to debug programs through
 `dc-load/dc-tool`.
 
 ### Removing all useless files ###
 
 After everything is done, you can cleanup all temporary files by entering:
-
-	./cleanup.sh
-
+```
+make clean
+```
 ## Next steps ##
 
 After following this guide, the toolchains should be ready.

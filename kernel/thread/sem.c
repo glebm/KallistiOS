@@ -16,7 +16,6 @@
 #include <errno.h>
 
 #include <kos/thread.h>
-#include <kos/limits.h>
 #include <kos/sem.h>
 #include <kos/genwait.h>
 
@@ -86,8 +85,10 @@ int sem_wait_timed(semaphore_t *sem, int timeout) {
     int old, rv = 0;
 
     /* Make sure we're not inside an interrupt */
-    if(irq_inside_int()) {
-        dbglog(DBG_WARNING, "sem_wait_timed: called inside interrupt\n");
+    if((rv = irq_inside_int())) {
+        dbglog(DBG_WARNING, "%s: called inside an interrupt with code: %x evt: %.4x\n",
+               timeout ? "sem_wait_timed" : "sem_wait",
+               ((rv>>16) & 0xf), (rv & 0xffff));
         errno = EPERM;
         return -1;
     }

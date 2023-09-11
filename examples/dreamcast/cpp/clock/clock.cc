@@ -68,10 +68,6 @@ void drawFrame() {
 
     bgframe();
 
-    struct timespec spec;
-    timespec_get(&spec, TIME_UTC);
-    struct tm *brokenDown = localtime(&spec.tv_sec);
-
     pvr_wait_ready();
     pvr_scene_begin();
     pvr_list_begin(PVR_LIST_TR_POLY);
@@ -84,33 +80,17 @@ void drawFrame() {
     text->begin();
     text->setColor(1, 1, 1);
     text->start2f(20, y);
-    text->puts("(Not So) Simple DC Clock");
+    text->puts("Reested DC Clock");
     text->end();
-    y += 50;
+    y += 100;
 
-    sprintf(tmpbuf, "%s %s %02u %04u",
-            days[brokenDown->tm_wday], 
-            months[brokenDown->tm_mon], 
-            brokenDown->tm_mday, 
-            1900 + brokenDown->tm_year);
+    struct timespec spec;
 
-    text->begin();
-    text->setColor(1, 1, 1);
-    text->start2f(20, y);
-    text->puts(tmpbuf);
-    text->end();
-    y += 50;
+    /* C11 time internally uses NS timer. */
+    timespec_get(&spec, TIME_UTC);
+    struct tm *brokenDown = localtime(&spec.tv_sec);
 
-    sprintf(tmpbuf, "Unix Time: %llu.%.9lu", spec.tv_sec, spec.tv_nsec);
-
-    text->begin();
-    text->setColor(1, 1, 1);
-    text->start2f(20, y);
-    text->puts(tmpbuf);
-    text->end();
-    y += 50;
-
-    sprintf(tmpbuf, "C Time: %2u:%02u:%02u.%.9lu",
+    sprintf(tmpbuf, "NS Time: %2u:%02u:%02u.%.9lu",
             brokenDown->tm_hour, brokenDown->tm_min, brokenDown->tm_sec, spec.tv_nsec);
 
     text->begin();
@@ -120,76 +100,19 @@ void drawFrame() {
     text->end();
     y += 50;
 
-    std::stringstream ss;
+    /* POSIX time internally uses MS timer. */
+    clock_gettime(CLOCK_REALTIME, &spec);
+    brokenDown = localtime(&spec.tv_sec);
 
-    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::high_resolution_clock::now();
-    auto duration = now.time_since_epoch();
+    sprintf(tmpbuf, "MS Time: %2u:%02u:%02u.%.9lu",
+            brokenDown->tm_hour, brokenDown->tm_min, brokenDown->tm_sec, spec.tv_nsec);
 
-    typedef std::chrono::duration<int> Days; /* UTC: +0:00 */
-
-    Days days = std::chrono::duration_cast<Days>(duration);
-        duration -= days;
-    auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-        duration -= hours;
-    auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
-        duration -= minutes;
-    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-        duration -= seconds;
-    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-        duration -= milliseconds;
-    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration);
-        duration -= microseconds;
-    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
-
-    std::time_t nowTime = std::chrono::high_resolution_clock::to_time_t(now);
-
-    ss << std::ctime(&nowTime);
-#if 0
-    ss        << "C++ Chrono: " 
-              << hours.count() << ":"
-              << minutes.count() << ":"
-              << seconds.count() << ":"
-              << milliseconds.count() << ":"
-              << microseconds.count() << ":"
-              << nanoseconds.count() << std::endl;
-#endif
-    std::string cppStr = ss.str();
-    text->begin();
-    text->setColor(1, 1, 1);
-    text->start2f(20, y);
-    text->puts(cppStr.c_str());
-    text->end();
-    y += 50;
-
-    char buffer[100];
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    brokenDown = localtime(&tv.tv_sec);
-    strftime(buffer, sizeof(buffer), "%I:%M:%S %p", brokenDown);
-
-    ss.str("");
-
-    ss << "POSIX Time: " << buffer; 
-
-    cppStr = ss.str();
-    text->begin();
-    text->setColor(1, 1, 1);
-    text->start2f(20, y);
-    text->puts(cppStr.c_str());
-    text->end();
-    y += 50;
-
-    const clock_t clockValue = clock();
-    const unsigned clockSecs = clockValue / CLOCKS_PER_SEC;
-    const unsigned clockUSecs = clockValue % CLOCKS_PER_SEC;
-    sprintf(tmpbuf, "C clock: %u.%.6u", clockSecs, clockUSecs);
     text->begin();
     text->setColor(1, 1, 1);
     text->start2f(20, y);
     text->puts(tmpbuf);
     text->end();
     y += 50;
-
 
     pvr_list_finish();
     pvr_scene_finish();

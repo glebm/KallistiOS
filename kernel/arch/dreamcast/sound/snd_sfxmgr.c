@@ -44,7 +44,7 @@ static int sfx_nextchan = 0;
 static uint64 sfx_inuse = 0;
 
 /* Unload all loaded samples and free their SPU RAM */
-void snd_sfx_unload_all() {
+void snd_sfx_unload_all(void) {
     snd_effect_t * t, * n;
 
     t = LIST_FIRST(&snd_effects);
@@ -68,12 +68,12 @@ void snd_sfx_unload_all() {
 /* Unload a single sample */
 void snd_sfx_unload(sfxhnd_t idx) {
     snd_effect_t * t = (snd_effect_t *)idx;
-    
+
     if(idx == SFXHND_INVALID) {
         dbglog(DBG_WARNING, "snd_sfx: can't unload an invalid SFXHND\n");
         return;
     }
-    
+
     snd_mem_free(t->locl);
 
     if(t->stereo)
@@ -143,6 +143,12 @@ sfxhnd_t snd_sfx_load(const char *fn) {
 
     if(!tmp) {
         tmp = malloc(len);
+
+        if(tmp == NULL) {
+            fs_close(fd);
+            return SFXHND_INVALID;
+        }
+
         fs_read(fd, tmp, len);
         ownmem = 1;
     }
@@ -153,8 +159,16 @@ sfxhnd_t snd_sfx_load(const char *fn) {
     fs_close(fd);
 
     t = malloc(sizeof(snd_effect_t));
+
+    if(t == NULL) {
+        if(ownmem)
+            free(tmp);
+
+        return SFXHND_INVALID;
+    }
+
     memset(t, 0, sizeof(snd_effect_t));
-    
+
     /* Common characteristics not impacted by stream type */
     t->rate = hz;
     t->stereo = stereo - 1;
@@ -184,6 +198,14 @@ sfxhnd_t snd_sfx_load(const char *fn) {
         uint16 * sepbuf;
 
         sepbuf = malloc(len / 2);
+
+        if(sepbuf == NULL) {
+            free(t);
+            if(ownmem)
+                free(tmp);
+
+            return SFXHND_INVALID;
+        }
 
         for(i = 0; i < len / 2; i += 2) {
             sepbuf[i / 2] = tmp[i + 1];
@@ -242,7 +264,7 @@ sfxhnd_t snd_sfx_load(const char *fn) {
     if(ownmem)
         free(tmp);
 
-    if(t != SFXHND_INVALID) 
+    if(t != SFXHND_INVALID)
         LIST_INSERT_HEAD(&snd_effects, t, list);
 
     return (sfxhnd_t)t;
@@ -270,12 +292,12 @@ int snd_sfx_play_chn(int chn, sfxhnd_t idx, int vol, int pan) {
     chan->loopend = size;
     chan->freq = t->rate;
     chan->vol = vol;
-    
-    if(!t->stereo) {        
+
+    if(!t->stereo) {
         chan->pan = pan;
         snd_sh4_to_aica(tmp, cmd->size);
     }
-    else {        
+    else {
         chan->pan = 0;
 
         snd_sh4_to_aica_stop();
@@ -338,7 +360,7 @@ void snd_sfx_stop(int chn) {
     snd_sh4_to_aica(tmp, cmd->size);
 }
 
-void snd_sfx_stop_all() {
+void snd_sfx_stop_all(void) {
     int i;
 
     for(i = 0; i < 64; i++) {
@@ -349,7 +371,7 @@ void snd_sfx_stop_all() {
     }
 }
 
-int snd_sfx_chn_alloc() {
+int snd_sfx_chn_alloc(void) {
     int old, chn;
 
     old = irq_disable();

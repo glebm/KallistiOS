@@ -52,7 +52,7 @@ void drawpnt(float x, float y, float z, float a, float r, float g, float b) {
 }
 
 // Draws the full cube at the current position.
-void drawcube() {
+void drawcube(void) {
     uint32 color = 0xff808080;
     plx_dr_state_t dr;
 
@@ -122,7 +122,7 @@ void drawwave(int theta) {
 }
 
 int main(int argc, char **argv) {
-    int done, i;
+    int done;
     int theta;
     pvr_stats_t stats;
 

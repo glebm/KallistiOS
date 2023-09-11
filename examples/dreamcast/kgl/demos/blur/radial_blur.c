@@ -79,8 +79,9 @@ GLubyte InitRenderTexture(GLsizei width, GLsizei height) {
                            RENDER_TEXTURE_ID, 0);
 
 	/* Verify the Frame Buffer Object is ready */
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         return 0;
+    }
 
 	/* Un-bind the Frame Buffer Object, to restore the window-frame-buffer */
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -237,7 +238,7 @@ void DrawGL(GLuint texID) {
 #define INCREASE_RADIAL_BLUR 4
 #define DECREASE_RADIAL_BLUR 5
 
-int InputCallback() {
+int InputCallback(void) {
     maple_device_t *cont;
     cont_state_t *state;
 

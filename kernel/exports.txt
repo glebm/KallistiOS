@@ -5,6 +5,12 @@
 
 # Libc ###############################
 
+include assert.h
+include malloc.h
+include stdlib.h
+include stdio.h
+include strings.h
+
 # Malloc
 malloc
 calloc
@@ -55,6 +61,8 @@ abs
 # __error
 
 ######################################
+
+include kos.h
 
 # Name Manager
 nmmgr_lookup
@@ -234,5 +242,6 @@ arch_stk_trace_at
 timer_spin_sleep
 timer_ms_gettime
 timer_ms_gettime64
+timer_us_gettime64
 timer_primary_set_callback
 timer_primary_wakeup

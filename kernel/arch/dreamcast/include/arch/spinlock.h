@@ -70,11 +70,33 @@ typedef volatile int spinlock_t;
                                  : "=r" (__gotlock) \
                                  : "r" (__lock) \
                                  : "t", "memory"); \
-            if (!__gotlock) \
+            if(!__gotlock) \
                 thd_pass(); \
             else break; \
         } \
-    } while (0)
+    } while(0)
+
+/** \brief  Try to lock, without spinning.
+
+    This macro will attempt to lock the lock, but will not spin. Instead, it
+    will return whether the lock was obtained or not.
+
+    \param  A               A pointer to the spinlock to be locked.
+    \return                 0 if the lock is held by another thread. Non-zero if
+                            the lock was successfully obtained.
+*/
+#define spinlock_trylock(A) ({ \
+        int __gotlock = 0; \
+        do { \
+            spinlock_t *__lock = A; \
+            __asm__ __volatile__("tas.b @%1\n\t" \
+                                 "movt %0\n\t" \
+                                 : "=r" (__gotlock) \
+                                 : "r" (__lock) \
+                                 : "t", "memory"); \
+        } while(0); \
+        __gotlock; \
+    })
 
 /** \brief  Free a lock.
 
@@ -85,7 +107,7 @@ typedef volatile int spinlock_t;
 */
 #define spinlock_unlock(A) do { \
         *(A) = 0; \
-    } while (0)
+    } while(0)
 
 /** \brief  Determine if a lock is locked.
 
@@ -100,4 +122,3 @@ typedef volatile int spinlock_t;
 __END_DECLS
 
 #endif  /* __ARCH_SPINLOCK_H */
-

@@ -486,11 +486,11 @@ int vmufs_dir_free(vmu_root_t * root, vmu_dir_t * dir) {
     return freeblocks;
 }
 
-int vmufs_mutex_lock() {
+int vmufs_mutex_lock(void) {
     return mutex_lock(&mutex);
 }
 
-int vmufs_mutex_unlock() {
+int vmufs_mutex_unlock(void) {
     return mutex_unlock(&mutex);
 }
 
@@ -543,12 +543,18 @@ static int vmufs_setup(maple_device_t * dev, vmu_root_t * root, vmu_dir_t ** dir
         if(!*fat) {
             dbglog(DBG_ERROR, "vmufs_setup: can't alloc %d bytes for FAT on device %c%c\n",
                    *fatsize, dev->port + 'A', dev->unit + '0');
+            if(dir)
+                free(*dir);
             goto dead;
         }
 
         /* Read it */
-        if(vmufs_fat_read(dev, root, *fat) < 0)
+        if(vmufs_fat_read(dev, root, *fat) < 0) {
+            free(*fat);
+            if(dir)
+                free(*dir);
             goto dead;
+        }
     }
 
     /* Ok, everything's cool */
@@ -702,7 +708,7 @@ int vmufs_write(maple_device_t * dev, const char * fn, void * inbuf, int insize,
     vmu_root_t  root;
     vmu_dir_t   * dir = NULL, nd;
     uint16      * fat = NULL;
-    int     oldinsize, fatsize, dirsize, idx, rv = 0, st;
+    int     oldinsize, fatsize, dirsize, idx, rv = 0, st, fnlength;
 
     /* Round up the size if necessary */
     oldinsize = insize;
@@ -744,7 +750,14 @@ int vmufs_write(maple_device_t * dev, const char * fn, void * inbuf, int insize,
     nd.filetype = (flags & VMUFS_VMUGAME) ? 0xcc : 0x33;
     nd.copyprotect = (flags & VMUFS_NOCOPY) ? 0xff : 0x00;
     nd.firstblk = 0;
-    strncpy(nd.filename, fn, 12);
+
+    fnlength = strlen(fn);
+    fnlength = fnlength > 12 ? 12 : fnlength;
+    memcpy(nd.filename, fn, fnlength);
+    if (fnlength < 12) {
+        memset(nd.filename + fnlength, '\0', 12 - fnlength);
+    }
+
     vmufs_dir_fill_time(&nd);
     nd.filesize = insize / 512;
     nd.hdroff = (flags & VMUFS_VMUGAME) ? 1 : 0;
@@ -754,7 +767,7 @@ int vmufs_write(maple_device_t * dev, const char * fn, void * inbuf, int insize,
 
     /* Write out the data and update our structs */
     if((st = vmufs_file_write(dev, &root, fat, dir, &nd, inbuf, insize / 512)) < 0) {
-        if (st == -2)
+        if(st == -2)
             rv = -7;
         else
             rv = -4;
@@ -838,12 +851,12 @@ int vmufs_free_blocks(maple_device_t * dev) {
 
 
 
-int vmufs_init() {
+int vmufs_init(void) {
     mutex_init(&mutex, MUTEX_TYPE_NORMAL);
     return 0;
 }
 
-int vmufs_shutdown() {
+int vmufs_shutdown(void) {
     mutex_destroy(&mutex);
     return 0;
 }

@@ -1,6 +1,6 @@
 #include <kos.h>
 
-void kb_test() {
+void kb_test(void) {
     maple_device_t *cont, *kbd;
     cont_state_t *state;
     int k, x = 20, y = 20 + 24;
@@ -37,7 +37,7 @@ void kb_test() {
         } */
 
         /* Get queued keys */
-        while((k = kbd_get_key()) != -1) {
+        while((k = kbd_queue_pop(kbd, 1)) != -1) {
             if(k == 27) {
                 printf("ESC pressed\n");
                 return;
