@@ -216,23 +216,13 @@ void timer_ns_disable(void) {
 
 /* Return the number of nanoseconds since KOS was booted */
 void timer_ns_gettime(uint32 *secs, uint32 *nsecs) {
-    const uint16 config = perf_cntr_get_config(PRFC0);
+    const uint16_t config = perf_cntr_get_config(PRFC0);
     
     /* If nanosecond timer is running */
-    if(1/*(config & PMCR_ELAPSED_TIME_MODE)*/) {
+    if(config & PMCR_ELAPSED_TIME_MODE) {
         /* Perform both modulo and division simultaneously */ 
-    #if 1
-        const uint64 time = timer_ns_gettime64();
-        struct {
-            uint32 quot;
-            uint32 rem;
-        } result = {
-            time / 1000000000,
-            time % 1000000000
-        };
-        #else 
-        //const lldiv_t result = lldiv(timer_ns_gettime64(), 1000000000);
-        #endif
+        const lldiv_t result = lldiv(timer_ns_gettime64(), 1000000000);
+        
         if(secs) 
             *secs = (uint32)result.quot;
         if(nsecs)
