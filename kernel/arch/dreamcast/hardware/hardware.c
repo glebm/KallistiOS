@@ -40,8 +40,7 @@ int hardware_sys_init(void) {
     return 0;
 }
 
-void (*bba_la_init_weak)(void) __attribute__((weak));
-void (*bba_la_shutdown_weak)(void) __attribute__((weak));
+KOS_INIT_FLAG_DECL(bba_la);
 
 void bba_la_init(void) {
     /* Setup network (this won't do anything unless we enable netcore) */
@@ -71,8 +70,7 @@ int hardware_periph_init(void) {
     vid_init(DEFAULT_VID_MODE, DEFAULT_PIXEL_MODE);
 
 #ifndef _arch_sub_naomi
-    if(bba_la_init_weak)
-        (*bba_la_init_weak)();
+    KOS_INIT_FLAG_INIT(bba_la);
 #endif
 
     initted = 2;
@@ -84,8 +82,7 @@ void hardware_shutdown(void) {
     switch(initted) {
         case 2:
 #ifndef _arch_sub_naomi
-            if(bba_la_shutdown_weak)
-                (*bba_la_shutdown_weak)();
+            KOS_INIT_FLAG_SHUTDOWN(bba_la);
 #endif
             maple_shutdown();
 #if 0

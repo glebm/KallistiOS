@@ -86,8 +86,7 @@ void arch_init_net(void) {
     }
 }
 
-void (*init_net_weak)(void) __attribute__((weak));
-void (*net_shutdown_weak)(void) __attribute__((weak));
+KOS_INIT_FLAG_DECL(net);
 
 /* Auto-init stuff: override with a non-weak symbol if you don't want all of
    this to be linked into your code (and do the same with the
@@ -99,7 +98,7 @@ int  __attribute__((weak)) arch_auto_init(void) {
     /* Do this immediately so we can receive exceptions for init code
        and use ints for dbgio receive. */
     irq_init();         /* IRQs */
-    irq_disable();          /* Turn on exceptions */
+    irq_disable();      /* Turn on exceptions */
 
 #ifndef _arch_sub_naomi
     if(!(__kos_init_flags & INIT_NO_DCLOAD))
@@ -122,7 +121,7 @@ int  __attribute__((weak)) arch_auto_init(void) {
     }
 
     timer_init();           /* Timers */
-    hardware_sys_init();        /* DC low-level hardware init */
+    hardware_sys_init();    /* DC low-level hardware init */
 
     /* Initialize our timer */
     timer_ns_enable();
@@ -138,10 +137,9 @@ int  __attribute__((weak)) arch_auto_init(void) {
 
     nmmgr_init();
 
-    fs_init();          /* VFS */
+    fs_init();              /* VFS */
     fs_pty_init();          /* Pty */
     fs_ramdisk_init();      /* Ramdisk */
-    fs_romdisk_init();      /* Romdisk */
 
 /* The arc4random_buf() function used for random & urandom is only
    available in newlib starting with version 2.4.0 */
@@ -153,7 +151,8 @@ int  __attribute__((weak)) arch_auto_init(void) {
 
     hardware_periph_init();     /* DC peripheral init */
 
-    if(__kos_romdisk != NULL) {
+    if(__kos_romdisk) {
+        fs_romdisk_init();
         fs_romdisk_mount("/rd", __kos_romdisk, 0);
     }
 
@@ -165,8 +164,11 @@ int  __attribute__((weak)) arch_auto_init(void) {
 
     fs_iso9660_init();
 #endif
-    vmufs_init();
-    fs_vmu_init();
+
+    if(__kos_init_flags & INIT_VMU) {
+        vmufs_init();
+        fs_vmu_init();
+    }
 
     /* Initialize library handling */
     library_init();
@@ -178,8 +180,7 @@ int  __attribute__((weak)) arch_auto_init(void) {
     }
 
 #ifndef _arch_sub_naomi
-    if(init_net_weak)
-        (*init_net_weak)();
+    KOS_INIT_FLAG_INIT(net);
 #endif
 
     return 0;
@@ -188,8 +189,7 @@ int  __attribute__((weak)) arch_auto_init(void) {
 void  __attribute__((weak)) arch_auto_shutdown(void) {
 #ifndef _arch_sub_naomi
     fs_dclsocket_shutdown();
-    if(net_shutdown_weak)
-        (*net_shutdown_weak)();
+    KOS_INIT_FLAG_SHUTDOWN(net);
 #endif
 
     irq_disable();
@@ -201,8 +201,10 @@ void  __attribute__((weak)) arch_auto_shutdown(void) {
 #ifndef _arch_sub_naomi
     fs_dcload_shutdown();
 #endif
-    fs_vmu_shutdown();
-    vmufs_shutdown();
+    if(__kos_init_flags & INIT_VMU) {
+        fs_vmu_shutdown();
+        vmufs_shutdown();
+    }
 #ifndef _arch_sub_naomi
     fs_iso9660_shutdown();
 #endif
@@ -210,7 +212,8 @@ void  __attribute__((weak)) arch_auto_shutdown(void) {
     fs_dev_shutdown();
 #endif
     fs_ramdisk_shutdown();
-    fs_romdisk_shutdown();
+    if(__kos_romdisk)
+        fs_romdisk_shutdown();
     fs_pty_shutdown();
     fs_shutdown();
     thd_shutdown();

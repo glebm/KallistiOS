@@ -12,6 +12,7 @@
 #include <dc/asic.h>
 #include <dc/vblank.h>
 #include <kos/thread.h>
+#include <kos/init.h>
 
 #include <dc/maple/controller.h>
 #include <dc/maple/keyboard.h>
@@ -170,16 +171,26 @@ void maple_wait_scan(void) {
     }
 }
 
+
+KOS_INIT_FLAG_DECL(cont);
+KOS_INIT_FLAG_DECL(kbd);
+KOS_INIT_FLAG_DECL(mouse);
+KOS_INIT_FLAG_DECL(lightgun);
+KOS_INIT_FLAG_DECL(vmu);
+KOS_INIT_FLAG_DECL(purupuru);
+KOS_INIT_FLAG_DECL(sip);
+KOS_INIT_FLAG_DECL(dreameye);
+
 /* Full init: initialize known drivers and start maple operations */
 int maple_init(void) {
-    lightgun_init();
-    cont_init();
-    kbd_init();
-    mouse_init();
-    vmu_init();
-    purupuru_init();
-    sip_init();
-    dreameye_init();
+    KOS_INIT_FLAG_INIT(lightgun);
+    KOS_INIT_FLAG_INIT(cont);
+    KOS_INIT_FLAG_INIT(kbd);
+    KOS_INIT_FLAG_INIT(mouse);
+    KOS_INIT_FLAG_INIT(vmu);
+    KOS_INIT_FLAG_INIT(purupuru);
+    KOS_INIT_FLAG_INIT(sip);
+    KOS_INIT_FLAG_INIT(dreameye);
 
     return maple_hw_init();
 }
@@ -188,12 +199,12 @@ int maple_init(void) {
 void maple_shutdown(void) {
     maple_hw_shutdown();
 
-    dreameye_shutdown();
-    sip_shutdown();
-    purupuru_shutdown();
-    vmu_shutdown();
-    mouse_shutdown();
-    kbd_shutdown();
-    cont_shutdown();
-    lightgun_shutdown();
+    KOS_INIT_FLAG_SHUTDOWN(dreameye);
+    KOS_INIT_FLAG_SHUTDOWN(sip);
+    KOS_INIT_FLAG_SHUTDOWN(purupuru);
+    KOS_INIT_FLAG_SHUTDOWN(vmu);
+    KOS_INIT_FLAG_SHUTDOWN(mouse);
+    KOS_INIT_FLAG_SHUTDOWN(kbd);
+    KOS_INIT_FLAG_SHUTDOWN(cont);
+    KOS_INIT_FLAG_SHUTDOWN(lightgun);
 }
