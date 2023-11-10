@@ -254,7 +254,7 @@ int hardware_sys_mode(int *region);
 
     \retval                 A pointer to the banner string.
 */
- const char *kos_get_banner(void);
+const char *kos_get_banner(void);
 
 /** \brief  Retrieve the license information for the compiled copy of KOS.
 
