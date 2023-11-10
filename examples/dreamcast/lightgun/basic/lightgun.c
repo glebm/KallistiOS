@@ -5,7 +5,6 @@
 */
 
 #include <stdio.h>
-#include <stdlib.h>
 
 #include <kos/dbgio.h>
 #include <arch/timer.h>
