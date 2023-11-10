@@ -86,12 +86,20 @@ void arch_init_net(void) {
     }
 }
 
-KOS_INIT_FLAG_DECL(net);
+KOS_INIT_FLAG_WEAK(void, arch_init_net);
+KOS_INIT_FLAG_WEAK(int, vmu_fs_init);
+
+int vmu_fs_init(void) {
+    fs_vmu_shutdown();
+    vmufs_shutdown();
+
+    return 0;
+}
 
 /* Auto-init stuff: override with a non-weak symbol if you don't want all of
    this to be linked into your code (and do the same with the
    arch_auto_shutdown function too). */
-int  __attribute__((weak)) arch_auto_init(void) {
+int  __weak arch_auto_init(void) {
     /* Initialize memory management */
     mm_init();
 
@@ -165,10 +173,7 @@ int  __attribute__((weak)) arch_auto_init(void) {
     fs_iso9660_init();
 #endif
 
-    if(__kos_init_flags & INIT_VMU) {
-        vmufs_init();
-        fs_vmu_init();
-    }
+    KOS_INIT_FLAG_CALL(vmu_fs_init);
 
     /* Initialize library handling */
     library_init();
@@ -180,16 +185,24 @@ int  __attribute__((weak)) arch_auto_init(void) {
     }
 
 #ifndef _arch_sub_naomi
-    KOS_INIT_FLAG_INIT(net);
+    KOS_INIT_FLAG_CALL(arch_init_net);
 #endif
 
     return 0;
 }
 
-void  __attribute__((weak)) arch_auto_shutdown(void) {
+KOS_INIT_FLAG_WEAK(void, net_shutdown);
+KOS_INIT_FLAG_WEAK(void, vmu_fs_shutdown);
+
+void vmu_fs_shutdown(void) {
+    fs_vmu_shutdown();
+    vmufs_shutdown();
+}
+
+void  __weak arch_auto_shutdown(void) {
 #ifndef _arch_sub_naomi
     fs_dclsocket_shutdown();
-    KOS_INIT_FLAG_SHUTDOWN(net);
+    KOS_INIT_FLAG_CALL(net_shutdown);
 #endif
 
     irq_disable();
@@ -201,10 +214,7 @@ void  __attribute__((weak)) arch_auto_shutdown(void) {
 #ifndef _arch_sub_naomi
     fs_dcload_shutdown();
 #endif
-    if(__kos_init_flags & INIT_VMU) {
-        fs_vmu_shutdown();
-        vmufs_shutdown();
-    }
+    KOS_INIT_FLAG_CALL(vmu_fs_shutdown);
 #ifndef _arch_sub_naomi
     fs_iso9660_shutdown();
 #endif

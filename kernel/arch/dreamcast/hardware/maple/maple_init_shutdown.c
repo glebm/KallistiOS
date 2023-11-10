@@ -171,40 +171,48 @@ void maple_wait_scan(void) {
     }
 }
 
-
-KOS_INIT_FLAG_DECL(cont);
-KOS_INIT_FLAG_DECL(kbd);
-KOS_INIT_FLAG_DECL(mouse);
-KOS_INIT_FLAG_DECL(lightgun);
-KOS_INIT_FLAG_DECL(vmu);
-KOS_INIT_FLAG_DECL(purupuru);
-KOS_INIT_FLAG_DECL(sip);
-KOS_INIT_FLAG_DECL(dreameye);
+KOS_INIT_FLAG_WEAK(int, cont_init);
+KOS_INIT_FLAG_WEAK(int, kbd_init);
+KOS_INIT_FLAG_WEAK(int, mouse_init);
+KOS_INIT_FLAG_WEAK(int, lightgun_init);
+KOS_INIT_FLAG_WEAK(int, vmu_init);
+KOS_INIT_FLAG_WEAK(int, purupuru_init);
+KOS_INIT_FLAG_WEAK(int, sip_init);
+KOS_INIT_FLAG_WEAK(int, dreameye_init);
 
 /* Full init: initialize known drivers and start maple operations */
 int maple_init(void) {
-    KOS_INIT_FLAG_INIT(lightgun);
-    KOS_INIT_FLAG_INIT(cont);
-    KOS_INIT_FLAG_INIT(kbd);
-    KOS_INIT_FLAG_INIT(mouse);
-    KOS_INIT_FLAG_INIT(vmu);
-    KOS_INIT_FLAG_INIT(purupuru);
-    KOS_INIT_FLAG_INIT(sip);
-    KOS_INIT_FLAG_INIT(dreameye);
+    KOS_INIT_FLAG_CALL(lightgun_init);
+    KOS_INIT_FLAG_CALL(cont_init);
+    KOS_INIT_FLAG_CALL(kbd_init);
+    KOS_INIT_FLAG_CALL(mouse_init);
+    KOS_INIT_FLAG_CALL(vmu_init);
+    KOS_INIT_FLAG_CALL(purupuru_init);
+    KOS_INIT_FLAG_CALL(sip_init);
+    KOS_INIT_FLAG_CALL(dreameye_init);
 
     return maple_hw_init();
 }
+
+KOS_INIT_FLAG_WEAK(void, cont_shutdown);
+KOS_INIT_FLAG_WEAK(void, kbd_shutdown);
+KOS_INIT_FLAG_WEAK(void, mouse_shutdown);
+KOS_INIT_FLAG_WEAK(void, lightgun_shutdown);
+KOS_INIT_FLAG_WEAK(void, vmu_shutdown);
+KOS_INIT_FLAG_WEAK(void, purupuru_shutdown);
+KOS_INIT_FLAG_WEAK(void, sip_shutdown);
+KOS_INIT_FLAG_WEAK(void, dreameye_shutdown);
 
 /* Full shutdown: shutdown maple operations and known drivers */
 void maple_shutdown(void) {
     maple_hw_shutdown();
 
-    KOS_INIT_FLAG_SHUTDOWN(dreameye);
-    KOS_INIT_FLAG_SHUTDOWN(sip);
-    KOS_INIT_FLAG_SHUTDOWN(purupuru);
-    KOS_INIT_FLAG_SHUTDOWN(vmu);
-    KOS_INIT_FLAG_SHUTDOWN(mouse);
-    KOS_INIT_FLAG_SHUTDOWN(kbd);
-    KOS_INIT_FLAG_SHUTDOWN(cont);
-    KOS_INIT_FLAG_SHUTDOWN(lightgun);
+    KOS_INIT_FLAG_CALL(dreameye_shutdown);
+    KOS_INIT_FLAG_CALL(sip_shutdown);
+    KOS_INIT_FLAG_CALL(purupuru_shutdown);
+    KOS_INIT_FLAG_CALL(vmu_shutdown);
+    KOS_INIT_FLAG_CALL(mouse_shutdown);
+    KOS_INIT_FLAG_CALL(kbd_shutdown);
+    KOS_INIT_FLAG_CALL(cont_shutdown);
+    KOS_INIT_FLAG_CALL(lightgun_shutdown);
 }

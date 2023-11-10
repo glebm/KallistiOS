@@ -20,6 +20,10 @@
 #include <dc/maple/dreameye.h>
 #include <kos/dbgio.h>
 
+#include <kos/init.h>
+
+KOS_INIT_FLAGS(INIT_DEFAULT | INIT_DREAMEYE);
+
 int main(int argc, char *argv[]) {
     maple_device_t *dreameye;
     dreameye_state_t *state;
