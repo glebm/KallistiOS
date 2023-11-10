@@ -72,6 +72,13 @@ __BEGIN_DECLS
 /** \brief  State that you don't want a romdisk. */
 #define KOS_INIT_ROMDISK_NONE   NULL
 
+/** \brief  Register a single function to be called very early in the boot
+            process, before the BSS section is cleared.
+    \param  func            The function to register. The prototype should be
+                            void func(void)
+*/
+#define KOS_INIT_EARLY(func) void (*__kos_init_early_fn)(void) = (func)
+
 /** \cond Built-in romdisk. Do not modify this directly! */
 extern void * __kos_romdisk;
 /** \endcond */
