@@ -13,11 +13,12 @@
     This file provides initialization-related flags that are specific to the
     Dreamcast architecture.
 
+    \sa    kos/init.h
+    \sa    kos/init_base.h
+
     \author Lawrence Sebald
     \author Megan Potter
     \author Falco Girgis
-
-    \see    kos/init.h
 */
 
 #ifndef __ARCH_INIT_FLAGS_H
@@ -28,6 +29,19 @@ __BEGIN_DECLS
 
 #include <kos/init_base.h>
 
+/** \brief Dreamcast-specific KOS_INIT Exports
+
+    This macro contains a list of all of the possible DC-specific 
+    exported functions based on their associated initialization flags.
+
+    \note
+    This is not typically used direclty and is instead included within
+    the top-level architecture-independent KOS_INIT_FLAGS() macro. 
+
+    \param flags    Parts of KOS to initialize.
+
+    \sa KOS_INIT_FLAGS()
+*/
 #define KOS_INIT_FLAGS_ARCH(flags) \
     KOS_INIT_FLAG_EXPORT(flags, INIT_CONTROLLER, int, cont_init); \
     KOS_INIT_FLAG_EXPORT(flags, INIT_CONTROLLER, void, cont_shutdown); \
@@ -49,16 +63,17 @@ __BEGIN_DECLS
     KOS_INIT_FLAG_EXPORT(flags, INIT_DREAMEYE, void, dreameye_shutdown)
 
 
-/** \defgroup dreamcast_initflags   Dreamcast-specific initialization flags.
+/** \name  Init Flags
+    \brief Dreamcast-specific initialization flags.
 
     These are the Dreamcast-specific flags that can be specified with
     KOS_INIT_FLAGS.
 
-    \see    kos_initflags
     @{
 */
 
-#define INIT_DEFAULT_ARCH   (INIT_CONTROLLER | INIT_VMU)
+/** \brief Default init flags for the Dreamcast (all Maple drivers). */
+#define INIT_DEFAULT_ARCH   (INIT_MAPLE_ALL)
 
 #define INIT_CONTROLLER     0x00001000  /**< \brief Enable Controller maple driver */
 #define INIT_KEYBOARD       0x00002000  /**< \brief Enable Keyboard maple driver */
@@ -70,8 +85,8 @@ __BEGIN_DECLS
 #define INIT_DREAMEYE       0x00080000  /**< \brief Enable DreamEye maple driver */
 #define INIT_MAPLE_ALL      0x000ff000  /**< \brief Enable all Maple drivers */
 
-#define INIT_OCRAM          0x10000000 /**< \brief Use half of the dcache as RAM */
-#define INIT_NO_DCLOAD      0x20000000 /**< \brief Disable dcload */
+#define INIT_OCRAM          0x10000000  /**< \brief Use half of the dcache as RAM */
+#define INIT_NO_DCLOAD      0x20000000  /**< \brief Disable dcload */
 
 /** @} */
 

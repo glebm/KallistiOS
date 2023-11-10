@@ -7,11 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <kos/init.h>
 #include <dc/maple.h>
 #include <dc/maple/dreameye.h>
-
-KOS_INIT_FLAGS(INIT_DEFAULT | INIT_DREAMEYE);
 
 int main(int argc, char *argv[]) {
     maple_device_t *dreameye;

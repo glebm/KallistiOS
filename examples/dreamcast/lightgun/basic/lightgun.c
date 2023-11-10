@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <kos/init.h>
 #include <kos/dbgio.h>
 #include <arch/timer.h>
 
@@ -35,17 +34,11 @@
       Start buttons, generally.
 */
 
-KOS_INIT_FLAGS(INIT_DEFAULT | INIT_DREAMEYE);
-
 int main(int argc, char *argv[]) {
     int x, y, gun = 0;
     maple_device_t *dev;
     cont_state_t *state;
     uint64 last = 0, now;
-
-    /* Press all buttons simultaneously to exit early. */
-    cont_btn_callback(0, CONT_START | CONT_A | CONT_B | CONT_X | CONT_Y,
-                      (cont_btn_callback_t)exit);
 
     /* Do any printing to the screen and make it be black text on a white
        background (as much as we can anyway). I should eventually make it so you

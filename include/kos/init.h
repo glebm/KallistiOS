@@ -3,6 +3,8 @@
    include/kos/init.h
    Copyright (C) 2001 Megan Potter
    Copyright (C) 2023 Lawrence Sebald
+   Copyright (C) 2023 Paul Cercueil
+   Copyright (C) 2023 Falco Girgis
 
 */
 
@@ -14,9 +16,13 @@
     architecture-independent are specified here, however this file also includes
     the architecture-specific file to bring in those flags as well.
 
-    \author Lawrence Sebald
+    \sa     arch/init_flags.h
+    \sa     kos/init_base.h 
+
     \author Megan Potter
-    \see    arch/init_flags.h
+    \author Lawrence Sebald
+    \author Paul Cercueil
+    \author Falco Girgis
 */
 
 #ifndef __KOS_INIT_H
@@ -28,15 +34,18 @@ __BEGIN_DECLS
 #include <arch/init_flags.h>
 #include <stdint.h>
 
-/** \brief  Use this macro to determine the level of initialization you'd like
-            in your program by default.
+/** \brief  Exports and initializes the given KOS subsystems.
 
-    The defaults will be fine for most things, and will be used if you do not
-    specify any init flags yourself.
+    KOS_INIT_FLAGS() provides a mechanism through which various components
+    of KOS can be enabled and initialized depending on whether their flag
+    has been included within the list.
+
+    \note
+    When no KOS_INIT_FLAGS() have been explicitly provided, the default
+    flags used by KOS are equivalent to KOS_INIT_FLAGS(INIT_DEFAULT), which
+    should enable all of the Maple peripherals.
 
     \param  flags           Parts of KOS to init.
-    \see    kos_initflags
-    \see    dreamcast_initflags
 */
 #define KOS_INIT_FLAGS(flags) \
     const uint32_t __kos_init_flags = (flags); \
@@ -47,16 +56,23 @@ __BEGIN_DECLS
     KOS_INIT_FLAG_EXPORT(flags, INIT_EXPORT, int, export_init); \
     KOS_INIT_FLAGS_ARCH(flags)
 
-/** \brief  The init flags. Do not modify this directly! */
+
+/** \cond
+    The init flags. Do not modify this directly! 
+*/
 extern const uint32_t __kos_init_flags;
+/** \endcond **/
 
 /** \brief  Define a romdisk for your program, if you'd like one.
     \param  rd                  Pointer to the romdisk image in your code.
 */
 #define KOS_INIT_ROMDISK(rd)    void * __kos_romdisk = (rd)
 
-/** \brief  Built-in romdisk. Do not modify this directly! */
+/** \cond
+    Built-in romdisk. Do not modify this directly! 
+*/
 extern void * __kos_romdisk;
+/** \endcond **/
 
 /** \brief  State that you don't want a romdisk. */
 #define KOS_INIT_ROMDISK_NONE   NULL
@@ -69,14 +85,15 @@ extern void * __kos_romdisk;
 */
 #define KOS_INIT_EARLY(func) void (*__kos_init_early_fn)(void) = (func)
 
-/** \defgroup kos_initflags     Available flags for initialization
+/** \name Common Init flags
+    \brief Architecture-Independent Initialization Flags
 
     These are the architecture-independent flags that can be specified with
-    KOS_INIT_FLAGS.
+    KOS_INIT_FLAGS().
 
-    \see    dreamcast_initflags
     @{
 */
+
 /** \brief  Default init flags (IRQs on, preemption enabled). */
 #define INIT_DEFAULT    (INIT_IRQ | INIT_THD_PREEMPT | INIT_DEFAULT_ARCH)
 
