@@ -35,7 +35,7 @@ __BEGIN_DECLS
     exported functions based on their associated initialization flags.
 
     \note
-    This is not typically used direclty and is instead included within
+    This is not typically used directly and is instead included within
     the top-level architecture-independent KOS_INIT_FLAGS() macro. 
 
     \param flags    Parts of KOS to initialize.
