@@ -88,6 +88,8 @@ void arch_init_net(void) {
 
 KOS_INIT_FLAG_WEAK(void, arch_init_net);
 KOS_INIT_FLAG_WEAK(int, vmu_fs_init);
+KOS_INIT_FLAG_WEAK(int, fs_romdisk_init);
+KOS_INIT_FLAG_WEAK(int, fs_romdisk_mount);
 
 int vmu_fs_init(void) {
     fs_vmu_shutdown();
@@ -145,9 +147,10 @@ int  __weak arch_auto_init(void) {
 
     nmmgr_init();
 
-    fs_init();              /* VFS */
-    fs_pty_init();          /* Pty */
-    fs_ramdisk_init();      /* Ramdisk */
+    fs_init();                              /* VFS */
+    fs_pty_init();                          /* Pty */
+    fs_ramdisk_init();                      /* Ramdisk */
+    KOS_INIT_FLAG_CALL(fs_romdisk_init);    /* Romdisk */
 
 /* The arc4random_buf() function used for random & urandom is only
    available in newlib starting with version 2.4.0 */
@@ -159,10 +162,7 @@ int  __weak arch_auto_init(void) {
 
     hardware_periph_init();     /* DC peripheral init */
 
-    if(__kos_romdisk) {
-        fs_romdisk_init();
-        fs_romdisk_mount("/rd", __kos_romdisk, 0);
-    }
+    KOS_INIT_FLAG_CALL(fs_romdisk_mount);
 
 #ifndef _arch_sub_naomi
     if(!(__kos_init_flags & INIT_NO_DCLOAD) && *DCLOADMAGICADDR == DCLOADMAGICVALUE) {
@@ -193,6 +193,7 @@ int  __weak arch_auto_init(void) {
 
 KOS_INIT_FLAG_WEAK(void, net_shutdown);
 KOS_INIT_FLAG_WEAK(void, vmu_fs_shutdown);
+KOS_INIT_FLAG_WEAK(int, fs_romdisk_shutdown);
 
 void vmu_fs_shutdown(void) {
     fs_vmu_shutdown();
@@ -222,8 +223,7 @@ void  __weak arch_auto_shutdown(void) {
     fs_dev_shutdown();
 #endif
     fs_ramdisk_shutdown();
-    if(__kos_romdisk)
-        fs_romdisk_shutdown();
+    KOS_INIT_FLAG_CALL(fs_romdisk_shutdown);
     fs_pty_shutdown();
     fs_shutdown();
     thd_shutdown();
