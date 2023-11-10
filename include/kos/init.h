@@ -57,9 +57,7 @@ __BEGIN_DECLS
      KOS_INIT_FLAG_EXPORT(flags, INIT_EXPORT, int, export_init); \
      KOS_INIT_FLAGS_ARCH(flags)
 
- /** \cond
-     The init flags. Do not modify this directly!
- */
+ /** \cond The init flags. Do not modify this directly! */
  extern const uint32_t __kos_init_flags;
  /** \endcond **/
 
@@ -67,19 +65,30 @@ __BEGIN_DECLS
     \deprecated
     This has been deprecated and should no longer be used
 */
+/** \brief  Deprecated and not useful anymore. */
 #define KOS_INIT_ROMDISK(rd) \
-    static void *__old_romdisk __unused = (rd)
+    static void *__old_romdisk __attribute__((unused)) = (rd)
 
 /** \brief  State that you don't want a romdisk. */
 #define KOS_INIT_ROMDISK_NONE   NULL
 
- /** \brief  Default init flags (IRQs on, preemption enabled, romdisk includd). */
- #define INIT_DEFAULT    (INIT_IRQ | INIT_THD_PREEMPT | INIT_FS_ROMDISK | INIT_DEFAULT_ARCH)
+/** \cond Built-in romdisk. Do not modify this directly! */
+extern void * __kos_romdisk;
+/** \endcond */
 
+/** \name Init Flags
+    \brief Architecture-independent KOS initialization flags
+
+    @{
+*/ 
+ /** \brief  Default init flags (IRQs on, preemption enabled, romdisk fs) */
+ #define INIT_DEFAULT    (INIT_IRQ | INIT_THD_PREEMPT | INIT_FS_ROMDISK | \
+                          INIT_DEFAULT_ARCH)
+ 
  #define INIT_NONE        0x00000000  /**< \brief Don't init optional things */
  #define INIT_IRQ         0x00000001  /**< \brief Enable IRQs at startup */
  /* Preemptive mode is the only mode now. Keeping define for compatability. */
- #define INIT_THD_PREEMPT 0x00000002  /**< \brief Enable thread preemption \deprecated */
+ #define INIT_THD_PREEMPT 0x00000002  /**< \deprecated Already default mode */
  #define INIT_NET         0x00000004  /**< \brief Enable built-in networking */
  #define INIT_MALLOCSTATS 0x00000008  /**< \brief Enable malloc statistics */
  #define INIT_QUIET       0x00000010  /**< \brief Disable dbgio */
@@ -88,4 +97,4 @@ __BEGIN_DECLS
  /** @} */
 
  __END_DECLS
-#endif
+#endif /* !__KOS_INIT_H */
