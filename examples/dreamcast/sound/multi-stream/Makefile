@@ -1,10 +1,10 @@
 # KallistiOS ##version##
 #
-# examples/dreamcast/sound/sfx/Makefile
+# examples/dreamcast/sound/multi-stream/Makefile
 #
 
-TARGET = sfx.elf
-OBJS = main.o romdisk.o 
+TARGET = multistream.elf
+OBJS = romdisk.o main.o
 KOS_ROMDISK_DIR = romdisk
 
 all: clean $(TARGET)
@@ -16,12 +16,12 @@ clean:
 	-rm -f romdisk.o romdisk.img
 
 $(TARGET): $(OBJS) 
-	kos-cc -o $(TARGET) $(OBJS)
+	kos-cc -o $(TARGET) $(OBJS) $(DATAOBJS) $(OBJEXTRA) -lwav
 
-run: $(TARGET)
+run: 
 	$(KOS_LOADER) $(TARGET)
 
-dist: $(TARGET)
+dist:
 	rm -f $(OBJS) romdisk.o romdisk.img
 	$(KOS_STRIP) $(TARGET)
 
