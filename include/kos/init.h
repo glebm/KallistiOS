@@ -67,7 +67,9 @@ __BEGIN_DECLS
 */
 /** \brief  Deprecated and not useful anymore. */
 #define KOS_INIT_ROMDISK(rd) \
-    static void *__old_romdisk __attribute__((unused)) = (rd)
+    void *__kos_romdisk = (rd); \
+    extern int fs_romdisk_mount_builtin(void); \
+    int (*fs_romdisk_mount_builtin_legacy_weak)(void) = fs_romdisk_mount_builtin
 
 /** \brief  State that you don't want a romdisk. */
 #define KOS_INIT_ROMDISK_NONE   NULL
