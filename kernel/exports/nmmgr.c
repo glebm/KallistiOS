@@ -19,6 +19,7 @@ interface at the front of their struct.
 #include <malloc.h>
 #include <string.h>
 #include <strings.h>
+#include <kos/init.h>
 #include <kos/nmmgr.h>
 #include <kos/mutex.h>
 #include <kos/exports.h>
@@ -88,7 +89,7 @@ int nmmgr_handler_remove(nmmgr_handler_t *hnd) {
     return rv;
 }
 
-int (*export_init_weak)(void) __attribute__((weak));
+KOS_INIT_FLAG_WEAK(int, export_init);
 
 /* Initialize structures */
 int nmmgr_init(void) {
@@ -98,8 +99,7 @@ int nmmgr_init(void) {
     LIST_INIT(&nmmgr_handlers);
 
     /* Initialize our internal exports */
-    if(export_init_weak)
-        (*export_init_weak)();
+    KOS_INIT_FLAG_CALL(export_init);
 
     return rv;
 }
