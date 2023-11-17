@@ -1,8 +1,8 @@
 /* KallistiOS ##version##
 
    kos/dbglog.h
-   Copyright (C)2004 Megan Potter
-
+   Copyright (C) 2004 Megan Potter
+   Copyright (C) 2023 Falco Girgis
 */
 
 /** \file   kos/dbglog.h
@@ -13,6 +13,7 @@
     urgent of messages get printed for a release version of a program.
 
     \author Megan Potter
+    \author Falco Girgis
 */
 
 #ifndef __KOS_DBGLOG_H
@@ -20,7 +21,7 @@
 
 #include <kos/cdefs.h>
 __BEGIN_DECLS
-
+ 
 #include <unistd.h>
 #include <stdarg.h>
 #include <kos/fs.h>
@@ -34,14 +35,26 @@ __BEGIN_DECLS
     \param  level           The level of importance of this message.
     \param  fmt             Message format string.
     \param  ...             Format arguments
-    \see    dbglog_levels
+    
+    \sa vdbglog()
 */
 void dbglog(int level, const char *fmt, ...) __printflike(2, 3);
 
-/** \defgroup   dbglog_levels   Log levels for dbglog
+/** \brief  Kernel debugging vprintf.
 
-    This is the list of levels that are allowed to be passed into the dbglog()
-    function, representing different levels of importance.
+    Equivalent to dbglog(), except the variaid arguments are passed 
+    through a va_list*.
+
+    \param  level           The level of importance of this message.
+    \param  fmt             Message format string.
+    \param  var_args        Format arguments
+    
+    \sa dbglog()
+*/
+void vdbglog(int level, const char *fmt, va_list* var_args);
+
+/** \name Log Levels   
+    \brief Log message severity levels
 
     @{
 */
@@ -61,9 +74,21 @@ void dbglog(int level, const char *fmt, ...) __printflike(2, 3);
     the message has a higher level.
 
     \param  level           The level to stop paying attention after.
-    \see    dbglog_levels
+    
+    \sa dbglog_get_level
 */
 void dbglog_set_level(int level);
+
+/** \brief  Retrieve the debugging log level.
+
+    This function gets the level for which dbglog() will ignore messages for if
+    the message has a higher level.
+
+    \return           The level to stop paying attention after.
+    
+    \sa dbglog_set_level
+*/
+int dbglog_get_level(void); 
 
 __END_DECLS
 
