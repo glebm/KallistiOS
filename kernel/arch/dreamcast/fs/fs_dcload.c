@@ -101,6 +101,7 @@ static char *dcload_path = NULL;
 void *dcload_open(vfs_handler_t * vfs, const char *fn, int mode) {
     int hnd = 0;
     uint32 h;
+    size_t fnlen;
     int dcload_mode = 0;
     int mm = (mode & O_MODE_MASK);
 
@@ -122,12 +123,14 @@ void *dcload_open(vfs_handler_t * vfs, const char *fn, int mode) {
             if(dcload_path)
                 free(dcload_path);
 
-            if(fn[strlen(fn) - 1] == '/') {
-                dcload_path = malloc(strlen(fn) + 1);
+            fnlen = strlen(fn);
+
+            if(fn[fnlen - 1] == '/') {
+                dcload_path = malloc(fnlen + 1);
                 strcpy(dcload_path, fn);
             }
             else {
-                dcload_path = malloc(strlen(fn) + 2);
+                dcload_path = malloc(fnlen + 2);
                 strcpy(dcload_path, fn);
                 strcat(dcload_path, "/");
             }
@@ -298,13 +301,14 @@ dirent_t *dcload_readdir(void * h) {
     dcld = (dcload_dirent_t *)dclsc(DCLOAD_READDIR, hnd);
 
     if(dcld) {
+        char fn[strlen(dcload_path) + strlen(dcld->d_name) + 1];
+
         rv = &dirent;
         strcpy(rv->name, dcld->d_name);
         rv->size = 0;
         rv->time = 0;
         rv->attr = 0; /* what the hell is attr supposed to be anyways? */
 
-        fn = malloc(strlen(dcload_path) + strlen(dcld->d_name) + 1);
         strcpy(fn, dcload_path);
         strcat(fn, dcld->d_name);
 
@@ -320,7 +324,6 @@ dirent_t *dcload_readdir(void * h) {
 
         }
 
-        free(fn);
     }
 
     spinlock_unlock(&mutex);
