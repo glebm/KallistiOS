@@ -55,6 +55,11 @@
 #define __pure2     __pure      /* ditto */
 #endif
 
+#ifndef __packed  
+/** \brief  Specifies that the minimum required memory be used. */
+#define __packed __attribute__((__packed__))
+#endif
+
 #ifndef __deprecated
 /** \brief  Mark something as deprecated.
     This should be used to warn users that a function/type/etc will be removed

@@ -2,6 +2,7 @@
 
    dc/vmufs.h
    Copyright (C) 2003 Megan Potter
+   Copyright (C) 2023 Falco Girgis
 
 */
 
@@ -16,9 +17,12 @@
     Files on a VMU must be multiples of 512 bytes in size, and should have a
     header attached so that they show up in the BIOS menu.
 
+    \sa    dc/vmu_pkg.h
+    \sa    dc/fs_vmu.h
+    \sa    dc/maple/vmu.h
+
     \author Megan Potter
-    \see    dc/vmu_pkg.h
-    \see    dc/fs_vmu.h
+    \author Falco Girgis
 */
 
 #ifndef __DC_VMUFS_H
@@ -27,16 +31,14 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
+#include <stdint.h>
+#include <time.h>
 #include <dc/maple.h>
-
-/* \cond */
-#define __packed__ __attribute__((packed))
-/* \endcond */
 
 /** \brief  BCD timestamp, used several places in the vmufs.
     \headerfile dc/vmufs.h
 */
-typedef struct {
+typedef struct vmu_timestamp {
     uint8   cent;   /**< \brief Century */
     uint8   year;   /**< \brief Year, within century */
     uint8   month;  /**< \brief Month of the year */
@@ -45,12 +47,12 @@ typedef struct {
     uint8   min;    /**< \brief Minutes */
     uint8   sec;    /**< \brief Seconds */
     uint8   dow;    /**< \brief Day of week (0 = monday, etc) */
-} __packed__ vmu_timestamp_t;
+} __packed vmu_timestamp_t;
 
 /** \brief  VMU FS Root block layout.
     \headerfile dc/vmufs.h
 */
-typedef struct {
+typedef struct vmu_root {
     uint8           magic[16];      /**< \brief All should contain 0x55 */
     uint8           use_custom;     /**< \brief 0 = standard, 1 = custom */
     uint8           custom_color[4];/**< \brief blue, green, red, alpha */
@@ -65,39 +67,50 @@ typedef struct {
     uint16          icon_shape;     /**< \brief Icon shape for this VMS */
     uint16          blk_cnt;        /**< \brief Number of user blocks */
     uint8           unk2[430];      /**< \brief ??? */
-} __packed__ vmu_root_t;
+} __packed vmu_root_t;
 
 /** \brief  VMU FS Directory entries, 32 bytes each.
     \headerfile dc/vmufs.h
+
+    \note 
+    vmu_dir_t::dirty should always be zero when written out to the VMU. What this
+    lets us do, though, is conserve on flash writes. If you only want to
+    modify one single file (which is the standard case) then re-writing all
+    of the dir blocks is a big waste. Instead, you should set the dirty flag
+    on the in-mem copy of the directory, and writing it back out will only
+    flush the containing block back to the VMU, setting it back to zero
+    in the process. Loaded blocks should always have zero here (though we
+    enforce that in the code to make sure) so it will be non-dirty by
+    default.
 */
-typedef struct {
+typedef struct vmu_dir {
     uint8           filetype;       /**< \brief 0x00 = no file; 0x33 = data; 0xcc = a game */
     uint8           copyprotect;    /**< \brief 0x00 = copyable; 0xff = copy protected */
     uint16          firstblk;       /**< \brief Location of the first block in the file */
-    char            filename[12];   /**< \brief Note: there is no null terminator */
+    char            filename[12];   /**< \brief Note: there is no NULL terminator */
     vmu_timestamp_t timestamp;      /**< \brief File time */
     uint16          filesize;       /**< \brief Size of the file in blocks */
     uint16          hdroff;         /**< \brief Offset of header, in blocks from start of file */
     uint8           dirty;          /**< \brief See header notes */
     uint8           pad1[3];        /**< \brief All zeros */
-} __packed__ vmu_dir_t;
-#undef __packed__
-
-/* Notes about the "dirty" field on vmu_dir_t :)
-
-   This byte should always be zero when written out to the VMU. What this
-   lets us do, though, is conserve on flash writes. If you only want to
-   modify one single file (which is the standard case) then re-writing all
-   of the dir blocks is a big waste. Instead, you should set the dirty flag
-   on the in-mem copy of the directory, and writing it back out will only
-   flush the containing block back to the VMU, setting it back to zero
-   in the process. Loaded blocks should always have zero here (though we
-   enforce that in the code to make sure) so it will be non-dirty by
-   default.
- */
-
+} __packed vmu_dir_t;
 
 /* ****************** Low level functions ******************** */
+
+void vmufs_timestamp_to_tm(const vmu_timestamp_t *timestamp, struct tm *bt);
+
+void vmufs_timestamp_from_tm(vmu_timestamp_t *timestamp, const struct tm *bt);
+
+void vmufs_format();
+
+void vmufs_is_formatted();
+
+// /int vmufs_extra_blocks();
+
+int vmufs_damaged_blocks();
+
+int vmufs_dump();
+
 
 /** \brief  Fill in the date on a vmu_dir_t for writing.
 
