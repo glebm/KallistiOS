@@ -2,6 +2,7 @@
 
    vmufs.c
    Copyright (C) 2003 Megan Potter
+   Copyright (C) 2023 Falco Girgis
 
 */
 
@@ -10,6 +11,7 @@
 #include <malloc.h>
 #include <time.h>
 #include <kos/mutex.h>
+#include <kos/numeric.h>
 #include <dc/vmufs.h>
 #include <dc/maple.h>
 #include <dc/maple/vmu.h>
@@ -44,7 +46,7 @@ Function comments located in vmufs.h.
 /* We need some sort of access control here for threads. This is somewhat
    less than optimal (one mutex for all VMUs) but I doubt it'll really
    be much of an issue :) */
-static mutex_t mutex;
+static mutex_t mutex = MUTEX_INITIALIZER;
 
 /* Convert a decimal number to BCD; max of two digits */
 static uint8 dec_to_bcd(int dec) {
@@ -54,6 +56,30 @@ static uint8 dec_to_bcd(int dec) {
     rv |= ((dec / 10) % 10) << 4;
 
     return rv;
+}
+
+void vmufs_timestamp_to_tm(const vmu_timestamp_t *timestamp, struct tm *bt);
+
+void vmufs_timestamp_from_tm(vmu_timestamp_t *timestamp, const struct tm *bt);
+
+void vmufs_timestamp_to_tm(const vmu_timestamp_t *timestamp, struct tm *bt) {
+    bt->tm_sec  = dt->second;
+    bt->tm_min  = dt->minute;
+    bt->tm_hour = dt->hour;
+    bt->tm_mday = dt->day;
+    bt->tm_mon  = dt->month - 1;
+    bt->tm_year = dt->year - 1900;
+    bt->tm_wday = dt->weekday != 6? dt->weekday + 1 : 0;
+}
+
+void vmufs_timestamp_from_tm(vmu_timestamp_t *timestamp, const struct tm *bt) {
+    dt->second  = bt->tm_sec;
+    dt->minute  = bt->tm_min;
+    dt->hour    = bt->tm_hour;
+    dt->day     = bt->tm_mday;
+    dt->month   = bt->tm_mon + 1;
+    dt->year    = bt->tm_year + 1900;
+    dt->weekday = bt->tm_wday? dt->weekday - 1 : 6;
 }
 
 void vmufs_dir_fill_time(vmu_dir_t *d) {
