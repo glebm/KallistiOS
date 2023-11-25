@@ -1,9 +1,11 @@
 /* KallistiOS ##version##
 
    dc/maple/vmu.h
-   Copyright (C) 2000-2002 Jordan DeLong, Megan Potter
+   Copyright (C) 2000-2002 Jordan DeLong
+   Copyright (C) 2000-2002 Megan Potter
    Copyright (C) 2008 Donald Haase
-   Copyright (C) 2023 Falco Girgis, Andy Barajas
+   Copyright (C) 2023 Falco Girgis
+   Copyright (C) 2023 Andy Barajas
 
 */
 
@@ -16,6 +18,10 @@
     Each API can also be used independently for devices which aren't
     VMUs, such as using MEMCARD functionality with a standard memory
     card that lacks a screen or buzzer.
+
+    \sa dc/vmufs.h
+    \sa dc/vmu_pkg.h
+    \sa dc/vmu_fb.h
 
     \author Jordan DeLong
     \author Megan Potter
@@ -31,6 +37,7 @@ __BEGIN_DECLS
 
 #include <arch/types.h>
 #include <dc/maple.h>
+#include <dc/fs_vmu.h>
 
 #include <stdint.h>
 #include <time.h>
@@ -137,7 +144,7 @@ int vmu_use_custom_color(maple_device_t *dev, int enable);
     \ingroup vmu_settings
 
     This function sets the custom color of a specific VMU. This color is only
-    displayed in the Dreamcast's file manager. This function also enables the 
+    displayed in the Dreamcast's file manager. This function also enables the
     use of the custom color. Otherwise it wouldn't show up.
 
     \param  dev             The device to change the color of.
@@ -151,14 +158,16 @@ int vmu_use_custom_color(maple_device_t *dev, int enable);
 
     \sa vmu_get_custom_color, vmu_use_custom_color
 */
-int vmu_set_custom_color(maple_device_t *dev, uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
+int vmu_set_custom_color(maple_device_t *dev, 
+                         uint8_t red, uint8_t green,
+                         uint8_t blue, uint8_t alpha);
 
 /** \brief   Get custom color of a VMU
     \ingroup vmu_settings
 
     This function gets the custom color of a specific VMU. This color is only
-    displayed in the Dreamcast's file manager. This function also returns whether
-    the custom color is currently enabled.
+    displayed in the Dreamcast's file manager. This function also returns
+    whether the custom color is currently enabled.
 
     \param  dev             The device to change the color of.
     \param  red             The red component. 0-255
@@ -172,19 +181,23 @@ int vmu_set_custom_color(maple_device_t *dev, uint8_t red, uint8_t green, uint8_
 
     \sa vmu_set_custom_color, vmu_use_custom_color
 */
-int vmu_get_custom_color(maple_device_t *dev, uint8_t *red, uint8_t *green, uint8_t *blue, uint8_t *alpha);
+int vmu_get_custom_color(maple_device_t *dev, 
+                         uint8_t *red, uint8_t *green,
+                         uint8_t *blue, uint8_t *alpha);
 
 /** \brief   Set icon shape of a VMU
     \ingroup vmu_settings
 
     This function sets the icon shape of a specific VMU. The icon shape is a
-    VMU icon that is displayed on the LCD screen while navigating the Dreamcast
-    BIOS menu and is the GUI representation of the VMU in the menu's file manager.
-    The Dreamcast BIOS provides a set of 124 icons to choose from.
+    VMU icon that is displayed on the LCD screen while navigating the
+    Dreamcast BIOS menu and is the GUI representation of the VMU in the menu's
+    file manager. The Dreamcast BIOS provides a set of 124 icons to choose 
+    from.
 
     \note
-    When a custom file named "ICONDATA_VMS" is present on a VMU, it overrides this
-    icon by providing custom icons for both the DC BIOS menu and the VMU's LCD screen.
+    When a custom file named "ICONDATA_VMS" is present on a VMU, it overrides
+    this icon by providing custom icons for both the DC BIOS menu and the VMU's
+    LCD screen.
 
     \param  dev             The device to change the icon shape of.
     \param  icon_shape      One of the values found in \ref vmu_icons.
@@ -201,12 +214,13 @@ int vmu_set_icon_shape(maple_device_t *dev, uint8_t icon_shape);
 
     This function gets the icon shape of a specific VMU. The icon shape is a
     VMU icon that is displayed on the LCD screen while navigating the Dreamcast
-    BIOS menu and is the GUI representation of the VMU in the menu's file manager.
-    The Dreamcast BIOS provides a set of 124 icons to choose from.
+    BIOS menu and is the GUI representation of the VMU in the menu's file
+    manager. The Dreamcast BIOS provides a set of 124 icons to choose from.
 
     \note
-    When a custom file named "ICONDATA_VMS" is present on a VMU, it overrides this
-    icon by providing custom icons for both the DC BIOS menu and the VMU's LCD screen.
+    When a custom file named "ICONDATA_VMS" is present on a VMU, it overrides
+    this icon by providing custom icons for both the DC BIOS menu and the VMU's
+    LCD screen.
 
     \param  dev             The device to change the icon shape of.
     \param  icon_shape      One of the values found in \ref vmu_icons.
@@ -265,9 +279,9 @@ int vmu_draw_lcd(maple_device_t *dev, const void *bitmap);
     vmu_draw_lcd(), but the image is rotated 180° so that the first byte of the
     bitmap corresponds to the top-left corner, instead of the bottom-right one.
 
-    \warning    This function is optimized by an assembly routine which operates
-                on 32 bits at a time. As such, the given bitmap must be 4-byte
-                aligned.
+    \warning    This function is optimized by an assembly routine which
+                operates on 32 bits at a time. As such, the given bitmap
+                must be 4-byte aligned.
 
     \param  dev             The device to draw to.
     \param  bitmap          The bitmap to show.
@@ -282,8 +296,9 @@ int vmu_draw_lcd_rotated(maple_device_t *dev, const void *bitmap);
 /** \brief   Display a Xwindows XBM image on a VMU screen.
     \ingroup maple_lcd
 
-    This function takes in a Xwindows XBM, converts it to a raw bitmap, and sends 
-    it to a VMU to display on its screen. This XBM image is 48x32 in size.
+    This function takes in a Xwindows XBM, converts it to a raw bitmap, and
+    sends it to a VMU to display on its screen. This XBM image is 48x32 in
+    size.
 
     \param  dev             The device to draw to.
     \param  vmu_icon        The icon to set.
@@ -302,16 +317,23 @@ int vmu_draw_lcd_xbm(maple_device_t *dev, const char *vmu_icon);
     This function takes in a Xwindows XBM and displays the image on all VMUs.
 
     \note
-    This is a convenience function for vmu_draw_lcd() to broadcast across all VMUs.
+    This is a convenience function for vmu_draw_lcd() to broadcast across all
+    VMUs.
 
     \todo
     Prevent this routine from broadcasting to rear VMUs.
 
     \param  vmu_icon        The icon to set.
 
+    \retval MAPLE_EOK       On success for every screen.
+    \retval MAPLE_EAGAIN    If the command couldn't be sent on at least
+                            one LCD screen. Try again later.
+    \retval MAPLE_ETIMEOUT  If the command timed out while blocking on at
+                            least one LCD screen.
+
     \sa vmu_draw_lcd_xbm
 */
-void vmu_set_icon(const char *vmu_icon);
+int vmu_set_icon(const char *vmu_icon);
 
 /** \defgroup maple_memcard Memory Card Function
     \brief    API for features of the Memory Card Maple Function
@@ -336,6 +358,24 @@ void vmu_set_icon(const char *vmu_icon);
     `/vmu/` root directory to operate on VMU data. 
 */
 
+/** \brief   Queries for the storage media info
+    \ingroup maple_memcard
+
+    This function retrieves the storage media information from the
+    VMU. This structure contains metadata about the layout of the
+    filesystem.
+
+    \param  dev             The device to read from.
+    \param  info            The structure to populate.
+
+    \retval MAPLE_EOK       On success.
+    \retval MAPLE_ETIMEOUT  If the command timed out while blocking.
+    \retval MAPLE_EFAIL     On errors other than timeout.
+
+    \sa vmu_block_write
+*/
+int vmu_media_info(maple_device_t *dev, vmu_media_info_t *info);
+
 /** \brief   Read a block from a memory card.
     \ingroup maple_memcard
 
@@ -351,7 +391,7 @@ void vmu_set_icon(const char *vmu_icon);
 
     \sa vmu_block_write
 */
-int vmu_block_read(maple_device_t *dev, uint16_t blocknum, uint8_t *buffer);
+int vmu_block_read(maple_device_t *dev, vmu_block_t blocknum, uint8_t *buffer);
 
 /** \brief   Write a block to a memory card.
     \ingroup maple_memcard
@@ -368,7 +408,8 @@ int vmu_block_read(maple_device_t *dev, uint16_t blocknum, uint8_t *buffer);
 
     \sa vmu_block_read
 */
-int vmu_block_write(maple_device_t *dev, uint16_t blocknum, const uint8_t *buffer);
+int vmu_block_write(maple_device_t *dev, vmu_block_t blocknum, 
+                    const uint8_t *buffer);
 
 /** \defgroup maple_clock Clock Function
     \brief    API for features of the Clock Maple Function
@@ -398,7 +439,8 @@ int vmu_block_write(maple_device_t *dev, uint16_t blocknum, const uint8_t *buffe
 
     \warning
     This function is submitting raw, encoded values to the VMU. For a more
-    user-friendly API built around generating simple tones, see vmu_beep_waveform().
+    user-friendly API built around generating simple tones, see 
+    vmu_beep_waveform().
 
     \param  dev             The device to attempt to beep.
     \param  beep            The tone to generate. Byte values are as follows:
@@ -464,18 +506,22 @@ int vmu_beep_raw(maple_device_t *dev, uint32_t beep);
     values, using the KOS example found at `/examples/dreamcast/vmu/beep`.
 
     \param  dev                 The VMU device to play the tone on
-    \param  period1             The period or total interval of the first waveform
-    \param  duty_cycle1         The duty cycle or active interval of the first waveform 
-    \param  period2             The period or total interval of the second waveform
-                                (ignored by standard first-party VMUs).
-    \param  duty_cycle2         The duty cycle or active interval of the second waveform
-                                (ignored by standard first-party VMUs).
+    \param  period1             The period or total interval of the first
+                                waveform
+    \param  duty_cycle1         The duty cycle or active interval of the first
+                                waveform 
+    \param  period2             The period or total interval of the second
+                                waveform (ignored by standard first-party VMUs).
+    \param  duty_cycle2         The duty cycle or active interval of the second
+                                waveform (ignored by standard first-party VMUs).
 
     \retval MAPLE_EOK           On success.
     \retval MAPLE_EAGAIN        If the command couldn't be sent. Try again later.
     \retval MAPLE_ETIMEOUT      If the command timed out while blocking.
 */
-int vmu_beep_waveform(maple_device_t *dev, uint8_t period1, uint8_t duty_cycle1, uint8_t period2, uint8_t duty_cycle2);
+int vmu_beep_waveform(maple_device_t *dev, 
+                      uint8_t period1, uint8_t duty_cycle1,
+                      uint8_t period2, uint8_t duty_cycle2);
 
 /** @} */
 

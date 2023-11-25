@@ -21,6 +21,7 @@
     \sa    dc/vmu_pkg.h
     \sa    dc/fs_vmu.h
     \sa    dc/maple/vmu.h
+    \sa    dc/vmu_fb.h
 
     \author Megan Potter
     \author Falco Girgis
@@ -57,7 +58,16 @@ __BEGIN_DECLS
 #define VMU_ROOT_MAGIC      0x55
 #define VMU_ROOT_MAGIC_SIZE 16
 
-/** \brief   VMU Block Index
+/* Flags for vmufs_write */
+#define VMUFS_OVERWRITE     1   /**< \brief Overwrite existing files */
+#define VMUFS_VMUGAME       2   /**< \brief This file is a VMU game */
+#define VMUFS_NOCOPY        4   /**< \brief Set the no-copy flag */
+
+#define VMUFS_FAT_UNALLOCATED   0xfffc
+#define VMUFS_FAT_LAST_IN_FILE  0xfffa
+#define VMUFS_FAT_DAMAGED       0xffff
+
+/** \brief   VMU Block Number
     \ingroup vmufs
 
     Typedef representing a single VMU block.
@@ -99,7 +109,7 @@ typedef struct vmu_volume_label {
             uint8_t alpha;            /**< \brief Custom color alpha channel */
         };
     };
-    uint8_t         unused[27];       /**< \brief Extra label storge (Default: all 0s) */
+    uint8_t         unused[27];       /**< \brief Extra storage (Default: all 0s) */
 } vmu_volume_label_t;
 
 /** \brief   BCD timestamp, used several places in the vmufs.
@@ -142,8 +152,8 @@ typedef struct vmu_root {
     uint8_t            reserved3[0x1f0 - 0x60];
 } __packed vmu_root_t;
 
-/** \brief  VMU FS Directory entries, 32 bytes each.
-    \headerfile dc/vmufs.h
+/** \brief   VMU FS Directory entries, 32 bytes each.
+    \ingroup vmufs
 
     \note 
     vmu_dir_t::dirty should always be zero when written out to the VMU. What this
@@ -177,14 +187,17 @@ int vmufs_timestamp_from_unix(vmu_timestamp_t *timestamp, time_t unix);
 /** \brief  Fill in the date on a vmu_dir_t for writing.
 
     \param  d               The directory to fill in the date on.
+    \retval                 The current date/time which was filled.
 */
-void vmufs_dir_fill_time(vmu_dir_t *d);
+time_t vmufs_dir_fill_time(vmu_dir_t *d);
 
-void vmufs_format(maple_device_t *dev);;
+int vmufs_format(maple_device_t *dev);
 
-void vmufs_is_formatted();
+int vmufs_unformat(maple_device_t *dev);
 
-// /int vmufs_extra_blocks();
+int vmufs_check_formatted();
+
+int vmufs_extra_blocks();
 
 int vmufs_damaged_blocks();
 
@@ -193,10 +206,6 @@ int vmufs_save();
 int vmufs_load();
 
 int vmufs_defrag();
-
-int vmufs_dir_game(maple_device_t *dev, );
-
-int vmufs_dir_icondata();
 
 /** \brief  Lock the vmufs mutex.
 
@@ -236,10 +245,6 @@ int vmufs_root_read(maple_device_t *dev, vmu_root_t *root_buf);
     \retval 0               On success.
 */
 int vmufs_root_write(maple_device_t *dev, const vmu_root_t *root_buf);
-
-#define VMUFS_FAT_UNALLOCATED   0xfffc
-#define VMUFS_FAT_LAST_IN_FILE  0xfffa
-#define VMUFS_FAT_DAMAGED       0xffff
 
 /** \brief  Given a VMU's root block, return the amount of space in bytes
             required to hold its FAT.
@@ -339,6 +344,24 @@ ssize_t vmufs_dir_find(const vmu_root_t *root, const vmu_dir_t *dir,
                             <0 on failure.
 */
 ssize_t vmufs_dir_game(const vmu_root_t *root, const vmu_dir_t *dir);
+
+/** \brief  Given a previously-read directory, locate the ICONDATA_VMS file.
+
+    \param  root            The VMU root block.
+    \param  dir             The VMU directory.
+    \return                 The index into the directory array on success, or
+                            <0 on failure.
+*/
+ssize_t vmufs_dir_icondata(const vmu_root_t *root, const vmu_dir_t *dir);
+
+/** \brief  Given a previously-read directory, locate the EXTRA_BG.PVR file.
+
+    \param  root            The VMU root block.
+    \param  dir             The VMU directory.
+    \return                 The index into the directory array on success, or
+                            <0 on failure.
+*/
+ssize_t vmufs_dir_extrabg(const vmu_root_t *root, const vmu_dir_t *dir);
 
 /** \brief  Given a previously-read directory, add a new dirent to the dir.
 
@@ -458,11 +481,6 @@ int vmufs_read(maple_device_t *dev, const char *fn, void **outbuf,
 int vmufs_read_dirent(maple_device_t *dev, const vmu_dir_t *dirent, 
                       void **outbuf, size_t *outsize);
 
-/* Flags for vmufs_write */
-#define VMUFS_OVERWRITE 1   /**< \brief Overwrite existing files */
-#define VMUFS_VMUGAME   2   /**< \brief This file is a VMU game */
-#define VMUFS_NOCOPY    4   /**< \brief Set the no-copy flag */
-
 /** \brief Write a file to the VMU.
 
     If the named file already exists, then the function checks 'flags'. If
@@ -497,19 +515,12 @@ int vmufs_delete(maple_device_t *dev, const char *fn);
 */
 int vmufs_free_blocks(maple_device_t *dev);
 
-/** \brief  Initialize vmufs.
-
-    Must be called before anything else is useful.
-
-    \retval 0               On success (no error conditions defined).
-*/
+/** \cond  */
+/* Initialize vmufs. */
 int vmufs_init(void);
-
-/** \brief  Shutdown vmufs.
-
-    Must be called after everything is finished.
-*/
+/*  Shutdown vmufs. */
 int vmufs_shutdown(void);
+/** \endcond */
 
 __END_DECLS
 

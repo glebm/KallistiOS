@@ -48,20 +48,6 @@ Function comments located in vmufs.h.
    be much of an issue :) */
 static mutex_t mutex = MUTEX_INITIALIZER;
 
-/* Convert a decimal number to BCD; max of two digits */
-static uint8 dec_to_bcd(int dec) {
-    uint8 rv = 0;
-
-    rv = dec % 10;
-    rv |= ((dec / 10) % 10) << 4;
-
-    return rv;
-}
-
-void vmufs_timestamp_to_tm(const vmu_timestamp_t *timestamp, struct tm *bt);
-
-void vmufs_timestamp_from_tm(vmu_timestamp_t *timestamp, const struct tm *bt);
-
 void vmufs_timestamp_to_tm(const vmu_timestamp_t *timestamp, struct tm *bt) {
     bt->tm_sec  = dt->second;
     bt->tm_min  = dt->minute;
@@ -123,12 +109,12 @@ int vmufs_root_write(maple_device_t * dev, vmu_root_t * root_buf) {
         return 0;
 }
 
-int vmufs_dir_blocks(vmu_root_t * root_buf) {
-    return root_buf->dir_size * 512;
+size_t vmufs_dir_blocks(const vmu_root_t *root_buf) {
+    return root_buf->dir_size * VMU_BLOCK_SIZE;
 }
 
-int vmufs_fat_blocks(vmu_root_t * root_buf) {
-    return root_buf->fat_size * 512;
+size_t vmufs_fat_blocks(const vmu_root_t *root_buf) {
+    return root_buf->fat_size * VMU_BLOCK_SIZE;
 }
 
 /* Common code for both dir_read and dir_write */
@@ -145,7 +131,7 @@ static int vmufs_dir_ops(maple_device_t * dev, vmu_root_t * root, vmu_dir_t * di
     while(dir_size > 0) {
         if(write) {
             /* Scan this block for changes */
-            for(i = 0, needsop = 0; i < 512 / sizeof(vmu_dir_t); i++) {
+            for(i = 0, needsop = 0; i < VMU_BLOCK_SIZE / sizeof(vmu_dir_t); i++) {
                 if(dir_buf[i].dirty) {
                     needsop = 1;
                 }
@@ -173,7 +159,7 @@ static int vmufs_dir_ops(maple_device_t * dev, vmu_root_t * root, vmu_dir_t * di
 
         dir_block--;
         dir_size--;
-        dir_buf += 512 / sizeof(vmu_dir_t); /* == 16 */
+        dir_buf += VMU_BLOCK_SIZE / sizeof(vmu_dir_t); /* == 16 */
     }
 
     return 0;
@@ -232,7 +218,7 @@ int vmufs_dir_find(vmu_root_t * root, vmu_dir_t * dir, const char * fn) {
     int i;
     int dcnt;
 
-    dcnt = root->dir_size * 512 / sizeof(vmu_dir_t);
+    dcnt = root->dir_size * VMU_BLOCK_SIZE / sizeof(vmu_dir_t);
 
     for(i = 0; i < dcnt; i++) {
         /* Not a file -> skip it */
@@ -240,7 +226,7 @@ int vmufs_dir_find(vmu_root_t * root, vmu_dir_t * dir, const char * fn) {
             continue;
 
         /* Check the filename */
-        if(!strncmp(fn, dir[i].filename, 12))
+        if(!strncmp(fn, dir[i].filename, VMU_FILENAME_SIZE))
             return i;
     }
 
@@ -252,7 +238,7 @@ int vmufs_dir_add(vmu_root_t * root, vmu_dir_t * dir, vmu_dir_t * newdirent) {
     int i;
     int dcnt;
 
-    dcnt = root->dir_size * 512 / sizeof(vmu_dir_t);
+    dcnt = root->dir_size * VMU_BLOCK_SIZE / sizeof(vmu_dir_t);
 
     for(i = 0; i < dcnt; i++) {
         /* A file -> skip it */
@@ -273,8 +259,9 @@ int vmufs_dir_add(vmu_root_t * root, vmu_dir_t * dir, vmu_dir_t * newdirent) {
 }
 
 int vmufs_file_read(maple_device_t * dev, uint16 * fat, vmu_dir_t * dirent, void * outbuf) {
-    int curblk, blkleft, rv;
-    uint8   * out;
+    vmu_block_t curblk, blkleft, 
+    int         rv;
+    uint8       *out;
 
     out = (uint8 *)outbuf;
 
@@ -287,9 +274,9 @@ int vmufs_file_read(maple_device_t * dev, uint16 * fat, vmu_dir_t * dirent, void
     /* While we've got stuff remaining... */
     while(blkleft > 0) {
         /* Make sure the FAT matches up with the directory */
-        if(curblk == 0xfffc || curblk == 0xfffa) {
-            char fn[13] = {0};
-            memcpy(fn, dirent->filename, 12);
+        if(curblk == VMUFS_FAT_UNALLOCATED || curblk == VMUFS_FAT_LAST_IN_FILE) {
+            char fn[VMU_FILENAME_SIZE + 1] = {0};
+            memcpy(fn, dirent->filename, VMU_FILENAME_SIZE);
             dbglog(DBG_ERROR, "vmufs_file_read: file '%s' ends prematurely in fat on device %c%c\n",
                    fn, dev->port + 'A', dev->unit + '0');
             return -1;
@@ -307,13 +294,13 @@ int vmufs_file_read(maple_device_t * dev, uint16 * fat, vmu_dir_t * dirent, void
         /* Scoot our counters */
         curblk = fat[curblk];
         blkleft--;
-        out += 512;
+        out += VMU_BLOCK_SIZE;
     }
 
     /* Make sure the FAT matches up with the directory */
-    if(curblk != 0xfffa) {
-        char fn[13] = {0};
-        memcpy(fn, dirent->filename, 12);
+    if(curblk != VMUFS_FAT_LAST_IN_FILE) {
+        char fn[VMU_FILENAME_SIZE + 1] = {0};
+        memcpy(fn, dirent->filename, VMU_FILENAME_SIZE);
         dbglog(DBG_ERROR, "vmufs_file_read: file '%s' is sized shorter than in the FAT on device %c%c\n",
                fn, dev->port + 'A', dev->unit + '0');
         return -3;
@@ -323,35 +310,35 @@ int vmufs_file_read(maple_device_t * dev, uint16 * fat, vmu_dir_t * dirent, void
 }
 
 /* Find an open block for writing in the FAT */
-static int vmufs_find_block(vmu_root_t * root, uint16 * fat, vmu_dir_t * dirent) {
+static ssize_t vmufs_find_block(const vmu_root_t *root, const vmu_block_t* fat, const vmu_dir_t *dirent) {
     int i;
 
-    if(dirent->filetype == 0x33) {
+    if(dirent->filetype == VMU_FILE_DATA) {
         /* Data files -- count down from top */
         for(i = root->blk_cnt - 1; i >= 0; i--) {
-            if(fat[i] == 0xfffc)
+            if(fat[i] == VMUFS_FAT_UNALLOCATED)
                 return i;
         }
     }
-    else if(dirent->filetype == 0xcc) {
+    else if(dirent->filetype == VMU_FILE_GAME) {
         /* VMU games -- count up from bottom */
         for(i = 0; i < root->blk_cnt; i++) {
-            if(fat[i] == 0xfffc)
+            if(fat[i] == VMUFS_FAT_UNALLOCATED)
                 return i;
         }
     }
     else {
         /* Dunno what this is! */
-        char fn[13] = {0};
-        memcpy(fn, dirent->filename, 12);
+        char fn[VMU_FILENAME_SIZE + 1] = {0};
+        memcpy(fn, dirent->filename, VMU_FILENAME_SIZE);
         dbglog(DBG_ERROR, "vmufs_find_block: file '%s' has unknown type %d\n", fn, dirent->filetype);
         return -1;
     }
 
     /* No free blocks left */
     {
-        char fn[13] = {0};
-        memcpy(fn, dirent->filename, 12);
+        char fn[VMU_FILENAME_SIZE + 1] = {0};
+        memcpy(fn, dirent->filename, VMU_FILENAME_SIZE);
         dbglog(DBG_ERROR, "vmufs_find_block: can't find any more free blocks for file '%s'\n", fn);
     }
     return -2;
@@ -359,22 +346,22 @@ static int vmufs_find_block(vmu_root_t * root, uint16 * fat, vmu_dir_t * dirent)
 
 int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
                      vmu_dir_t * dir, vmu_dir_t * newdirent, void * filebuf, int size) {
-    int curblk, blkleft, rv;
-    int vmuspaceleft;
-    uint8   * out;
+    vmu_block_t curblk, blkleft;
+    int         rv, vmuspaceleft;
+    uint8       *out;
 
     /* Files must be at least one block long */
     if(size <= 0) {
-        char fn[13] = {0};
-        memcpy(fn, newdirent->filename, 12);
+        char fn[VMU_FILENAME_SIZE + 1] = {0};
+        memcpy(fn, newdirent->filename, VMU_FILENAME_SIZE);
         dbglog(DBG_ERROR, "vmufs_file_write: file '%s' is too short (%d blocks)\n", fn, size);
         return -3;
     }
 
     /* Make sure this file isn't already in the directory */
     if(vmufs_dir_find(root, dir, newdirent->filename) >= 0) {
-        char fn[13] = {0};
-        memcpy(fn, newdirent->filename, 12);
+        char fn[VMU_FILENAME_SIZE + 1] = {0};
+        memcpy(fn, newdirent->filename, VMU_FILENAME_SIZE);
         dbglog(DBG_ERROR, "vmufs_file_write: file '%s' is already in the dir on device %c%c\n",
                fn, dev->port + 'A', dev->unit + '0');
         return -4;
@@ -412,7 +399,7 @@ int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
 
         /* Scoot our counters */
         blkleft--;
-        out += 512;
+        out += VMU_BLOCK_SIZE;
 
         /* If we have blocks left, find another free block. Otherwise,
            write out a terminator. */
@@ -422,7 +409,7 @@ int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
             // b) the calling code for some reason writes the FAT back out anyway.
             // This may render the save game unusable but at least we won't link
             // into some other file (or worse, a game!)
-            fat[curblk] = 0xfffa;
+            fat[curblk] = VMUFS_FAT_LAST_IN_FILE;
             rv = vmufs_find_block(root, fat, newdirent);
 
             if(rv < 0)
@@ -432,7 +419,7 @@ int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
             curblk = rv;
         }
         else {
-            fat[curblk] = 0xfffa;
+            fat[curblk] = VMUFS_FAT_LAST_IN_FILE;
         }
     }
 
@@ -447,8 +434,8 @@ int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
 }
 
 int vmufs_file_delete(vmu_root_t * root, uint16 * fat, vmu_dir_t * dir, const char * fn) {
-    int idx;
-    int blk, nextblk;
+    ssize_t idx;
+    vmu_block_t blk, nextblk;
 
     /* Find the file */
     idx = vmufs_dir_find(root, dir, fn);
@@ -461,15 +448,15 @@ int vmufs_file_delete(vmu_root_t * root, uint16 * fat, vmu_dir_t * dir, const ch
     /* Find its first block, and go through clearing FAT blocks. */
     blk = dir[idx].firstblk;
 
-    while(blk != 0xfffa) {
-        if(blk == 0xfffc || blk > root->blk_cnt) {
+    while(blk != VMUFS_FAT_LAST_IN_FILE) {
+        if(blk == VMUFS_FAT_UNALLOCATED || blk > root->blk_cnt) {
             dbglog(DBG_ERROR, "vmufs_file_delete: inconsistency -- corrupt FAT or dir\n");
             return -2;
         }
 
         /* Free it */
         nextblk = fat[blk];
-        fat[blk] = 0xfffc;
+        fat[blk] = VMUFS_FAT_UNALLOCATED;
 
         /* Move to the next one */
         blk = nextblk;
@@ -485,27 +472,27 @@ int vmufs_file_delete(vmu_root_t * root, uint16 * fat, vmu_dir_t * dir, const ch
 }
 
 /* hee hee :) */
-int vmufs_fat_free(vmu_root_t * root, uint16 * fat) {
-    int i, freeblocks;
+size_t vmufs_fat_free(const vmu_root_t *root, const vmu_block_t *fat) {
+    size_t i, freeblocks;
 
     freeblocks = 0;
 
     for(i = 0; i < root->blk_cnt; i++) { /* only count user blocks */
-        if(fat[i] == 0xfffc)
+        if(fat[i] == VMUFS_FAT_UNALLOCATED)
             freeblocks++;
     }
 
     return freeblocks;
 }
 
-int vmufs_dir_free(vmu_root_t * root, vmu_dir_t * dir) {
+size_t vmufs_dir_free(vmu_root_t * root, vmu_dir_t * dir) {
     unsigned int i;
     int freeblocks;
 
     freeblocks = 0;
 
-    for(i = 0; i < root->dir_size * 512 / sizeof(vmu_dir_t); i++) {
-        if(dir[i].filetype == 0)
+    for(i = 0; i < root->dir_size * VMU_BLOCK_SIZE / sizeof(vmu_dir_t); i++) {
+        if(dir[i].filetype == VMU_FILE_NONE)
             freeblocks++;
     }
 
@@ -620,15 +607,15 @@ int vmufs_readdir(maple_device_t * dev, vmu_dir_t ** outbuf, int * outcnt) {
 
     for(i = 0; i < dirsize / sizeof(vmu_dir_t); i++) {
         /* Skip blanks */
-        if(dir[i].filetype == 0)
+        if(dir[i].filetype == VMU_FILE_NONE)
             continue;
 
         /* Not a blank -- look for an earlier slot that's empty. If
            we don't find one, just leave it alone. */
         for(j = 0; j < i; j++) {
-            if(dir[j].filetype == 0) {
+            if(dir[j].filetype == VMU_FILE_NONE) {
                 memcpy(dir + j, dir + i, sizeof(vmu_dir_t));
-                dir[i].filetype = 0;
+                dir[i].filetype = VMU_FILE_NONE;
                 break;
             }
         }
@@ -657,7 +644,7 @@ ex:
 /* Shared code between read/read_dirent */
 static int vmufs_read_common(maple_device_t * dev, vmu_dir_t * dirent, uint16 * fat, void ** outbuf, int * outsize) {
     /* Allocate the output space */
-    *outsize = dirent->filesize * 512;
+    *outsize = dirent->filesize * VMU_FILENAME_SIZE;
     *outbuf = malloc(*outsize);
 
     if(!*outbuf) {
@@ -677,10 +664,10 @@ static int vmufs_read_common(maple_device_t * dev, vmu_dir_t * dirent, uint16 * 
     return 0;
 }
 
-int vmufs_read(maple_device_t * dev, const char * fn, void ** outbuf, int * outsize) {
+int vmufs_read(maple_device_t *dev, const char *fn, void **outbuf, size_t* outsize) {
     vmu_root_t  root;
-    vmu_dir_t   * dir = NULL;
-    uint16      * fat = NULL;
+    vmu_dir_t   *dir = NULL;
+    vmu_block_t *fat = NULL;
     int     fatsize, dirsize, idx, rv = 0;
 
     *outbuf = NULL;
@@ -730,17 +717,17 @@ int vmufs_read_dirent(maple_device_t * dev, vmu_dir_t * dirent, void ** outbuf, 
 }
 
 /* Returns 0 for success, -7 for 'not enough space', and other values for other errors. :-)  */
-int vmufs_write(maple_device_t * dev, const char * fn, void * inbuf, int insize, int flags) {
-    vmu_root_t  root;
-    vmu_dir_t   * dir = NULL, nd;
-    uint16      * fat = NULL;
-    int     oldinsize, fatsize, dirsize, idx, rv = 0, st, fnlength;
+int vmufs_write(maple_device_t *dev, const char *fn, const void *inbuf, size_t insize, unsigned flags) {
+    vmu_root_t      root;
+    vmu_dir_t       *dir = NULL, nd;
+    vmu_fat_block_t *fat = NULL;
+    int             oldinsize, fatsize, dirsize, idx, rv = 0, st, fnlength;
 
     /* Round up the size if necessary */
     oldinsize = insize;
-    insize = (insize + 511) & ~511;
+    insize = round_up_to_pow2(insize, VMU_BLOCK_SIZE);
 
-    if(insize == 0) insize = 512;
+    if(insize == 0) insize = VMU_BLOCK_SIZE;
 
     if(oldinsize != insize) {
         dbglog(DBG_WARNING, "vmufs_write: padded file '%s' from %d to %d bytes\n",
@@ -773,26 +760,26 @@ int vmufs_write(maple_device_t * dev, const char * fn, void * inbuf, int insize,
 
     /* Fill out a new dirent for this file */
     memset(&nd, 0, sizeof(nd));
-    nd.filetype = (flags & VMUFS_VMUGAME) ? 0xcc : 0x33;
-    nd.copyprotect = (flags & VMUFS_NOCOPY) ? 0xff : 0x00;
+    nd.filetype = (flags & VMUFS_VMUGAME) ? VMU_FILE_GAME : VMU_FILE_DATA;
+    nd.copyprotect = (flags & VMUFS_NOCOPY) ? VMU_FILE_PROTECTED : VMU_FILE_COPYABLE;
     nd.firstblk = 0;
 
     fnlength = strlen(fn);
-    fnlength = fnlength > 12 ? 12 : fnlength;
+    fnlength = fnlength > VMU_FILENAME_SIZE ? VMU_FILENAME_SIZE : fnlength;
     memcpy(nd.filename, fn, fnlength);
-    if (fnlength < 12) {
-        memset(nd.filename + fnlength, '\0', 12 - fnlength);
+    if (fnlength < VMU_FILENAME_SIZE) {
+        memset(nd.filename + fnlength, '\0', VMU_FILENAME_SIZE - fnlength);
     }
 
     vmufs_dir_fill_time(&nd);
-    nd.filesize = insize / 512;
+    nd.filesize = insize / VMU_BLOCK_SIZE;
     nd.hdroff = (flags & VMUFS_VMUGAME) ? 1 : 0;
     nd.dirty = 1;
 
     // If any of these fail, the action to take can be decided by the caller.
 
     /* Write out the data and update our structs */
-    if((st = vmufs_file_write(dev, &root, fat, dir, &nd, inbuf, insize / 512)) < 0) {
+    if((st = vmufs_file_write(dev, &root, fat, dir, &nd, inbuf, insize / VMU_BLOCK_SIZE)) < 0) {
         if(st == -2)
             rv = -7;
         else
