@@ -358,6 +358,31 @@ int vmu_set_icon(const char *vmu_icon);
     `/vmu/` root directory to operate on VMU data. 
 */
 
+/** \brief      MEMCARD Flash access properties
+    \ingroup    maple_memcard
+
+    This structure contains the various fields located within the
+    `MEMCARD`/`STORAGE` function definition block, providing various
+    low-level details for performing raw flash accesses.
+    
+    \sa vmu_media_info, vmu_root_block
+*/
+
+typedef struct vmu_memcard_definition {
+    union {
+        struct {
+            uint8_t partition_count;     /**< # of Partitions */
+            uint8_t block_size;          /**< # of Bytes within a block / 32 */
+            uint8_t read_accesses   : 4; /**< # of accesses to read a block */
+            uint8_t write_accesses  : 4; /**< # of accesses to write a block */
+            uint8_t removable       : 1; /**< 0 => Fixed : 1 => Removable */
+            uint8_t crc_required    : 1; /**< CRC required for read/write? */
+            uint8_t reserved        : 6; /**< Reserved (default: All 0's) */
+        };
+        uint8_t     bytes[4];            /**< Raw byte access */
+    };
+} vmu_memcard_definition_t;
+
 /** \brief   Queries for the storage media info
     \ingroup maple_memcard
 
@@ -366,15 +391,13 @@ int vmu_set_icon(const char *vmu_icon);
     filesystem.
 
     \param  dev             The device to read from.
-    \param  info            The structure to populate.
+    \param  info            The pointer to point at the structure
 
     \retval MAPLE_EOK       On success.
     \retval MAPLE_ETIMEOUT  If the command timed out while blocking.
     \retval MAPLE_EFAIL     On errors other than timeout.
-
-    \sa vmu_block_write
 */
-int vmu_media_info(maple_device_t *dev, vmu_media_info_t *info);
+int vmu_media_info(maple_device_t *dev, const vmu_media_info_t **info);
 
 /** \brief   Read a block from a memory card.
     \ingroup maple_memcard

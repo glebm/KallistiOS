@@ -167,6 +167,19 @@
 #define STATIC_ASSERT(cond, msg) typedef char static_assertion_##MSG[(cond) ? 1 : -1]
 #endif
 
+#ifndef COUNT_OF
+/** \brief Returns the number of elements within an array
+
+    This macro is used to safely count the number of elements
+    within a statically-sized array.
+
+    \warning
+    Only ever use this macro for statically-sized arrays!
+    Does not work with arrays which have been decayed into pointers!
+*/
+#define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
+#endif
+
 /* GCC macros for special cases */
 /* #if __GNUC__ ==  */
 

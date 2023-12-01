@@ -59,13 +59,13 @@ __BEGIN_DECLS
 #define VMU_ROOT_MAGIC_SIZE 16
 
 /* Flags for vmufs_write */
-#define VMUFS_OVERWRITE     1   /**< \brief Overwrite existing files */
-#define VMUFS_VMUGAME       2   /**< \brief This file is a VMU game */
-#define VMUFS_NOCOPY        4   /**< \brief Set the no-copy flag */
+#define VMU_OVERWRITE     1   /**< \brief Overwrite existing files */
+#define VMU_VMUGAME       2   /**< \brief This file is a VMU game */
+#define VMU_NOCOPY        4   /**< \brief Set the no-copy flag */
 
-#define VMUFS_FAT_UNALLOCATED   0xfffc
-#define VMUFS_FAT_LAST_IN_FILE  0xfffa
-#define VMUFS_FAT_DAMAGED       0xffff
+#define VMU_FAT_UNALLOCATED   0xfffc
+#define VMU_FAT_LAST_IN_FILE  0xfffa
+#define VMU_FAT_DAMAGED       0xffff
 
 /** \brief   VMU Block Number
     \ingroup vmufs
@@ -84,11 +84,11 @@ typedef uint16_t vmu_block_t;
     The information describes the size, location, and layout of every segment
     within the filesystem.
 
-    \sa vmu_root_t
+    \sa vmu_root
 
 */
 typedef struct vmu_media_info {
-    vmu_block_t     total_size;    /**< \brief Total partition size in blocks (default: 256?) */
+    vmu_block_t     total_size;    /**< \brief Total partition size in blocks (default: 255) */
     uint16_t        partition;     /**< \brief Partition number (default: 0) */
     vmu_block_t     root_loc;      /**< \brief Location of root block (default: 255) */
     vmu_block_t     fat_loc;       /**< \brief FAT location (default: 254) */
@@ -102,6 +102,9 @@ typedef struct vmu_media_info {
     vmu_block_t     game_loc;      /**< \brief Game location (default: 0) */
     vmu_block_t     game_size;     /**< \brief Game size in blocks (default: 128?) */
 } vmu_media_info_t;
+
+STATIC_ASSERT(sizeof(vmu_media_info_t) == 24,
+              "vmu_media_info structureis not 24 bytes!");
 
 /** \brief   VMU Volume Label
     \ingroup vmufs
@@ -121,6 +124,9 @@ typedef struct vmu_volume_label {
     uint8_t         unused[27];       /**< \brief Extra storage (Default: all 0s) */
 } vmu_volume_label_t;
 
+STATIC_ASSERT(sizeof(vmu_volume_label_t) == 32,
+              "vmu_volume_label structure is not 32 bytes!");
+
 /** \brief   BCD timestamp, used several places in the vmufs.
     \ingroup vmufs
 */
@@ -133,7 +139,10 @@ typedef struct vmu_timestamp {
     uint8_t   min;    /**< \brief Minutes (0-59) */
     uint8_t   sec;    /**< \brief Seconds (0-59) */
     uint8_t   dow;    /**< \brief Day of week (0 = Mon, ..., 6 = Sun) */
-} __packed vmu_timestamp_t;
+} vmu_timestamp_t;
+
+STATIC_ASSERT(sizeof(vmu_timestamp_t) == 32,
+              "vmu_timestamp structure is not 8 bytes!");
 
 /** \brief   VMU FS Root block layout.
     \ingroup vmufs
@@ -161,6 +170,9 @@ typedef struct vmu_root {
     uint8_t            reserved3[0x1f0 - 0x60];
 } __packed vmu_root_t;
 
+STATIC_ASSERT(sizeof(vmu_root_t) == 32,
+              "vmu_root structure is not 512 bytes!");
+
 /** \brief   VMU FS Directory entries, 32 bytes each.
     \ingroup vmufs
 
@@ -185,7 +197,10 @@ typedef struct vmu_dir {
     vmu_block_t     hdroff;                      /**< \brief Offset of header, in blocks from start of file */
     uint8_t         dirty;                       /**< \brief See header notes */
     uint8_t         pad1[3];                     /**< \brief All zeros */
-} __packed vmu_dir_t;
+} vmu_dir_t;
+
+STATIC_ASSERT(sizeof(vmu_dir_t) == 32,
+              "vmu_dir structure is not 32 bytes!");;
 
 /* ****************** Low level functions ******************** */
 
