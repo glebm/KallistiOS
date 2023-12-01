@@ -20,6 +20,11 @@ __BEGIN_DECLS
 #include <stdint.h>
 #include <stddef.h>
 
+#define GENMASK(h, l) \
+    (((unsigned int)-1 << (l)) & ((unsigned int)-1 >> (31 - (h))))
+
+
+
 static inline uint8_t bcd_from_dec(uint8_t dec) {
    return (((dec / 10) << 4) | (dec % 10));
 }
@@ -41,7 +46,7 @@ static inline round_up_to(uint32_t value, uint32_t round_to) {
 }
 
 /* CRC calculation: calculates the CRC on a VMU file to be written out */
-static inline uint32_t compute_crc(const void *buf, size_t size) {
+static inline uint16_t crc16(const void *buf, size_t size) {
     int i, c, n;
     const uint8_t *bytes = (const uint8_t *)buf;
 

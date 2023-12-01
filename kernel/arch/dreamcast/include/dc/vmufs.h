@@ -77,6 +77,15 @@ typedef uint16_t vmu_block_t;
 /** \brief   VMU Storge Media Information
     \ingroup vmufs
 
+    Structure used to represent the volume information held by a MEMCARD
+    partition as returned by either the Maple "Get_Media_Info" command or
+    as stored within the FAT root block.
+
+    The information describes the size, location, and layout of every segment
+    within the filesystem.
+
+    \sa vmu_root_t
+
 */
 typedef struct vmu_media_info {
     vmu_block_t     total_size;    /**< \brief Total partition size in blocks (default: 256?) */
@@ -87,7 +96,7 @@ typedef struct vmu_media_info {
     vmu_block_t     dir_loc;       /**< \brief Directory location (default: 253) */
     vmu_block_t     dir_size;      /**< \brief Directory size in blocks (default: 13) */
     uint8_t         icon_shape;    /**< \brief Icon shape for this VMS (0-123)*/
-    uint8_t         sort_flag;     /**< \brief ??? */
+    uint8_t         extra_flag;    /**< \brief ??? */
     vmu_block_t     hidden_loc;    /**< \brief Hidden region location (default: 200) */
     vmu_block_t     hidden_size;   /**< \brief Hidden region size in blocks (default: 41) */
     vmu_block_t     game_loc;      /**< \brief Game location (default: 0) */
@@ -188,6 +197,7 @@ int vmufs_timestamp_from_unix(vmu_timestamp_t *timestamp, time_t unix);
 
     \param  d               The directory to fill in the date on.
     \retval                 The current date/time which was filled.
+    \retval                 -1 upon error
 */
 time_t vmufs_dir_fill_time(vmu_dir_t *d);
 

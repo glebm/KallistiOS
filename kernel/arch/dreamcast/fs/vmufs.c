@@ -49,42 +49,42 @@ Function comments located in vmufs.h.
 static mutex_t mutex = MUTEX_INITIALIZER;
 
 void vmufs_timestamp_to_tm(const vmu_timestamp_t *timestamp, struct tm *bt) {
-    bt->tm_sec  = dt->second;
-    bt->tm_min  = dt->minute;
-    bt->tm_hour = dt->hour;
-    bt->tm_mday = dt->day;
-    bt->tm_mon  = dt->month - 1;
-    bt->tm_year = dt->year - 1900;
-    bt->tm_wday = dt->weekday != 6? dt->weekday + 1 : 0;
+    tm.tm_year = bcd_to_dec(timestamp->cent - 0x19) * 100 +
+                 bcd_to_dec(timestamp->year) + 100;
+    tm.tm_mon  = bcd_to_dec(timestamp->mon) - 1;
+    tm.tm_mday = bcd_to_dec(timestamp->day);
+    tm.tm_hour = bcd_to_dec(timestamp->hour);
+    tm.tm_min  = bcd_to_dec(timestamp->min);
+    tm.tm_sec  = bcd_to_dec(timestamp->sec);
+    tm.tm_wday = (bcd_to_dec(timestamp->dow) + 1) % 7;
 }
 
 void vmufs_timestamp_from_tm(vmu_timestamp_t *timestamp, const struct tm *bt) {
-    dt->second  = bt->tm_sec;
-    dt->minute  = bt->tm_min;
-    dt->hour    = bt->tm_hour;
-    dt->day     = bt->tm_mday;
-    dt->month   = bt->tm_mon + 1;
-    dt->year    = bt->tm_year + 1900;
-    dt->weekday = bt->tm_wday? dt->weekday - 1 : 6;
+    timestamp->cent  = bcd_from_dec(tm.tm_year / 100) + 0x19;
+    timestamp->year  = bcd_from_dec(tm.tm_year - 100);
+    timestamp->month = bcd_from_dec(tm.tm_mon + 1);
+    timestamp->day   = bcd_from_dec(tm.tm_mday);
+    timestamp->hour  = bcd_from_dec(tm.tm_hour);
+    timestamp->min   = bcd_from_dec(tm.tm_min);
+    timestamp->sec   = bcd_from_dec(tm.tm_sec);
+    timestamp->dow   = bcd_from_dec((tm.tm_wday - 1) % 7);
 }
 
-void vmufs_dir_fill_time(vmu_dir_t *d) {
+int vmufs_dir_fill_time(vmu_dir_t *d) {
     time_t t;
     struct tm tm;
 
     /* Get the time */
-    t = time(NULL);
-    localtime_r(&t, &tm);
+    if((t = time(NULL)) == -1)
+        return -1;
+
+    if(!localtime_r(&t, &tm))
+        return -1;
 
     /* Fill in the struct, converting to BCD */
-    d->timestamp.cent = dec_to_bcd(tm.tm_year / 100) + 0x19;
-    d->timestamp.year = dec_to_bcd(tm.tm_year - 100);
-    d->timestamp.month = dec_to_bcd(tm.tm_mon + 1);
-    d->timestamp.day = dec_to_bcd(tm.tm_mday);
-    d->timestamp.hour = dec_to_bcd(tm.tm_hour);
-    d->timestamp.min = dec_to_bcd(tm.tm_min);
-    d->timestamp.sec = dec_to_bcd(tm.tm_sec);
-    d->timestamp.dow = dec_to_bcd((tm.tm_wday - 1) % 7);
+    vmufs_timestamp_from_tm(&d->timestamp, &tm);
+
+    return t;
 }
 
 int vmufs_root_read(maple_device_t * dev, vmu_root_t * root_buf) {
@@ -234,7 +234,7 @@ int vmufs_dir_find(vmu_root_t * root, vmu_dir_t * dir, const char * fn) {
     return -1;
 }
 
-int vmufs_dir_add(vmu_root_t * root, vmu_dir_t * dir, vmu_dir_t * newdirent) {
+int vmufs_dir_add(const vmu_root_t *root, vmu_dir_t *dir, const vmu_dir_t *newdirent) {
     int i;
     int dcnt;
 
@@ -258,7 +258,7 @@ int vmufs_dir_add(vmu_root_t * root, vmu_dir_t * dir, vmu_dir_t * newdirent) {
     return -1;
 }
 
-int vmufs_file_read(maple_device_t * dev, uint16 * fat, vmu_dir_t * dirent, void * outbuf) {
+int vmufs_file_read(maple_device_t* dev, vmu_block_t* fat, vmu_dir_t* dirent, void* outbuf) {
     vmu_block_t curblk, blkleft, 
     int         rv;
     uint8       *out;
@@ -433,7 +433,7 @@ int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
     return 0;
 }
 
-int vmufs_file_delete(vmu_root_t * root, uint16 * fat, vmu_dir_t * dir, const char * fn) {
+int vmufs_file_delete(vmu_root_t *root, vmu_block_t *fat, vmu_dir_t *dir, const char *fn) {
     ssize_t idx;
     vmu_block_t blk, nextblk;
 
