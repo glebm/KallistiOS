@@ -56,8 +56,8 @@ int main(int argc, char *argv[]) {
         }
 
         if(prev_match != bsc_state.match_counter || prev_overflow != bsc_state.overflow_counter) { 
-           // printf("Counter incremented: %zu, %zu\n", 
-                  //  bsc_state.overflow_counter, bsc_state.match_counter);
+            printf("Counter incremented: %zu, %zu\n", 
+                    bsc_state.overflow_counter, bsc_state.match_counter);
             prev_match = bsc_state.match_counter;
             prev_overflow = bsc_state.overflow_counter;
         }

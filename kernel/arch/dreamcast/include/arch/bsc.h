@@ -106,7 +106,6 @@ bool bsc_timer_elapsed(struct timespec *time);
 
 
 
-
 void bsc_set_isrs(uint8_t priority, 
                   bsc_callback_t comp_match_callback, void *comp_match_data,
                   bsc_callback_t overflow_callback, void *overflow_data);
