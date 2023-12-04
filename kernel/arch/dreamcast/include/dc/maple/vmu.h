@@ -368,7 +368,7 @@ int vmu_set_icon(const char *vmu_icon);
     \sa vmu_media_info, vmu_root_block
 */
 
-typedef struct vmu_memcard_definition {
+typedef struct vmu_storage_info {
     union {
         struct {
             uint8_t partition_count;     /**< # of Partitions */
@@ -381,7 +381,9 @@ typedef struct vmu_memcard_definition {
         };
         uint8_t     bytes[4];            /**< Raw byte access */
     };
-} vmu_memcard_definition_t;
+} vmu_storage_info_t;
+
+int vmu_storage_info(maple_device_t *dev, const vmu_storage_info_t **info);
 
 /** \brief   Queries for the storage media info
     \ingroup maple_memcard
