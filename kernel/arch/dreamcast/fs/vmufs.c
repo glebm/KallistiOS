@@ -391,30 +391,40 @@ int vmufs_file_read(maple_device_t *dev, const vmu_block_t *fat, const vmu_dir_t
     return 0;
 }
 
+void vmu_media_info_user_region(const vmu_media_info_t *info, vmu_block_t *user_loc, vmu_block_t *user_size) { 
+    if(info->hidden_size)
+        *user_loc  = info->hidden_loc - info->hidden_size;
+    else
+        *user_loc = info->dir_loc - info->dir_size;
+
+     *user_size = *user_loc - 0; // first block
+}
+
 /* Find an open block for writing in the FAT */
-static ssize_t vmufs_fat_find_free(maple_device_t *dev, const vmu_root_t *root, const vmu_block_t* fat, const vmu_dir_t *dirent) {
+static int vmufs_find_block(maple_device_t *dev, const vmu_root_t *root, const vmu_block_t *fat, const vmu_dir_t *dirent) {
     int i;
-    int fat_entries; 
+    vmu_block_t user_loc, user_size;
+    size_t fat_entries;
     const vmu_storage_info_t* storage_info = NULL;
 
     if(vmu_storage_info(dev, &storage_info) != 0) {
-        dbglog(DBG_ERROR, "vmufs_find_file_read: can't get storage info on device %c%c\n",
+        dbglog(DBG_ERROR, "vmufs_find_block: can't get storage info on device %c%c\n",
                dev->port + 'A', dev->unit + '0');
         return -3;
     }
 
-    fat_entries = root->fat_size * storage_info->block_size * 32 / sizeof(vmu_block_t);
+    vmu_media_info_user_region(&root->media_info, &user_loc, &user_size);
 
     if(dirent->filetype == VMU_FILE_DATA) {
         /* Data files -- count down from top */
-        for(i = root->media_info.blk_cnt - 1; i >= 0; i--) {
+        for(i = user_loc - 1; i >= 0; i--) {
             if(fat[i] == VMUFS_FAT_UNALLOCATED)
                 return i;
         }
     }
     else if(dirent->filetype == VMU_FILE_GAME) {
         /* VMU games -- count up from bottom */
-        for(i = 0; i < root->blk_cnt; i++) {
+        for(i = 0; i < user_loc; i++) {
             if(fat[i] == VMUFS_FAT_UNALLOCATED)
                 return i;
         }
@@ -435,6 +445,11 @@ static ssize_t vmufs_fat_find_free(maple_device_t *dev, const vmu_root_t *root, 
     }
     return -2;
 }
+
+
+
+
+
 
 int vmufs_file_write(maple_device_t * dev, vmu_root_t * root, uint16 * fat,
                      vmu_dir_t * dir, vmu_dir_t * newdirent, void * filebuf, int size) {

@@ -208,6 +208,8 @@ time_t vmufs_timestamp_to_unix(const vmu_timestamp_t *timestamp);
 
 int vmufs_timestamp_from_unix(vmu_timestamp_t *timestamp, time_t unix);
 
+void vmu_media_info_user_region(const vmu_media_info_t *info, vmu_block_t *user_loc, vmu_block_t *user_size);
+
 /** \brief  Fill in the date on a vmu_dir_t for writing.
 
     \param  d               The directory to fill in the date on.
