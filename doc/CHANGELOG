@@ -207,6 +207,11 @@ KallistiOS version 2.1.0 -----------------------------------------------
 - *** Added <netinet/tcp.h> header file and required option [LS]
 - *** Added <netinet/udp.h> and <netinet/udplite.h> headers and move the related
       content from <netinet/in.h> [LS]
+- *** Added __weak, __used, likely() and unlikely() [FG]
+- DC  Added Maple-specific KOS_INIT_FLAGS() which allow for GC-ing unused drivers [FG]
+- DC  Added basic example for micropython KOS port [Aaron Glazer == AG]
+- DC  Improved performance of IRQ context save / restore [PC]
+- DC  Increased resolution of TMU timers + date/time functions [FG && PC]
 - *** Added implementation of thread barriers [LS]
 - *** Removed old pthreads implementation from kernel/libc [LS]
 - *** Added new (more complete/compliant) pthreads implementation in
