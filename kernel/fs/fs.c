@@ -3,7 +3,6 @@
    fs.c
    Copyright (C) 2000, 2001, 2002, 2003 Megan Potter
    Copyright (C) 2012, 2013, 2014, 2015, 2016 Lawrence Sebald
-   Copyright (C) 2023 Falco Girgis
 
 */
 
@@ -363,7 +362,7 @@ ssize_t fs_read(file_t fd, void *buffer, size_t cnt) {
 
 ssize_t fs_write(file_t fd, const void *buffer, size_t cnt) {
     fs_hnd_t *h;
-#if 0
+
 /*
     XXX This is a hack to make newlib printf work because it
     doesn't like fs_pty. I'll figure out why later... -- Megan
@@ -377,7 +376,6 @@ ssize_t fs_write(file_t fd, const void *buffer, size_t cnt) {
         dbgio_write_buffer_xlat((const uint8 *)buffer, cnt);
         return cnt;
     }
-#endif
 
     h = fs_map_hnd(fd);
 
