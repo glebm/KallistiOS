@@ -363,15 +363,8 @@ ssize_t fs_read(file_t fd, void *buffer, size_t cnt) {
 ssize_t fs_write(file_t fd, const void *buffer, size_t cnt) {
     fs_hnd_t *h;
 
-/*
-    XXX This is a hack to make newlib printf work because it
-    doesn't like fs_pty. I'll figure out why later... -- Megan
-
-    Looks like this is no longer needed if we don't report
-    stdout/stderr as terminals to newlib via _isatty_r().
-    Unsure why, but this also breaks stdout/stderr FILE IO
-    redirection. -- Falco
-*/
+    // XXX This is a hack to make newlib printf work because it
+    // doesn't like fs_pty. I'll figure out why later... -- Megan
     if(fd == 1 || fd == 2) {
         dbgio_write_buffer_xlat((const uint8 *)buffer, cnt);
         return cnt;
