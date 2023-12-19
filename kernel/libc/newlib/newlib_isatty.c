@@ -23,12 +23,7 @@ int _isatty_r(struct _reent *reent, int fd) {
     (void)fd;
 
     /* Make sure that stdin, stdout, and stderr are shown as ttys, otherwise
-       they won't be set as line-buffered.
-
-       Actually, don't do that, since it makes newlib use internal buffering
-       on these FDs which slows down printf() and friends by a literal order
-       of magnitude with dc-load-ip.
-    */
+       they won't be set as line-buffered.*/
     if(fd >= 0 && fd <= 2) {
         return 1;
     }
