@@ -43,7 +43,7 @@ something like this:
    not go in a header file. */
 typedef struct fs_hnd {
     vfs_handler_t *handler;   /* Handler */
-    void *        hnd;        /* Handler-internal */
+    void         *hnd;        /* Handler-internal */
     int           refcnt;     /* Reference count */
 } fs_hnd_t;
 
