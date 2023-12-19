@@ -765,39 +765,37 @@ static void thd_timer_hnd(irq_context_t *context) {
 /* Thread blocking based sleeping; this is the preferred way to
    sleep because it eases the load on the system for the other
    threads. */
-#define thd_sleep_ticks(unit) \
-    void thd_sleep_##unit(int ticks) { \
-        /* This should never happen. This should, perhaps, assert. */ \
-        if(thd_mode == THD_MODE_NONE) { \
-            dbglog(DBG_WARNING, "thd_sleep_"#unit" called when threading not " \
-                   "initialized.\n"); \
-            timer_spin_sleep_##unit(ticks); \
-            return; \
-        } \
-        \
-        /* A timeout of zero is the same as thd_pass() and passing zero \
-           down to genwait_wait() causes bad juju. */ \
-        if(!ticks) { \
-            thd_pass(); \
-            return; \
-        } \
-        \
-        /* We can genwait on a non-existant object here with a timeout and \
-           have the exact same effect; as a nice bonus, this collapses both \
-           sleep cases into a single case, which is nice for scheduling \
-           purposes. 0xffffffff definitely doesn't exist as an object, \
-           so we'll use that for straight up timeouts. */ \
-        genwait_wait_##unit((void *)0xffffffff, "thd_sleep_"#unit, \
-                            ticks, NULL); \
-    }
+void thd_sleep_ms(int ms) { 
+    /* This should never happen. This should, perhaps, assert. */ 
+    if(thd_mode == THD_MODE_NONE) { 
+        dbglog(DBG_WARNING, "thd_sleep_ms called when threading not " 
+               "initialized.\n"); 
+        timer_spin_sleep_ms(ms); 
+        return; 
+    } 
+    
+    /* A timeout of zero is the same as thd_pass() and passing zero 
+       down to genwait_wait() causes bad juju. */ 
+    if(!ms) { 
+        thd_pass(); 
+        return; 
+    } 
+    
+    /* We can genwait on a non-existant object here with a timeout and 
+       have the exact same effect; as a nice bonus, this collapses both 
+       sleep cases into a single case, which is nice for scheduling 
+       purposes. 0xffffffff definitely doesn't exist as an object, 
+       so we'll use that for straight up timeouts. */ 
+    genwait_wait((void *)0xffffffff, "thd_sleep_ms", ms, NULL); 
+}
 
-#define genwait_wait_ms genwait_wait
-#define genwait_wait_us genwait_wait
-#define genwait_wait_ns genwait_wait
+void thd_sleep_us(int us) {
+    thd_sleep_ms(us / 1000);
+}
 
-thd_sleep_ticks(ms);
-thd_sleep_ticks(us);
-thd_sleep_ticks(ns);
+void thd_sleep_ns(int ns) {
+    thd_sleep_us(ns / 1000);
+}
 
 /* Manually cause a re-schedule */
 void thd_pass(void) {
