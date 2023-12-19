@@ -637,7 +637,7 @@ static int dcls_fake_shutdown(void) {
     return 0;
 }
 
-static int dcls_writebuf(const uint8 *buf, int len, int xlat) {
+static int dcls_writebuf(const uint8_t *buf, size_t len, int xlat) {
     int locked;
     command_3int_t cmd;
 
@@ -700,9 +700,9 @@ static vfs_handler_t vh = {
     /* Name handler */
     {
         "/pc",      /* name */
-        0,      /* tbfi */
+        0,          /* tbfi */
         0x00010000, /* Version 1.0 */
-        0,      /* flags */
+        0,          /* flags */
         NMMGR_TYPE_VFS,
         NMMGR_LIST_INIT
     },

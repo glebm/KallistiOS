@@ -62,7 +62,7 @@ static void * lwip_dclsc = 0;
 
 /* Printk replacement */
 
-int dcload_write_buffer(const uint8 *data, int len, int xlat) {
+static int dcload_write_buffer(const uint8_t *data, size_t len, int xlat) {
     (void)xlat;
 
     if(lwip_dclsc && irq_inside_int()) {
@@ -283,7 +283,6 @@ dirent_t *dcload_readdir(void * h) {
     dirent_t *rv = NULL;
     dcload_dirent_t *dcld;
     dcload_stat_t filestat;
-    char *fn;
     uint32 hnd = (uint32)h;
 
     if(lwip_dclsc && irq_inside_int()) {

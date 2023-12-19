@@ -23,7 +23,7 @@
 */
 
 // Our currently selected handler.
-static dbgio_handler_t *dbgio = NULL;
+static const dbgio_handler_t *dbgio = NULL;
 
 int dbgio_dev_select(const char *name) {
     size_t i;
@@ -122,7 +122,7 @@ int dbgio_flush(void) {
     return -1;
 }
 
-int dbgio_write_buffer(const uint8 *data, size_t len) {
+int dbgio_write_buffer(const uint8_t *data, size_t len) {
     if(dbgio_enabled) {
         assert(dbgio);
         return dbgio->write_buffer(data, len, 0);
@@ -131,7 +131,7 @@ int dbgio_write_buffer(const uint8 *data, size_t len) {
     return -1;
 }
 
-int dbgio_read_buffer(uint8 *data, size_t len) {
+int dbgio_read_buffer(uint8_t *data, size_t len) {
     if(dbgio_enabled) {
         assert(dbgio);
         return dbgio->read_buffer(data, len);
@@ -140,7 +140,7 @@ int dbgio_read_buffer(uint8 *data, size_t len) {
     return -1;
 }
 
-int dbgio_write_buffer_xlat(const uint8 *data, size_t len) {
+int dbgio_write_buffer_xlat(const uint8_t *data, size_t len) {
     if(dbgio_enabled) {
         assert(dbgio);
         return dbgio->write_buffer(data, len, 1);
@@ -152,7 +152,7 @@ int dbgio_write_buffer_xlat(const uint8 *data, size_t len) {
 int dbgio_write_str(const char *str) {
     if(dbgio_enabled) {
         assert(dbgio);
-        return dbgio_write_buffer_xlat((const uint8_t*)str, strlen(str));
+        return dbgio_write_buffer_xlat((const uint8_t *)str, strlen(str));
     }
 
     return -1;
@@ -162,10 +162,10 @@ int dbgio_vprintf(const char *fmt, va_list *var_args) {
     char buffer[1024];
     int i = vsnprintf(buffer, sizeof(buffer), fmt, *var_args);
 
-    if(i >= sizeof(buffer))
+    if(i >= (int)sizeof(buffer))
         i = sizeof(buffer);
 
-    dbgio_write_buffer_xlat(buffer, (size_t)i);
+    dbgio_write_buffer_xlat((const uint8_t *)buffer, (size_t)i);
 
     return i;
 }
@@ -205,13 +205,13 @@ static int null_write(int c) {
 static int null_flush(void) {
     return 0;
 }
-static int null_write_buffer(const uint8 *data, int len, int xlat) {
+static int null_write_buffer(const uint8_t *data, size_t len, int xlat) {
     (void)data;
     (void)len;
     (void)xlat;
     return len;
 }
-static int null_read_buffer(uint8 * data, int len) {
+static int null_read_buffer(uint8_t* data, size_t len) {
     (void)data;
     (void)len;
     errno = EAGAIN;

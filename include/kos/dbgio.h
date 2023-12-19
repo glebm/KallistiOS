@@ -222,7 +222,7 @@ int dbgio_read_buffer(uint8_t *data, size_t len);
 */
 int dbgio_write_buffer_xlat(const uint8_t *data, size_t len);
 
-/** \brief  Write a NUL-terminated string to the console.
+/** \brief  Write a NULL-terminated string to the console.
     \param  str             The string to write
     \return                 Number of characters written on success, or -1 on
                             failure (errno should be set as appropriate)
