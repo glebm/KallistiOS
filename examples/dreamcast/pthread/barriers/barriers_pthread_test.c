@@ -6,18 +6,43 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 #define WATCHDOG_TIMEOUT    (10 * 1000 * 1000)  /* microseconds */
 #define THREAD_COUNT        15
+#define ITERATION_COUNT     10
 
 static pthread_barrier_t barrier;
 static pthread_barrierattr_t attr;
 
-static void* thread_exec(void *user_data) {
+static atomic_uint pre_barrier_counter = 0;
+static atomic_uint serial_barrier_counter = 0;
+static atomic_uint post_barrier_counter = 0;
+
+static void run_iteration(void) {
+    const pthread_id_np_t id = pthread_getthreadid_np();
+
+    ++pre_barrier_counter;
+
+    printf("Thread[%u]: Before barrier!\n", id);
+
     int ret = pthread_barrier_wait(&barrier);
 
-    
+    if(ret == PTHREAD_BARRIER_SERIAL_THREAD) {
+        printf("Thread[%u]: After barrier: SERIAL!\n", id);
+        ++serial_barrier_counter;
+    }
+    else 
+        printf("Thread[%u]: After barrier: NONSERIAL!\n", id);
 
+    ++post_barrier_counter;
+}
+
+static void* thread_exec(void *user_data) {
+    for(uintptr_t i = 0; i < ITERATION_COUNT; ++i) 
+        run_iteration();
+
+    return (void*)true;
 }
 
 static void watchdog_timeout(void *user_data) {
@@ -42,7 +67,6 @@ int main(int argc, char* argv[]) {
         success = false;
     }
 
-
     for(size_t t = 0; t < THREAD_COUNT - 1; ++t) { 
         ret = pthread_create(&threads[t], NULL, thread_exec, NULL);
         
@@ -56,7 +80,7 @@ int main(int argc, char* argv[]) {
 
     for(size_t t = 0; t < THREAD_COUNT - 1; ++t) {
         bool thread_ret;
-        ret = pthread_join(&threads[t], (void**)&thread_ret);
+        ret = pthread_join(threads[t], (void**)&thread_ret);
 
         if(ret) {
             fprintf(stderr, "Failed to join pthread %u with code: %d!", t, ret);
@@ -73,6 +97,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Failed to destroy pthread barrier: %d!\n", ret);
         success = false;
     }
+
 
     if(success) {
         printf("\n\n***** TEST COMPLETE: SUCCESS *****\n\n");
