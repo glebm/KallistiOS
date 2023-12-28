@@ -745,7 +745,7 @@ irq_context_t *thd_choose_new(void) {
 /*****************************************************************************/
 
 /* Timer function. Check to see if we were woken because of a timeout event
-   or because of a pre-empt. For timeouts, just go take care of it and sleep
+   or because of a preempt. For timeouts, just go take care of it and sleep
    again until our next context switch (if any). For pre-empts, re-schedule
    threads, swap out contexts, and sleep. */
 static void thd_timer_hnd(irq_context_t *context) {
@@ -900,7 +900,7 @@ int thd_detach(kthread_t *thd) {
 
 
 /*****************************************************************************/
-/* Retrive / set thread label */
+/* Retrieve / set thread label */
 const char *thd_get_label(kthread_t *thd) {
     return thd->label;
 }
