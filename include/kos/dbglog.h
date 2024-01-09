@@ -2,11 +2,12 @@
 
    kos/dbglog.h
    Copyright (C) 2004 Megan Potter
-   Copyright (C) 2023 Falco Girgis
+   Copyright (C) 2024 Falco Girgis
 */
 
-/** \file   kos/dbglog.h
-    \brief  A debugging log.
+/** \file    kos/dbglog.h
+    \brief   A debugging log.
+    \ingroup logging
 
     This file contains declarations related a debugging log. This log can be
     used to restrict log messages, for instance to make it so that only the most
@@ -21,12 +22,19 @@
 
 #include <kos/cdefs.h>
 __BEGIN_DECLS
- 
+
 #include <unistd.h>
 #include <stdarg.h>
 #include <kos/fs.h>
 
-/** \brief  Kernel debugging printf.
+/** \defgroup logging   Logging
+    \brief              KOS's Logging API
+    \ingroup            debugging
+
+    @{
+*/
+
+/** \brief   Kernel debugging printf.
 
     This function is similar to printf(), but filters its output through a log
     level check before being printed. This way, you can set the level of debug
@@ -35,25 +43,25 @@ __BEGIN_DECLS
     \param  level           The level of importance of this message.
     \param  fmt             Message format string.
     \param  ...             Format arguments
-    
+
     \sa vdbglog()
 */
 void dbglog(int level, const char *fmt, ...) __printflike(2, 3);
 
-/** \brief  Kernel debugging vprintf.
+/** \brief   Kernel debugging vprintf.
 
-    Equivalent to dbglog(), except the variaid arguments are passed 
+    Equivalent to dbglog(), except the variaid arguments are passed
     through a va_list*.
 
     \param  level           The level of importance of this message.
     \param  fmt             Message format string.
     \param  var_args        Format arguments
-    
+
     \sa dbglog()
 */
-void vdbglog(int level, const char *fmt, va_list* var_args);
+void vdbglog(int level, const char *fmt, va_list *var_args);
 
-/** \name Log Levels   
+/** \name Log Levels
     \brief Log message severity levels
 
     @{
@@ -68,27 +76,29 @@ void vdbglog(int level, const char *fmt, va_list* var_args);
 #define DBG_KDEBUG      7       /**< \brief Kernel debug messages */
 /** @} */
 
-/** \brief  Set the debugging log level.
+/** \brief   Set the debugging log level.
 
     This function sets the level for which dbglog() will ignore messages for if
     the message has a higher level.
 
     \param  level           The level to stop paying attention after.
-    
+
     \sa dbglog_get_level
 */
 void dbglog_set_level(int level);
 
-/** \brief  Retrieve the debugging log level.
+/** \brief   Retrieve the debugging log level.
 
     This function gets the level for which dbglog() will ignore messages for if
     the message has a higher level.
 
     \return           The level to stop paying attention after.
-    
+
     \sa dbglog_set_level
 */
-int dbglog_get_level(void); 
+int dbglog_get_level(void);
+
+/** @} */
 
 __END_DECLS
 
