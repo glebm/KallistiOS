@@ -70,8 +70,12 @@ int bfont_set_32bit_mode(int on) {
     return rv;
 }
 
+mutex_t _g1_bfont_mutex = MUTEX_INITIALIZER;
+
 /* A little assembly that grabs the font address */
 extern uint8* get_font_address(void);
+extern void unlock_font_syscall(void);
+extern int32_t lock_font_syscall(void);
 __asm__("	.text\n"
         "	.align 2\n"
 	".globl _get_font_address\n"
@@ -81,9 +85,45 @@ __asm__("	.text\n"
         "	jmp	@r0\n"
         "	mov	#0,r1\n"
         "\n"
+        "	.text\n"
+        "	.align 2\n"
+	".globl _lock_font_syscall\n"
+        "_lock_font_syscall:\n"
+        "	mov.l	syscall_b4,r0\n"
+        "	mov.l	@r0,r0\n"
+        "	jmp	@r0\n"
+        "	mov	#1,r1\n"
+        "\n"
+        "	.text\n"
+        "	.align 2\n"
+	".globl _unlock_font_syscall\n"
+        "_unlock_font_syscall:\n"
+        "	mov.l	syscall_b4,r0\n"
+        "	mov.l	@r0,r0\n"
+        "	jmp	@r0\n"
+        "	mov	#2,r1\n"
+        "\n"
         "	.align 4\n"
         "syscall_b4:\n"
         "	.long	0x8c0000b4\n");
+
+int lock_bfont(void) {
+    if(mutex_lock(&_g1_bfont_mutex) == -1) return -1;
+
+    /* Just make sure no outside system took the lock */
+    while(lock_font_syscall() != 0)
+        thd_pass();
+
+    return 0;
+}
+
+int unlock_bfont(void) {
+    if(mutex_unlock(&_g1_bfont_mutex) == -1) return -1;
+
+    unlock_font_syscall();
+
+    return 0;
+}
 
 /* Shift-JIS -> JIS conversion */
 uint32 sjis2jis(uint32 sjis) {
@@ -227,6 +267,11 @@ unsigned char bfont_draw_ex(uint8 *buffer, uint32 bufwidth, uint32 fg, uint32 bg
         return 0;
     }
 
+    if(lock_bfont() < 0) {
+        dbglog(DBG_ERROR, "bfont_draw_ex: error requesting font access\n");
+        return 0;
+    }
+
     /* Translate the character */
     if(bfont_code_mode == BFONT_CODE_RAW)
         ch = get_font_address() + c;
@@ -257,6 +302,9 @@ unsigned char bfont_draw_ex(uint8 *buffer, uint32 bufwidth, uint32 fg, uint32 bg
         if(!wide) buffer += ((bufwidth - BFONT_THIN_WIDTH)*bpp)/8;
         else buffer += ((bufwidth - BFONT_WIDE_WIDTH)*bpp)/8;
     }
+
+    if(unlock_bfont() < 0)
+        dbglog(DBG_ERROR, "bfont_draw_ex: error rereleasing font access\n");
 
     /* Return the horizontal distance covered in bytes */
     if(wide)
