@@ -304,7 +304,7 @@ unsigned char bfont_draw_ex(uint8 *buffer, uint32 bufwidth, uint32 fg, uint32 bg
     }
 
     if(unlock_bfont() < 0)
-        dbglog(DBG_ERROR, "bfont_draw_ex: error rereleasing font access\n");
+        dbglog(DBG_ERROR, "bfont_draw_ex: error releasing font access\n");
 
     /* Return the horizontal distance covered in bytes */
     if(wide)
@@ -395,4 +395,18 @@ uint8 *bfont_find_icon(uint8 icon) {
         (icon * BFONT_ICON_DIMEN * BFONT_ICON_DIMEN/8);
     uint8 *fa = get_font_address();
     return fa + icon_offset;
+}
+
+void *bfont_copy_icon(uint8 icon. void *buf) {
+    void *icon_ptr;
+
+    if(buf == NULL)
+        return NULL;
+
+    icon_ptr = (void *)bfont_find_icon(icon);
+
+    if(icon_ptr == NULL)
+        return NULL;
+
+    return memcpy(buf, icon, BFONT_ICON_DIMEN * BFONT_ICON_DIMEN/8);
 }
