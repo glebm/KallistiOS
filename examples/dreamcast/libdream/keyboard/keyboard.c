@@ -1,9 +1,11 @@
 #include <kos.h>
 
-void kb_test(void) {
+static int x = 20, y = 20 + 24;
+
+static void kb_test(void) {
     maple_device_t *cont, *kbd;
     cont_state_t *state;
-    int k, x = 20, y = 20 + 24;
+    int k;
 
     printf("Now doing keyboard test\n");
 
@@ -30,12 +32,6 @@ void kb_test(void) {
 
         thd_sleep(10);
 
-        /* Check for keyboard input */
-        /* if (kbd_poll(mkb)) {
-            printf("Error checking keyboard status\n");
-            return;
-        } */
-
         /* Get queued keys */
         while((k = kbd_queue_pop(kbd, 1)) != -1) {
             if(k == 27) {
@@ -46,13 +42,9 @@ void kb_test(void) {
             if(k > 0xff)
                 printf("Special key %04x\n", k);
 
-            if(k != 13) {
+            if(k != 10) {
                 bfont_draw(vram_s + y * 640 + x, 640, 0, k);
                 x += 12;
-            }
-            else {
-                x = 20;
-                y += 24;
             }
         }
 
@@ -60,16 +52,24 @@ void kb_test(void) {
     }
 }
 
-int main(int argc, char **argv) {
-    int x, y;
+static void on_key_event(maple_device_t *dev, key_state_t state,
+                         kbd_key_t key, kbd_mods_t mods,
+                         kbd_leds_t leds, void *user_data)
+{
+    printf("[%c%u] %c: %s\n",
+           'A' + dev->port, dev->unit,
+           kbd_key_to_ascii(dev, key, mods, leds),
+           state == KEY_STATE_TAPPED? "PRESSED" : "RELEASED");
 
-    for(y = 0; y < 480; y++)
-        for(x = 0; x < 640; x++) {
-            int c = (x ^ y) & 255;
-            vram_s[y * 640 + x] = ((c >> 3) << 12)
-                                  | ((c >> 2) << 5)
-                                  | ((c >> 3) << 0);
-        }
+    if(key == KBD_KEY_ENTER && state == KEY_STATE_TAPPED) {
+        x = 20;
+        y += 24;
+    }
+
+}
+
+int main(int argc, char **argv) {
+    kbd_set_event_handler(on_key_event, NULL);
 
     kb_test();
 

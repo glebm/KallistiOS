@@ -15,6 +15,11 @@
     device. Obviously, this corresponds to the MAPLE_FUNC_KEYBOARD function
     code.
 
+    \todo
+        - French/AZERTY keyboard keymaps
+        - Italian/QWERTY keyboard keymaps
+        - Error key states are not handled properly
+
     \author Jordan DeLong
     \author Megan Potter
     \author Lawrence Sebald
@@ -40,13 +45,6 @@ __BEGIN_DECLS
     @{
 */
 
-/** \brief  Keyboard Modifier Keys
-
-    Typedef for a bitmask of modifier keys on the DC keyboard.
-
-    \sa kbd_mods
-*/
-typedef uint8_t kbd_mod_t;
 
 /** \defgroup   kbd_mods    Modifier Keys
     \brief                  Masks for the various keyboard modifier keys
@@ -66,6 +64,14 @@ typedef uint8_t kbd_mod_t;
 #define KBD_MOD_S2          (1 << 7)
 /** @} */
 
+/** \brief  Keyboard Modifier Keys
+
+    Typedef for a bitmask of modifier keys on the DC keyboard.
+
+    \sa kbd_mods
+*/
+typedef uint8_t kbd_mods_t;
+
 /** \defgroup   kbd_leds    LEDs
     \brief                  Values for the different keyboard LEDs
     \ingroup                kbd
@@ -78,7 +84,14 @@ typedef uint8_t kbd_mod_t;
 #define KBD_LED_NUMLOCK     (1 << 0)
 #define KBD_LED_CAPSLOCK    (1 << 1)
 #define KBD_LED_SCRLOCK     (1 << 2)
+#define KBD_LED_UNKNOWN1    (1 << 3)
+#define KBD_LED_UNKNOWN2    (1 << 4)
+#define KBD_LED_KANA        (1 << 5)
+#define KBD_LED_POWER       (1 << 6)
+#define KBD_LED_SHIFT       (1 << 7)
 /** @} */
+
+typedef uint8_t kbd_leds_t;
 
 /** \defgroup   kbd_keys    Keys
     \brief                  Values representing the various keyboard keys
@@ -92,7 +105,7 @@ typedef uint8_t kbd_mod_t;
     @{
 */
 #define KBD_KEY_NONE            0x00
-#define KBD_KEY_ERROR           0x01
+#define KBD_KEY_ERROR           0x01 /* ERROR_ROLLOVER */
 #define KBD_KEY_ERR2            0x02
 #define KBD_KEY_ERR3            0x03
 #define KBD_KEY_A               0x04
@@ -193,6 +206,8 @@ typedef uint8_t kbd_mod_t;
 #define KBD_KEY_S3              0x65
 /** @} */
 
+typedef uint8_t kbd_key_t;
+
 /** \defgroup   kbd_regions Region Codes
     \brief                  Region codes for the Dreamcast keyboard
     \ingroup                kbd
@@ -201,13 +216,15 @@ typedef uint8_t kbd_mod_t;
     kbd_state_t structure.
     @{
 */
-#define KBD_REGION_JP       1           /**< \brief Japanese keyboard */
-#define KBD_REGION_US       2           /**< \brief US keyboard */
-#define KBD_REGION_UK       3           /**< \brief UK keyboard */
-#define KBD_REGION_DE       4           /**< \brief German keyboard */
-#define KBD_REGION_FR       5           /**< \brief French keyboard (not supported yet) */
-#define KBD_REGION_IT       6           /**< \brief Italian keyboard (not supported yet) */
-#define KBD_REGION_ES       7           /**< \brief Spanish keyboard */
+typedef enum kbd_region {
+    KBD_REGION_JP = 1,  /**< \brief Japanese keyboard */
+    KBD_REGION_US = 2,  /**< \brief US keyboard */
+    KBD_REGION_UK = 3,  /**< \brief UK keyboard */
+    KBD_REGION_DE = 4,  /**< \brief German keyboard */
+    KBD_REGION_FR = 5,  /**< \brief French keyboard (not supported yet) */
+    KBD_REGION_IT = 6,  /**< \brief Italian keyboard (not supported yet) */
+    KBD_REGION_ES = 7  /**< \brief Spanish keyboard */
+} kbd_region_t;
 /** @} */
 
 /** \defgroup   key_states  Key States
@@ -222,9 +239,26 @@ typedef uint8_t kbd_mod_t;
     pressed-> was_pressed
     @{
 */
-#define KEY_STATE_NONE        0
-#define KEY_STATE_WAS_PRESSED 1
-#define KEY_STATE_PRESSED     2
+
+#define KEY_PACK_STATE(isDown, wasDown) \
+    ((!!(isDown)) | ((!!(wasDown)) << 0x1))
+
+#define KEY_FLAG_IS_PRESSED  0x1
+#define KEY_FLAG_WAS_PRESSED 0x2
+#define KEY_FLAG_ALL         0x3
+
+enum {
+    KEY_STATE_HELD_UP     = KEY_PACK_STATE(false, false),
+    KEY_STATE_TAPPED      = KEY_PACK_STATE(true, false),
+    KEY_STATE_RELEASED    = KEY_PACK_STATE(false, true),
+    KEY_STATE_HELD_DOWN   = KEY_PACK_STATE(true, true),
+
+    KEY_STATE_NONE        = KEY_STATE_HELD_UP,     /* Up */
+    KEY_STATE_WAS_PRESSED = KEY_STATE_RELEASED, /* Released */
+    KEY_STATE_PRESSED     = KEY_STATE_HELD_DOWN    /* Down */
+};
+typedef uint8_t key_state_t;
+
 /** @} */
 
 /** \brief   Maximum number of keys the DC can read simultaneously.
@@ -250,21 +284,6 @@ typedef uint8_t kbd_mod_t;
 */
 #define KBD_QUEUE_SIZE 16
 
-/** \brief   Keyboard keymap.
-    \ingroup kbd
-
-    This structure represents a mapping from raw key values to ASCII values, if
-    appropriate. This handles base values as well as shifted ("shift" and "Alt"
-    keys) values.
-
-    \headerfile dc/maple/keyboard.h
-*/
-typedef struct kbd_keymap {
-    uint8 base[MAX_KBD_KEYS];
-    uint8 shifted[MAX_KBD_KEYS];
-    uint8 alt[MAX_KBD_KEYS];
-} kbd_keymap_t;
-
 /** \brief   Keyboard raw condition structure.
     \ingroup kbd
 
@@ -272,10 +291,10 @@ typedef struct kbd_keymap {
 
     \headerfile dc/maple/keyboard.h
 */
-typedef struct {
-    uint8 modifiers;    /**< \brief Bitmask of set modifiers. */
-    uint8 leds;         /**< \brief Bitmask of set LEDs */
-    uint8 keys[MAX_PRESSED_KEYS];      /**< \brief Key codes for currently pressed keys. */
+typedef struct kbd_cond {
+    kbd_mods_t modifiers;    /**< \brief Bitmask of set modifiers. */
+    kbd_leds_t leds;         /**< \brief Bitmask of set LEDs */
+    kbd_key_t  keys[MAX_PRESSED_KEYS];      /**< \brief Key codes for currently pressed keys. */
 } kbd_cond_t;
 
 /** \brief   Keyboard status structure.
@@ -298,33 +317,40 @@ typedef struct kbd_state {
 
         \see    kbd_keys
     */
-    uint8 matrix[MAX_KBD_KEYS];
+    key_state_t matrix[MAX_KBD_KEYS];
 
     /** \brief  Modifier key status. */
-    int shift_keys;
+    kbd_mods_t shift_keys;
 
     /** \brief  Keyboard type/region. */
-    int region;
+    kbd_region_t region;
 
-    /** \brief  Individual keyboard queue.
+    /** \cond  Individual keyboard queue.
         You should not access this variable directly. Please use the appropriate
         function to access it. */
-    uint32 key_queue[KBD_QUEUE_SIZE];
-    int queue_tail;                     /**< \brief Key queue tail. */
-    int queue_head;                     /**< \brief Key queue head. */
-    int queue_len;                      /**< \brief Current length of queue. */
+    uint32_t key_queue[KBD_QUEUE_SIZE];
+    size_t queue_tail;                     /* Key queue tail. */
+    size_t queue_head;                     /* Key queue head. */
+    size_t queue_len;                      /* Current length of queue. */
+    /** \endcond */
 
-    uint8 kbd_repeat_key;           /**< \brief Key that is repeating. */
-    uint64 kbd_repeat_timer;        /**< \brief Time that the next repeat will trigger. */
+    uint8_t kbd_repeat_key;           /**< \brief Key that is repeating. */
+    uint64_t kbd_repeat_timer;        /**< \brief Time that the next repeat will trigger. */
 } kbd_state_t;
 
+typedef void (*kbd_key_callback_t)(maple_device_t *dev, key_state_t state,
+                                   kbd_key_t key, kbd_mods_t mods, kbd_leds_t leds, void *ud);
 
-typedef enum kbd_key_event {
-    kbd_key_pressed,
-    kbd_key_released
-} kbd_key_event_t;
+void kbd_set_event_handler(kbd_key_callback_t callback, void *user_data);
+void kbd_set_repeat_timing(uint16_t start, uint16_t interval);
 
-typedef void (*kbd_key_callback_t)(kbd_key_event_t event, uint8_t key, uint32_t mods, void *ud);
+int kbd_set_leds(maple_device_t *dev, kbd_leds_t leds);
+
+key_state_t kbd_key_state(maple_device_t *dev, kbd_key_t key);
+
+char kbd_key_to_ascii(maple_device_t *dev, kbd_key_t key, kbd_mods_t mods, kbd_leds_t leds);
+
+
 
 /** \brief   Activate or deactivate global key queueing.
     \ingroup kbd
@@ -395,7 +421,7 @@ int kbd_get_key(void) __attribute__((deprecated));
     \return                 The value at the front of the queue, or -1 if there
                             are no keys in the queue.
 */
-int kbd_queue_pop(maple_device_t *dev, int xlat);
+int kbd_queue_pop(maple_device_t *dev, bool xlat);
 
 /* \cond */
 /* Init / Shutdown */
