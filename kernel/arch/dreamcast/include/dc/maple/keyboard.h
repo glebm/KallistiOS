@@ -3,6 +3,7 @@
    dc/maple/keyboard.h
    Copyright (C) 2000-2002 Jordan DeLong and Megan Potter
    Copyright (C) 2012 Lawrence Sebald
+   Copyright (C) 2024 Falco Girgis
 
 */
 
@@ -17,6 +18,7 @@
     \author Jordan DeLong
     \author Megan Potter
     \author Lawrence Sebald
+    \author Falco Girgis
 */
 
 #ifndef __DC_MAPLE_KEYBOARD_H
@@ -28,27 +30,40 @@ __BEGIN_DECLS
 #include <arch/types.h>
 #include <dc/maple.h>
 
+#include <stdint.h>
+#include <stdbool.h>
+
 /** \defgroup kbd   Keyboard
     \brief          Driver for the Dreamcast's Keyboard Input Device
     \ingroup        peripherals
+
+    @{
 */
+
+/** \brief  Keyboard Modifier Keys
+
+    Typedef for a bitmask of modifier keys on the DC keyboard.
+
+    \sa kbd_mods
+*/
+typedef uint8_t kbd_mod_t;
 
 /** \defgroup   kbd_mods    Modifier Keys
     \brief                  Masks for the various keyboard modifier keys
-    \ingroup                kbd
 
     These are the various modifiers that can be pressed on the keyboard, and are
     reflected in the modifiers field of kbd_cond_t.
+
     @{
 */
-#define KBD_MOD_LCTRL       (1<<0)
-#define KBD_MOD_LSHIFT      (1<<1)
-#define KBD_MOD_LALT        (1<<2)
-#define KBD_MOD_S1          (1<<3)
-#define KBD_MOD_RCTRL       (1<<4)
-#define KBD_MOD_RSHIFT      (1<<5)
-#define KBD_MOD_RALT        (1<<6)
-#define KBD_MOD_S2          (1<<7)
+#define KBD_MOD_LCTRL       (1 << 0)
+#define KBD_MOD_LSHIFT      (1 << 1)
+#define KBD_MOD_LALT        (1 << 2)
+#define KBD_MOD_S1          (1 << 3)
+#define KBD_MOD_RCTRL       (1 << 4)
+#define KBD_MOD_RSHIFT      (1 << 5)
+#define KBD_MOD_RALT        (1 << 6)
+#define KBD_MOD_S2          (1 << 7)
 /** @} */
 
 /** \defgroup   kbd_leds    LEDs
@@ -60,9 +75,9 @@ __BEGIN_DECLS
     modifiers list.
     @{
 */
-#define KBD_LED_NUMLOCK     (1<<0)
-#define KBD_LED_CAPSLOCK    (1<<1)
-#define KBD_LED_SCRLOCK     (1<<2)
+#define KBD_LED_NUMLOCK     (1 << 0)
+#define KBD_LED_CAPSLOCK    (1 << 1)
+#define KBD_LED_SCRLOCK     (1 << 2)
 /** @} */
 
 /** \defgroup   kbd_keys    Keys
@@ -303,6 +318,14 @@ typedef struct kbd_state {
     uint64 kbd_repeat_timer;        /**< \brief Time that the next repeat will trigger. */
 } kbd_state_t;
 
+
+typedef enum kbd_key_event {
+    kbd_key_pressed,
+    kbd_key_released
+} kbd_key_event_t;
+
+typedef void (*kbd_key_callback_t)(kbd_key_event_t event, uint8_t key, uint32_t mods, void *ud);
+
 /** \brief   Activate or deactivate global key queueing.
     \ingroup kbd
     \deprecated
@@ -379,6 +402,8 @@ int kbd_queue_pop(maple_device_t *dev, int xlat);
 void kbd_init(void);
 void kbd_shutdown(void);
 /* \endcond */
+
+/** @} */
 
 __END_DECLS
 
