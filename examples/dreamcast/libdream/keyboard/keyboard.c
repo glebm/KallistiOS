@@ -56,9 +56,11 @@ static void on_key_event(maple_device_t *dev, key_state_t state,
                          kbd_key_t key, kbd_mods_t mods,
                          kbd_leds_t leds, void *user_data)
 {
+    kbd_state_t *kbd_state = (kbd_state_t *)dev->status;
+
     printf("[%c%u] %c: %s\n",
            'A' + dev->port, dev->unit,
-           kbd_key_to_ascii(dev, key, mods, leds),
+           kbd_key_to_ascii(kbd_state->region, key, mods, leds),
            state == KEY_STATE_TAPPED? "PRESSED" : "RELEASED");
 
     if(key == KBD_KEY_ENTER && state == KEY_STATE_TAPPED) {

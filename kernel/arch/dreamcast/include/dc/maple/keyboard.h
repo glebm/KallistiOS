@@ -19,6 +19,12 @@
         - French/AZERTY keyboard keymaps
         - Italian/QWERTY keyboard keymaps
         - Error key states are not handled properly
+        - Remove legacy "global queue" API
+        - Fix caps lock ASCII conversions
+        - Error mechanisms:
+            * unknown region
+            * hardware key press limit exceeded
+            * queue buffer overflow
 
     \author Jordan DeLong
     \author Megan Potter
@@ -79,6 +85,7 @@ typedef uint8_t kbd_mods_t;
     This is the LEDs that can be turned on and off on the keyboard. This list
     may not be exhaustive. Think of these sorta like an extension of the
     modifiers list.
+
     @{
 */
 #define KBD_LED_NUMLOCK     (1 << 0)
@@ -95,116 +102,115 @@ typedef uint8_t kbd_leds_t;
 
 /** \defgroup   kbd_keys    Keys
     \brief                  Values representing the various keyboard keys
-    \ingroup                kbd
 
     This is the list of keys that are on the keyboard that may be pressed. The
     keyboard returns keys in this format.
 
     These are the raw keycodes returned by the US keyboard, and thus only cover
     the keys on US keyboards.
-    @{
 */
-#define KBD_KEY_NONE            0x00
-#define KBD_KEY_ERROR           0x01 /* ERROR_ROLLOVER */
-#define KBD_KEY_ERR2            0x02
-#define KBD_KEY_ERR3            0x03
-#define KBD_KEY_A               0x04
-#define KBD_KEY_B               0x05
-#define KBD_KEY_C               0x06
-#define KBD_KEY_D               0x07
-#define KBD_KEY_E               0x08
-#define KBD_KEY_F               0x09
-#define KBD_KEY_G               0x0a
-#define KBD_KEY_H               0x0b
-#define KBD_KEY_I               0x0c
-#define KBD_KEY_J               0x0d
-#define KBD_KEY_K               0x0e
-#define KBD_KEY_L               0x0f
-#define KBD_KEY_M               0x10
-#define KBD_KEY_N               0x11
-#define KBD_KEY_O               0x12
-#define KBD_KEY_P               0x13
-#define KBD_KEY_Q               0x14
-#define KBD_KEY_R               0x15
-#define KBD_KEY_S               0x16
-#define KBD_KEY_T               0x17
-#define KBD_KEY_U               0x18
-#define KBD_KEY_V               0x19
-#define KBD_KEY_W               0x1a
-#define KBD_KEY_X               0x1b
-#define KBD_KEY_Y               0x1c
-#define KBD_KEY_Z               0x1d
-#define KBD_KEY_1               0x1e
-#define KBD_KEY_2               0x1f
-#define KBD_KEY_3               0x20
-#define KBD_KEY_4               0x21
-#define KBD_KEY_5               0x22
-#define KBD_KEY_6               0x23
-#define KBD_KEY_7               0x24
-#define KBD_KEY_8               0x25
-#define KBD_KEY_9               0x26
-#define KBD_KEY_0               0x27
-#define KBD_KEY_ENTER           0x28
-#define KBD_KEY_ESCAPE          0x29
-#define KBD_KEY_BACKSPACE       0x2a
-#define KBD_KEY_TAB             0x2b
-#define KBD_KEY_SPACE           0x2c
-#define KBD_KEY_MINUS           0x2d
-#define KBD_KEY_PLUS            0x2e
-#define KBD_KEY_LBRACKET        0x2f
-#define KBD_KEY_RBRACKET        0x30
-#define KBD_KEY_BACKSLASH       0x31
-#define KBD_KEY_SEMICOLON       0x33
-#define KBD_KEY_QUOTE           0x34
-#define KBD_KEY_TILDE           0x35
-#define KBD_KEY_COMMA           0x36
-#define KBD_KEY_PERIOD          0x37
-#define KBD_KEY_SLASH           0x38
-#define KBD_KEY_CAPSLOCK        0x39
-#define KBD_KEY_F1              0x3a
-#define KBD_KEY_F2              0x3b
-#define KBD_KEY_F3              0x3c
-#define KBD_KEY_F4              0x3d
-#define KBD_KEY_F5              0x3e
-#define KBD_KEY_F6              0x3f
-#define KBD_KEY_F7              0x40
-#define KBD_KEY_F8              0x41
-#define KBD_KEY_F9              0x42
-#define KBD_KEY_F10             0x43
-#define KBD_KEY_F11             0x44
-#define KBD_KEY_F12             0x45
-#define KBD_KEY_PRINT           0x46
-#define KBD_KEY_SCRLOCK         0x47
-#define KBD_KEY_PAUSE           0x48
-#define KBD_KEY_INSERT          0x49
-#define KBD_KEY_HOME            0x4a
-#define KBD_KEY_PGUP            0x4b
-#define KBD_KEY_DEL             0x4c
-#define KBD_KEY_END             0x4d
-#define KBD_KEY_PGDOWN          0x4e
-#define KBD_KEY_RIGHT           0x4f
-#define KBD_KEY_LEFT            0x50
-#define KBD_KEY_DOWN            0x51
-#define KBD_KEY_UP              0x52
-#define KBD_KEY_PAD_NUMLOCK     0x53
-#define KBD_KEY_PAD_DIVIDE      0x54
-#define KBD_KEY_PAD_MULTIPLY    0x55
-#define KBD_KEY_PAD_MINUS       0x56
-#define KBD_KEY_PAD_PLUS        0x57
-#define KBD_KEY_PAD_ENTER       0x58
-#define KBD_KEY_PAD_1           0x59
-#define KBD_KEY_PAD_2           0x5a
-#define KBD_KEY_PAD_3           0x5b
-#define KBD_KEY_PAD_4           0x5c
-#define KBD_KEY_PAD_5           0x5d
-#define KBD_KEY_PAD_6           0x5e
-#define KBD_KEY_PAD_7           0x5f
-#define KBD_KEY_PAD_8           0x60
-#define KBD_KEY_PAD_9           0x61
-#define KBD_KEY_PAD_0           0x62
-#define KBD_KEY_PAD_PERIOD      0x63
-#define KBD_KEY_S3              0x65
-/** @} */
+enum {
+    KBD_KEY_NONE            = 0x00,
+    KBD_KEY_ERROR           = 0x01, /* ERROR_ROLLOVER */
+    KBD_KEY_ERR2            = 0x02,
+    KBD_KEY_ERR3            = 0x03,
+    KBD_KEY_A               = 0x04,
+    KBD_KEY_B               = 0x05,
+    KBD_KEY_C               = 0x06,
+    KBD_KEY_D               = 0x07,
+    KBD_KEY_E               = 0x08,
+    KBD_KEY_F               = 0x09,
+    KBD_KEY_G               = 0x0a,
+    KBD_KEY_H               = 0x0b,
+    KBD_KEY_I               = 0x0c,
+    KBD_KEY_J               = 0x0d,
+    KBD_KEY_K               = 0x0e,
+    KBD_KEY_L               = 0x0f,
+    KBD_KEY_M               = 0x10,
+    KBD_KEY_N               = 0x11,
+    KBD_KEY_O               = 0x12,
+    KBD_KEY_P               = 0x13,
+    KBD_KEY_Q               = 0x14,
+    KBD_KEY_R               = 0x15,
+    KBD_KEY_S               = 0x16,
+    KBD_KEY_T               = 0x17,
+    KBD_KEY_U               = 0x18,
+    KBD_KEY_V               = 0x19,
+    KBD_KEY_W               = 0x1a,
+    KBD_KEY_X               = 0x1b,
+    KBD_KEY_Y               = 0x1c,
+    KBD_KEY_Z               = 0x1d,
+    KBD_KEY_1               = 0x1e,
+    KBD_KEY_2               = 0x1f,
+    KBD_KEY_3               = 0x20,
+    KBD_KEY_4               = 0x21,
+    KBD_KEY_5               = 0x22,
+    KBD_KEY_6               = 0x23,
+    KBD_KEY_7               = 0x24,
+    KBD_KEY_8               = 0x25,
+    KBD_KEY_9               = 0x26,
+    KBD_KEY_0               = 0x27,
+    KBD_KEY_ENTER           = 0x28,
+    KBD_KEY_ESCAPE          = 0x29,
+    KBD_KEY_BACKSPACE       = 0x2a,
+    KBD_KEY_TAB             = 0x2b,
+    KBD_KEY_SPACE           = 0x2c,
+    KBD_KEY_MINUS           = 0x2d,
+    KBD_KEY_PLUS            = 0x2e,
+    KBD_KEY_LBRACKET        = 0x2f,
+    KBD_KEY_RBRACKET        = 0x30,
+    KBD_KEY_BACKSLASH       = 0x31,
+    KBD_KEY_SEMICOLON       = 0x33,
+    KBD_KEY_QUOTE           = 0x34,
+    KBD_KEY_TILDE           = 0x35,
+    KBD_KEY_COMMA           = 0x36,
+    KBD_KEY_PERIOD          = 0x37,
+    KBD_KEY_SLASH           = 0x38,
+    KBD_KEY_CAPSLOCK        = 0x39,
+    KBD_KEY_F1              = 0x3a,
+    KBD_KEY_F2              = 0x3b,
+    KBD_KEY_F3              = 0x3c,
+    KBD_KEY_F4              = 0x3d,
+    KBD_KEY_F5              = 0x3e,
+    KBD_KEY_F6              = 0x3f,
+    KBD_KEY_F7              = 0x40,
+    KBD_KEY_F8              = 0x41,
+    KBD_KEY_F9              = 0x42,
+    KBD_KEY_F10             = 0x43,
+    KBD_KEY_F11             = 0x44,
+    KBD_KEY_F12             = 0x45,
+    KBD_KEY_PRINT           = 0x46,
+    KBD_KEY_SCRLOCK         = 0x47,
+    KBD_KEY_PAUSE           = 0x48,
+    KBD_KEY_INSERT          = 0x49,
+    KBD_KEY_HOME            = 0x4a,
+    KBD_KEY_PGUP            = 0x4b,
+    KBD_KEY_DEL             = 0x4c,
+    KBD_KEY_END             = 0x4d,
+    KBD_KEY_PGDOWN          = 0x4e,
+    KBD_KEY_RIGHT           = 0x4f,
+    KBD_KEY_LEFT            = 0x50,
+    KBD_KEY_DOWN            = 0x51,
+    KBD_KEY_UP              = 0x52,
+    KBD_KEY_PAD_NUMLOCK     = 0x53,
+    KBD_KEY_PAD_DIVIDE      = 0x54,
+    KBD_KEY_PAD_MULTIPLY    = 0x55,
+    KBD_KEY_PAD_MINUS       = 0x56,
+    KBD_KEY_PAD_PLUS        = 0x57,
+    KBD_KEY_PAD_ENTER       = 0x58,
+    KBD_KEY_PAD_1           = 0x59,
+    KBD_KEY_PAD_2           = 0x5a,
+    KBD_KEY_PAD_3           = 0x5b,
+    KBD_KEY_PAD_4           = 0x5c,
+    KBD_KEY_PAD_5           = 0x5d,
+    KBD_KEY_PAD_6           = 0x5e,
+    KBD_KEY_PAD_7           = 0x5f,
+    KBD_KEY_PAD_8           = 0x60,
+    KBD_KEY_PAD_9           = 0x61,
+    KBD_KEY_PAD_0           = 0x62,
+    KBD_KEY_PAD_PERIOD      = 0x63,
+    KBD_KEY_S3              = 0x65
+};
 
 typedef uint8_t kbd_key_t;
 
@@ -248,15 +254,12 @@ typedef enum kbd_region {
 #define KEY_FLAG_ALL         0x3
 
 enum {
-    KEY_STATE_HELD_UP     = KEY_PACK_STATE(false, false),
-    KEY_STATE_TAPPED      = KEY_PACK_STATE(true, false),
-    KEY_STATE_RELEASED    = KEY_PACK_STATE(false, true),
-    KEY_STATE_HELD_DOWN   = KEY_PACK_STATE(true, true),
-
-    KEY_STATE_NONE        = KEY_STATE_HELD_UP,     /* Up */
-    KEY_STATE_WAS_PRESSED = KEY_STATE_RELEASED, /* Released */
-    KEY_STATE_PRESSED     = KEY_STATE_HELD_DOWN    /* Down */
+    KEY_STATE_HELD_UP    = KEY_PACK_STATE(false, false),
+    KEY_STATE_TAPPED     = KEY_PACK_STATE(true, false),
+    KEY_STATE_RELEASED   = KEY_PACK_STATE(false, true),
+    KEY_STATE_HELD_DOWN  = KEY_PACK_STATE(true, true),
 };
+
 typedef uint8_t key_state_t;
 
 /** @} */
@@ -284,18 +287,6 @@ typedef uint8_t key_state_t;
 */
 #define KBD_QUEUE_SIZE 16
 
-/** \brief   Keyboard raw condition structure.
-    \ingroup kbd
-
-    This structure is what the keyboard responds with as its current status.
-
-    \headerfile dc/maple/keyboard.h
-*/
-typedef struct kbd_cond {
-    kbd_mods_t modifiers;    /**< \brief Bitmask of set modifiers. */
-    kbd_leds_t leds;         /**< \brief Bitmask of set LEDs */
-    kbd_key_t  keys[MAX_PRESSED_KEYS];      /**< \brief Key codes for currently pressed keys. */
-} kbd_cond_t;
 
 /** \brief   Keyboard status structure.
     \ingroup kbd
@@ -306,9 +297,6 @@ typedef struct kbd_cond {
     \headerfile dc/maple/keyboard.h
 */
 typedef struct kbd_state {
-    /** \brief  The latest raw condition of the keyboard. */
-    kbd_cond_t cond;
-
     /** \brief  Key array.
 
         This array lists the state of all possible keys on the keyboard. It can
@@ -317,25 +305,18 @@ typedef struct kbd_state {
 
         \see    kbd_keys
     */
-    key_state_t matrix[MAX_KBD_KEYS];
+    key_state_t keys[MAX_KBD_KEYS];
 
     /** \brief  Modifier key status. */
-    kbd_mods_t shift_keys;
+    kbd_mods_t modifiers;
+
+    kbd_leds_t leds;
 
     /** \brief  Keyboard type/region. */
     kbd_region_t region;
 
-    /** \cond  Individual keyboard queue.
-        You should not access this variable directly. Please use the appropriate
-        function to access it. */
-    uint32_t key_queue[KBD_QUEUE_SIZE];
-    size_t queue_tail;                     /* Key queue tail. */
-    size_t queue_head;                     /* Key queue head. */
-    size_t queue_len;                      /* Current length of queue. */
-    /** \endcond */
-
-    uint8_t kbd_repeat_key;           /**< \brief Key that is repeating. */
-    uint64_t kbd_repeat_timer;        /**< \brief Time that the next repeat will trigger. */
+    kbd_key_t repeat_key;           /**< \brief Key that is repeating. */
+    uint64_t repeat_timeout;        /**< \brief Time that the next repeat will trigger. */
 } kbd_state_t;
 
 typedef void (*kbd_key_callback_t)(maple_device_t *dev, key_state_t state,
@@ -348,7 +329,7 @@ int kbd_set_leds(maple_device_t *dev, kbd_leds_t leds);
 
 key_state_t kbd_key_state(maple_device_t *dev, kbd_key_t key);
 
-char kbd_key_to_ascii(maple_device_t *dev, kbd_key_t key, kbd_mods_t mods, kbd_leds_t leds);
+char kbd_key_to_ascii(kbd_region_t region, kbd_key_t key, kbd_mods_t mods, kbd_leds_t leds);
 
 
 
