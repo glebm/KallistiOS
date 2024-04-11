@@ -50,17 +50,16 @@ typedef struct kbd_state_private {
 } kbd_state_private_t;
 
 static struct {
-    kbd_key_callback_t cb;
-    void              *ud;
+    kbd_event_handler_t cb;
+    void               *ud;
 } event_handler = {
     NULL, NULL
 };
 
-void kbd_set_event_handler(kbd_key_callback_t callback, void *user_data) {
+void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data) {
     event_handler.cb = callback;
     event_handler.ud = user_data;
 }
-
 
 /* These are global timings for key repeat. It would be possible to put
     them in the state, but I don't see a reason to.
@@ -473,7 +472,7 @@ int kbd_get_key(void) {
     return rv;
 }
 
-char kbd_key_to_ascii(kbd_region_t region, kbd_key_t key, kbd_mods_t mods, kbd_leds_t leds) {
+char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region, kbd_mods_t mods, kbd_leds_t leds) {
     char ascii = '\0';
 
     if((mods & KBD_MOD_RALT) || (mods & (KBD_MOD_LCTRL | KBD_MOD_LALT)) == (KBD_MOD_LCTRL | KBD_MOD_LALT))
@@ -528,8 +527,8 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
 
     /* If the modifier keys have changed, end the key repeating. */
     if(state->modifiers != cond->modifiers) {
-        state->repeat_key = KBD_KEY_NONE;
-        state->repeat_timeout = 0;
+        state->repeater.key = KBD_KEY_NONE;
+        state->repeater.timeout = 0;
     }
 
     /* Update modifiers and LEDs */
@@ -563,7 +562,7 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
         /* The rest of the keys are treated normally */
         else {
             state->keys[cond->keys[p]] |= true;
-            state->repeat_key = cond->keys[p];
+            state->repeater.key = cond->keys[p];
         }
     }
 
@@ -572,9 +571,9 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
             case KEY_STATE_TAPPED:
                 kbd_enqueue(state, k, mods);
 
-                if(k == state->repeat_key && repeat_timing.start) {
-                    state->repeat_key = k;
-                    state->repeat_timeout = timer_ms_gettime64() + repeat_timing.start;
+                if(k == state->repeater.key && repeat_timing.start) {
+                    state->repeater.key = k;
+                    state->repeater.timeout = timer_ms_gettime64() + repeat_timing.start;
                 }
 
                 if(event_handler.cb)
@@ -583,12 +582,12 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
                 break;
 
             case KEY_STATE_HELD_DOWN:
-                if(k == state->repeat_key && repeat_timing.start) {
+                if(k == state->repeater.key && repeat_timing.start) {
                     const uint64_t time = timer_ms_gettime64();
                     /* We have passed the prescribed amount of time, and will repeat the key */
-                    if(time >= state->repeat_timeout) {
+                    if(time >= state->repeater.timeout) {
                         kbd_enqueue(state, k, mods);
-                        state->repeat_timeout = time + repeat_timing.interval;
+                        state->repeater.timeout = time + repeat_timing.interval;
                     }
                 }
                 break;
@@ -684,8 +683,8 @@ static int kbd_attach(maple_driver_t *drv, maple_device_t *dev) {
     state_private->queue_tail = state_private->queue_head = state_private->queue_len = 0;
 
     /* Make sure all the key repeat variables are set up properly too */
-    state->repeat_key = KBD_KEY_NONE;
-    state->repeat_timeout = 0;
+    state->repeater.key = KBD_KEY_NONE;
+    state->repeater.timeout = 0;
 
     return 0;
 }
