@@ -507,7 +507,7 @@ int kbd_queue_pop(maple_device_t *dev, bool xlat) {
     leds = (rv >> 16) & 0xff;
     rv &= 0xff;
 
-    if((ascii = kbd_key_to_ascii(state_private->base.region, rv, mods, leds))) {
+    if((ascii = kbd_key_to_ascii(rv, state_private->base.region, mods, leds))) {
         return ascii;
     } else {
         return (int)(rv << 8);

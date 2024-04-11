@@ -418,7 +418,8 @@ void kbd_set_repeat_timing(uint16_t start, uint16_t interval);
     \returns            The ASCII value corresponding to \p key or NULL if
                         the translation was unsuccessful.
 */
-char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region, kbd_mods_t mods, kbd_leds_t leds);
+char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
+                      kbd_mods_t mods, kbd_leds_t leds);
 
 /** \brief   Activate or deactivate global key queueing.
     \deprecated

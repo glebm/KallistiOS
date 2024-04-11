@@ -45,6 +45,10 @@ static void kb_test(void) {
             if(k != 10) {
                 bfont_draw(vram_s + y * 640 + x, 640, 0, k);
                 x += 12;
+                if(x >= 620) {
+                    x = 20;
+                    y += 24;
+                }
             }
         }
 
@@ -60,7 +64,7 @@ static void on_key_event(maple_device_t *dev, key_state_t state,
 
     printf("[%c%u] %c: %s\n",
            'A' + dev->port, dev->unit,
-           kbd_key_to_ascii(kbd_state->region, key, mods, leds),
+           kbd_key_to_ascii(key, kbd_state->region, mods, leds),
            state == KEY_STATE_TAPPED? "PRESSED" : "RELEASED");
 
     if(key == KBD_KEY_ENTER && state == KEY_STATE_TAPPED) {
