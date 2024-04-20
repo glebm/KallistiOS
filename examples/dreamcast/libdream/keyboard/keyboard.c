@@ -30,8 +30,6 @@ static void kb_test(void) {
             return;
         }
 
-        thd_sleep(10);
-
         /* Get queued keys */
         while((k = kbd_queue_pop(kbd, 1)) != KBD_QUEUE_END) {
             if(k == 27) {
@@ -51,8 +49,6 @@ static void kb_test(void) {
                 }
             }
         }
-
-        thd_sleep(10);
     }
 }
 
@@ -75,6 +71,14 @@ static void on_key_event(maple_device_t *dev, kbd_key_t key,
 
 int main(int argc, char **argv) {
     kbd_set_event_handler(on_key_event, NULL);
+
+    for(int y = 0; y < 480; y++)
+        for(int x = 0; x < 640; x++) {
+            int c = (x ^ y) & 255;
+            vram_s[y * 640 + x] = ((c >> 3) << 12)
+                                  | ((c >> 2) << 5)
+                                  | ((c >> 3) << 0);
+        }
 
     kb_test();
 
