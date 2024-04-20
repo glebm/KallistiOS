@@ -17,6 +17,8 @@
 #include <arch/memory.h>
 #include <arch/rtc.h>
 #include <arch/timer.h>
+#include <arch/wdt.h>
+#include <dc/perfctr.h>
 #include <dc/ubc.h>
 #include <dc/pvr.h>
 #include <dc/vmufs.h>
@@ -48,16 +50,11 @@ uint32 _fs_dclsocket_get_ip(void);
 
 /* We have to put this here so we can include plat-specific devices */
 dbgio_handler_t * dbgio_handlers[] = {
-#ifndef _arch_sub_naomi
     &dbgio_dcload,
     &dbgio_dcls,
     &dbgio_scif,
     &dbgio_null,
     &dbgio_fb
-#else
-    &dbgio_null,
-    &dbgio_fb
-#endif
 };
 int dbgio_handler_cnt = sizeof(dbgio_handlers) / sizeof(dbgio_handler_t *);
 
@@ -127,15 +124,15 @@ int  __weak arch_auto_init(void) {
     /* Do this immediately so we can receive exceptions for init code
        and use ints for dbgio receive. */
     irq_init();         /* IRQs */
-    irq_disable();          /* Turn on exceptions */
+    irq_disable();      /* Turn on exceptions */
 
-#ifndef _arch_sub_naomi
+    ubc_init();
+
     if(!(__kos_init_flags & INIT_NO_DCLOAD))
         fs_dcload_init_console();   /* Init dc-load console, if applicable */
 
     /* Init SCIF for debug stuff (maybe) */
     scif_init();
-#endif
 
     /* Init debug IO */
     dbgio_init();
@@ -153,7 +150,7 @@ int  __weak arch_auto_init(void) {
     hardware_sys_init();        /* DC low-level hardware init */
 
     /* Initialize our timer */
-    timer_ns_enable();
+    perf_cntr_timer_enable();
     timer_ms_enable();
     rtc_init();
 
@@ -179,12 +176,12 @@ int  __weak arch_auto_init(void) {
     if(!KOS_INIT_FLAG_CALL(fs_romdisk_mount_builtin))
         KOS_INIT_FLAG_CALL(fs_romdisk_mount_builtin_legacy);
 
-#ifndef _arch_sub_naomi
     if(!(__kos_init_flags & INIT_NO_DCLOAD) && *DCLOADMAGICADDR == DCLOADMAGICVALUE) {
         dbglog(DBG_INFO, "dc-load console support enabled\n");
         fs_dcload_init();
     }
 
+#ifndef _arch_sub_naomi
     fs_iso9660_init();
 #endif
 
@@ -207,8 +204,8 @@ int  __weak arch_auto_init(void) {
 }
 
 void  __weak arch_auto_shutdown(void) {
-#ifndef _arch_sub_naomi
     fs_dclsocket_shutdown();
+#ifndef _arch_sub_naomi
     KOS_INIT_FLAG_CALL(net_shutdown);
 #endif
 
@@ -218,9 +215,7 @@ void  __weak arch_auto_shutdown(void) {
     hardware_shutdown();
     pvr_shutdown();
     library_shutdown();
-#ifndef _arch_sub_naomi
     fs_dcload_shutdown();
-#endif
     KOS_INIT_FLAG_CALL(vmu_fs_shutdown);
 #ifndef _arch_sub_naomi
     fs_iso9660_shutdown();
@@ -250,8 +245,11 @@ void arch_main(void) {
     *DMAOR = 0x8201;
 #endif /* _arch_sub_naomi */
 
+    /* Ensure the WDT is not enabled from a previous session */
+    wdt_disable();
+
     /* Ensure that UBC is not enabled from a previous session */
-    ubc_disable_all();
+    ubc_shutdown();
 
     /* Handle optional callback provided by KOS_INIT_EARLY() */
     if(__kos_init_early_fn)
@@ -264,6 +262,8 @@ void arch_main(void) {
     arch_auto_init();
 
     __verify_newlib_patch();
+
+    dbglog(DBG_INFO, "\n");
 
     /* Run ctors */
     _init();
@@ -289,8 +289,11 @@ void arch_shutdown(void) {
 
     dbglog(DBG_CRITICAL, "arch: shutting down kernel\n");
 
+    /* Disable the WDT, if active */
+    wdt_disable();
+
     /* Turn off UBC breakpoints, if any */
-    ubc_disable_all();
+    ubc_shutdown();
 
     /* Do auto-shutdown... or use the "light weight" version underneath */
 #if 1
@@ -325,7 +328,7 @@ void arch_exit(void) {
 
 /* Return point from newlib's _exit() (configurable) */
 void arch_exit_handler(int ret_code) {
-    dbglog(DBG_INFO, "arch: exit return code %d\n", ret_code);
+    dbglog(DBG_INFO, "\narch: exit return code %d\n", ret_code);
 
     /* Shut down */
     arch_shutdown();
@@ -366,8 +369,11 @@ void arch_menu(void) {
 /* Called to shut down non-gracefully; assume the system is in peril
    and don't try to call the dtors */
 void arch_abort(void) {
+    /* Disable the WDT, if active */
+    wdt_disable();
+
     /* Turn off UBC breakpoints, if any */
-    ubc_disable_all();
+    ubc_shutdown();
 
     dbglog(DBG_CRITICAL, "arch: aborting the system\n");
 

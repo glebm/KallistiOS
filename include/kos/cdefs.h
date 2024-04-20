@@ -8,8 +8,9 @@
    Based loosely around some stuff in BSD's sys/cdefs.h
 */
 
-/** \file   kos/cdefs.h
-    \brief  Definitions for builtin attributes and compiler directives
+/** \file    kos/cdefs.h
+    \brief   Definitions for builtin attributes and compiler directives
+    \ingroup system_macros
 
     This file contains definitions of various __attribute__ directives in
     shorter forms for use in programs. These typically aid  in optimizations
@@ -24,6 +25,13 @@
 #define __KOS_CDEFS_H
 
 #include <sys/cdefs.h>
+
+/** \defgroup system_macros     Macros
+    \brief                      Various common macros used throughout the codebase
+    \ingroup                    system
+
+    @{
+*/
 
 /* Check GCC version */
 #if __GNUC__ <= 3
@@ -54,7 +62,7 @@
 #endif
 
 #ifndef __weak
-/** \brief  Identify a function or variable that may be overriden by another symbol. */
+/** \brief  Identify a function or variable that may be overridden by another symbol. */
 #define __weak      __attribute__((weak))
 #endif
 
@@ -68,7 +76,7 @@
 #define __pure2     __pure      /* ditto */
 #endif
 
-#ifndef likely
+#ifndef __likely
 /** \brief  Directive to inform the compiler the condition is in the likely path.
 
     This can be used around conditionals or loops to help inform the
@@ -76,12 +84,12 @@
 
     \param  exp     Boolean expression which expected to be true.
 
-    \sa unlikely()
+    \sa __unlikely()
 */
-#define likely(exp)   __builtin_expect(!!(exp), 1)
+#define __likely(exp)   __builtin_expect(!!(exp), 1)
 #endif
 
-#ifndef unlikely
+#ifndef __unlikely
 /** \brief  Directive to inform the compiler the condition is in the unlikely path.
 
     This can be used around conditionals or loops to help inform the
@@ -89,15 +97,15 @@
 
     \param  exp     Boolean expression which is expected to be false.
 
-    \sa likely()
+    \sa __likely()
 */
-#define unlikely(exp) __builtin_expect(!!(exp), 0)
+#define __unlikely(exp) __builtin_expect(!!(exp), 0)
 #endif
 
 #ifndef __deprecated
 /** \brief  Mark something as deprecated.
     This should be used to warn users that a function/type/etc will be removed
-    in a future version of KOS. 
+    in a future version of KOS.
 */
 #define __deprecated    __attribute__((deprecated))
 #endif
@@ -108,7 +116,7 @@
     in a future version of KOS and to suggest an alternative that they can use
     instead.
     \param  m       A string literal that is included with the warning message
-                    at compile time. 
+                    at compile time.
 */
 #define __depr(m) __attribute__((deprecated(m)))
 #endif
@@ -149,8 +157,14 @@
 #endif
 
 #ifndef __always_inline
-/** \brief  Ask the compiler to always inline a given function. */
+/** \brief  Ask the compiler to \a always inline a given function. */
 #define __always_inline inline __attribute__((__always_inline__))
+#endif
+
+#ifndef __no_inline
+/** \brief Ask the compiler to \a never inline a given function. */
+#define __no_inline __attribute__((__noinline__))
+
 #endif
 
 /* Utility Macros */
@@ -161,8 +175,8 @@
     context information to the error.
 
     \note
-    This macro is for C99 and prior. C11 and onward introduced 
-    _Static_assert() and static_assert(). 
+    This macro is for C99 and prior. C11 and onward introduced
+    _Static_assert() and static_assert().
 */
 #define STATIC_ASSERT(cond, msg) typedef char static_assertion_##MSG[(cond) ? 1 : -1]
 #endif
@@ -178,7 +192,6 @@
     Does not work with arrays which have been decayed into pointers!
 */
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
-#endif
 
 /* GCC macros for special cases */
 /* #if __GNUC__ ==  */
@@ -196,5 +209,7 @@
 #ifndef __GNUC__
 #define __extension__
 #endif
+
+/** @} */
 
 #endif  /* __KOS_CDEFS_H */

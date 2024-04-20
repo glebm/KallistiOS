@@ -16,7 +16,8 @@
 # The original toolchain file was created by Kazade for the Simulant 
 # engine who has graciously allowed the rest of the scene to warez it. 
 
-cmake_minimum_required(VERSION 3.23)
+#### This minimum is due to the use of add_link_options
+cmake_minimum_required(VERSION 3.13)
 
 #### Set Configuration Variables From Environment ####
 if(NOT DEFINED KOS_BASE)
@@ -51,42 +52,43 @@ if(NOT DEFINED KOS_PORTS)
     message(VERBOSE "KOS_PORTS: ${KOS_PORTS}")
 endif()
 
+list(APPEND CMAKE_MODULE_PATH $ENV{KOS_BASE}/utils/cmake)
+
 ##### Configure CMake System #####
-set(CMAKE_SYSTEM_NAME Generic-ELF)
+set(CMAKE_SYSTEM_NAME Dreamcast)
 set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_SYSTEM_PROCESSOR SH4)
 set(PLATFORM_DREAMCAST TRUE)
 
 ##### Configure Cross-Compiler #####
 set(CMAKE_CROSSCOMPILING TRUE)
-set(CMAKE_C_COMPILER ${KOS_CC_BASE}/bin/sh-elf-gcc)
-set(CMAKE_CXX_COMPILER ${KOS_CC_BASE}/bin/sh-elf-g++)
+
+set(CMAKE_ASM_COMPILER    ${KOS_CC_BASE}/bin/sh-elf-as)
+set(CMAKE_C_COMPILER      ${KOS_CC_BASE}/bin/sh-elf-gcc)
+set(CMAKE_CXX_COMPILER    ${KOS_CC_BASE}/bin/sh-elf-g++)
+set(CMAKE_OBJC_COMPILER   ${KOS_CC_BASE}/bin/sh-elf-gcc)
+set(CMAKE_OBJCXX_COMPILER ${KOS_CC_BASE}/bin/sh-elf-g++)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
 # Never use the CMAKE_FIND_ROOT_PATH to find programs with find_program()
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 
+# Set sysroot to kos-ports folder
+set(CMAKE_SYSROOT ${KOS_PORTS})
+set(ENV{PKG_CONFIG_SYSROOT_DIR} ${KOS_PORTS})
+
 ##### Add Platform-Specific #defines #####
-ADD_DEFINITIONS(
-    -D__DREAMCAST__
-    -D_arch_dreamcast
-)
+add_compile_definitions(__DREAMCAST__ _arch_dreamcast)
 
 if(${KOS_SUBARCH} MATCHES naomi)
-    ADD_DEFINITIONS(
-        -D__NAOMI__
-        -D_arch_sub_naomi
-    )
+    add_compile_definitions(__NAOMI__ _arch_sub_naomi)
 else()
-    ADD_DEFINITIONS(-D_arch_sub_pristine)
+    add_compile_definitions(_arch_sub_pristine)
 endif()
 
-separate_arguments(KOS_CFLAGS NATIVE_COMMAND $ENV{KOS_CFLAGS})
-
 ##### Configure Build Flags #####
-add_compile_options(${KOS_CFLAGS})
-#add_compile_options(-ml -m4-single-only -ffunction-sections -fdata-sections -matomic-model=soft-imask -ftls-model=local-exec)
+add_compile_options(-ml -m4-single-only -ffunction-sections -fdata-sections -matomic-model=soft-imask -ftls-model=local-exec)
 
 set(ENABLE_DEBUG_FLAGS   $<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>)
 set(ENABLE_RELEASE_FLAGS $<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>)
@@ -100,17 +102,17 @@ set(CMAKE_ASM_FLAGS "")
 set(CMAKE_ASM_FLAGS_RELEASE "")
 
 ##### Configure Include Directories #####
-set(CMAKE_SYSTEM_INCLUDE_PATH "${CMAKE_SYSTEM_INCLUDE_PATH} $ENV{KOS_INC_PATHS}")
+set(CMAKE_SYSTEM_INCLUDE_PATH "${CMAKE_SYSTEM_INCLUDE_PATH} ${KOS_BASE}/include ${KOS_BASE}/kernel/arch/dreamcast/include ${KOS_BASE}/addons/include ${KOS_PORTS}/include")
 
-INCLUDE_DIRECTORIES(
+include_directories(
     $ENV{KOS_BASE}/include
     $ENV{KOS_BASE}/kernel/arch/dreamcast/include
     $ENV{KOS_BASE}/addons/include
     $ENV{KOS_PORTS}/include
 )
 
-##### Configure Libraries #####
-set(CMAKE_SYSTEM_LIBRARY_PATH "${CMAKE_SYSTEM_LIBRARY_PATH} ${KOS_BASE}/addons/lib/dreamcast ${KOS_PORTS}/lib")
+##### Configure Linker #####
+set(CMAKE_SYSTEM_LIBRARY_PATH "${CMAKE_SYSTEM_LIBRARY_PATH} ${KOS_BASE}/lib/dreamcast ${KOS_BASE}/addons/lib/dreamcast ${KOS_PORTS}/lib")
 
 if(${KOS_SUBARCH} MATCHES naomi)
     add_link_options(-Wl,-Ttext=0x8c020000 -T${KOS_BASE}/utils/ldscripts/shlelf-naomi.xc)
@@ -120,13 +122,20 @@ endif()
 
 add_link_options(-ml -m4-single-only -Wl,--gc-sections -nodefaultlibs)
 
-LINK_DIRECTORIES(
+link_directories(
     ${KOS_BASE}/lib/dreamcast
     ${KOS_BASE}/addons/lib/dreamcast
     ${KOS_PORTS}/lib
 )
 
 add_link_options(-L${KOS_BASE}/lib/dreamcast -L${KOS_BASE}/addons/lib/dreamcast -L${KOS_PORTS}/lib)
-LINK_LIBRARIES(-Wl,--start-group -lstdc++ -lkallisti -lc -lgcc -Wl,--end-group m)
+
+##### Custom Build Rules #####
+set(CMAKE_C_LINK_EXECUTABLE
+    "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> \
+    -lm -Wl,--start-group -lkallisti -lc -lgcc -Wl,--end-group")
+set(CMAKE_CXX_LINK_EXECUTABLE
+    "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES> \
+    -lm -Wl,--start-group -lstdc++ -lkallisti -lc -lgcc -Wl,--end-group")
 
 include("${KOS_BASE}/utils/cmake/dreamcast.cmake")

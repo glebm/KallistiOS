@@ -8,7 +8,11 @@
 
 /** \file    dc/vmufs.h
     \brief   Low-level VMU filesystem driver.
+<<<<<<< HEAD
     \ingroup vmufs
+=======
+    \ingroup vfs_vmu
+>>>>>>> master
 
     The VMU filesystem driver mounts itself on /vmu of the VFS. Each memory card
     has its own subdirectory off of that directory (i.e, /vmu/a1 for slot 1 of
@@ -176,7 +180,7 @@ STATIC_ASSERT(sizeof(vmu_root_t) == 32,
 /** \brief   VMU FS Directory entries, 32 bytes each.
     \ingroup vmufs
 
-    \note 
+    \note
     vmu_dir_t::dirty should always be zero when written out to the VMU. What this
     lets us do, though, is conserve on flash writes. If you only want to
     modify one single file (which is the standard case) then re-writing all
@@ -505,7 +509,7 @@ int vmufs_read(maple_device_t *dev, const char *fn, void **outbuf,
     \param  outsize         Storage for the size of the file, in bytes.
     \return                 0 on success, <0 on failure.
 */
-int vmufs_read_dirent(maple_device_t *dev, const vmu_dir_t *dirent, 
+int vmufs_read_dirent(maple_device_t *dev, const vmu_dir_t *dirent,
                       void **outbuf, size_t *outsize);
 
 /** \brief Write a file to the VMU.
@@ -548,6 +552,8 @@ int vmufs_init(void);
 /*  Shutdown vmufs. */
 int vmufs_shutdown(void);
 /** \endcond */
+
+/** @} */
 
 __END_DECLS
 
