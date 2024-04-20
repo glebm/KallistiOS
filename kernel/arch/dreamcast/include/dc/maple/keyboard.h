@@ -48,7 +48,7 @@ __BEGIN_DECLS
     \ingroup        peripherals
 
     \par Querying for a Device
-    You can grab a pointer to the `Nth`connected keyboard by using tte following:
+    You can grab a pointer to the `Nth`connected keyboard by using the following:
 
         maple_device_t *device = maple_enum_type(N, MAPLE_FUNC_KEYBOARD);
 
@@ -57,65 +57,38 @@ __BEGIN_DECLS
         else
             printf("Keyboard not found!\n");
 
-    \par Polling for Input
-    The first method of checking for key input is to simply poll
-    kbd_state_t::key_states for the desired key states each frame.
+    @{
+*/
 
-    \par
-    First, lets grab a pointer to the kbd_state_t:
+/** \defgroup kbd_status_grp    Device Status
+    \brief                      Types relating to overall keyboard state
 
-        kbd_state_t *kbd = (kbd_state_t *)device->status;
-
-    \par
-    Then lets "move" every frame an arrow key is held down:
-
-        if(kbd->key_states[KBD_KEY_LEFT].is_down)
-            printf("Moving left!\n");
-        if(kbd->key_states[KBD_KEY_RIGHT].is_down)
-            printf("Moving right!\n");
-        if(kbd->key_states[KBD_KEY_UP].is_down)
-            printf("Moving up!\n");
-        if(kbd->key_states[KBD_KEY_DOWN].is_down)
-            printf("Moving down!\n");
-
-    \par
-    Finally, lets "attack" for only a single frame each time the button is
-    pressed, requiring it to be released and pressed again to start the next
-    attack:
-
-        if(kbd->key_states[KBD_KEY_SPACE].value == KEY_STATE_CHANGED_DOWN)
-            printf("Attacking!\n");
-
-    \par Event-Driven Callbacks
+    Types and API functions revolving around individual constituents of
+    the overall keyboard state. These values can either be retrieved manually
+    with \ref kbd_polling or automatically with \ref kbd_event_handler.
 
     @{
 */
 
-/** \brief   Maximum number of keys the DC can read simultaneously.
+/** \defgroup   kbd_mods_grp    Modifier Keys
+    \brief                      Types associated with keyboard modifier keys
+    \ingroup                    kbd_status_grp
 
-    This is a hardware constant. The define prevents the magic number '6' from
-    appearing.
+    Modifier keys are represented by the kbd_mods_t union type. Each key state
+    can be accessed by:
+        1. Directly using a convenience bit field.
+        2. Bitwise `AND` of kbd_mods_t::raw with one of the \ref kbd_mods_flags.
 
-    \warning
-    The physical keyboard hardware can only report up to 6 simultaneous key
-    presses before erroring out and overflowing.
-**/
-#define KBD_MAX_PRESSED_KEYS 6
+    @{
+*/
 
-/** \brief   Maximum number of keys a DC keyboard can have.
+/** \defgroup   kbd_mods_flags  Flags
+    \brief                      Keyboard modifier key flags
 
-    This is a hardware constant. The define prevents the magic number '256'
-    from appearing.
-**/
-#define KBD_MAX_KEYS 256
+    These are the various modifiers that can be pressed on the keyboard. Their
+    current state is stored within kbd_state_t::modifiers.
 
-/** \defgroup   kbd_mods_defs   Modifier Keys
-    \brief                      Masks for the various keyboard modifier keys
-
-    These are the various modifiers that can be pressed on the keyboard, and are
-    reflected in the modifiers field of kbd_cond_t.
-
-    \sa kbd_mods_t::raw, kbd_state_t::modifiers
+    \sa kbd_mods_t::raw
 
     @{
 */
@@ -138,14 +111,11 @@ __BEGIN_DECLS
 #define KBD_MOD_ALT         (KBD_MOD_LALT | KBD_MOD_RALT)
 /** @} */
 
-/** \brief  Keyboard Modifier Keys
+/** \brief Modifier Keys
 
-    Union containing the state of all keyboard modifier keys. Each key state
-    can be accessed by:
-        1. Directly using a convenience bit field.
-        2. Bitwise AND of kbd_mods_t::raw with one of the \ref kbd_mods_defs.
+    Convenience union containing the state of all keyboard modifier keys.
 
-    \sa kbd_mods_defs, kbd_state_t::modifiers
+    \sa kbd_mods_flags, kbd_state_t::modifiers
 */
 typedef union kbd_mods {
     /** \brief Convenience Bitfields */
@@ -159,11 +129,25 @@ typedef union kbd_mods {
         uint8_t ralt    : 1;    /**< \brief Right Alternate key */
         uint8_t s2      : 1;    /**< \brief S2 key */
     };
-    uint8_t raw;    /**< \brief Packed 8-bit unsigned integer of bitflags*/
+    uint8_t raw;    /**< \brief Packed 8-bit unsigned integer of bitflags */
 } kbd_mods_t;
 
-/** \defgroup   kbd_leds_defs   LEDs
-    \brief                      Values for the different keyboard LEDs
+/** @} */
+
+/** \defgroup   kbd_leds_grp    LEDs
+    \brief                      Types associated with keyboard LEDs
+    \ingroup                    kbd_status_grp
+
+    LEDs are represented by the kbd_leds_t union type. Each individual LED
+    can be accessed by:
+        1. Directly using a convenience bit field.
+        2. Bitwise `AND` of kbd_leds_t::raw with one of the \ref kbd_led_flags.
+
+    @{
+*/
+
+/** \defgroup   kbd_led_flags   Flags
+    \brief                      Keyboard LED flags
 
     These are the LEDs that can be turned on and off on the keyboard. This list
     may not be exhaustive. Think of these sort of like an extension of the
@@ -185,12 +169,9 @@ typedef union kbd_mods {
 
 /** \brief Keyboard LEDs
 
-    Union containing the state of all keyboard LEDs. Each LED state
-    can be accessed by:
-        1. Directly using a convenience bit field.
-        2. Bitwise AND of kbd_leds_t::raw with one of the \ref kbd_leds_defs.
+    Union containing the state of all keyboard LEDs.
 
-    \sa kbd_leds_defs, kbd_state_t::leds
+    \sa kbd_led_flags, kbd_state_t::leds
 */
 typedef union kbd_leds {
     /** \brief Convenience Bitfields */
@@ -207,7 +188,142 @@ typedef union kbd_leds {
     uint8_t raw;    /**< \brief Packed 8-bit unsigned integer of bitflags */
 } kbd_leds_t;
 
-/**\brief Raw Keyboard Key Identifiers
+/** @} */
+
+/** \defgroup key_state_grp     Key States
+    \brief                      Types associated with key states
+    \ingroup                    kbd_status_grp
+
+    Key states are represented by the kbd_state_t union type. The state may be
+    accessed by:
+        1. Directly comparing key_state_t::value to a \ref key_state_value_t.
+        2. Directly using a convenience bit field.
+        3. Bitwise `AND` of key_state_t::raw with one of the
+           \ref key_state_flags.
+
+    @{
+*/
+
+/** \defgroup   key_state_flags Flags
+    \brief                      Keyboard key state bit flags
+
+    A key_state_t is a combination of two flags:
+        1. `KEY_STATE_IS_DOWN`: whether the key is currently pressed
+                                this frame.
+        2. `KEY_STATE_WAS_DOWN`: whether the key was previously pressed
+                                 last frame.
+
+    Between these two flags, you can know whether a key state transition
+    event has occurred (when the two flags have different values).
+
+    \sa key_state_t::raw, key_state_value_t
+
+    @{
+*/
+#define KEY_STATE_IS_DOWN    (1 << 0) /**< \brief If key is currenty down */
+#define KEY_STATE_WAS_DOWN   (1 << 1) /**< \brief If key was previously down */
+/** \brief Mask of all key state flags */
+#define KEY_STATE_MASK      (KEY_STATE_IS_DOWN | KEY_STATE_WAS_DOWN)
+/** @} */
+
+/** \brief Creates a packed key_state_t
+
+    This macro is used to pack two frames worth of key state information
+    into a key_state_t, one bit per frame.
+*/
+#define KEY_STATE_PACK(is_down, was_down) \
+    (((!!(is_down))?  KEY_STATE_IS_DOWN  : 0) | \
+     ((!!(was_down))? KEY_STATE_WAS_DOWN : 0))
+
+/** \brief Valid values for key_state_t::value
+
+    Enumerates each of the 4 different states a key can be in,
+    by combining two frames worth of key down information
+    into two bits.
+
+    \note
+    Two of the values are for `HELD` states, meaning the same state has been
+    observed for both the current and the previous frame, while the other two
+    values are for `CHANGE` states, meaning the current frame has a different
+    state from the previous frame.
+
+    \sa key_state_flags, key_state_t::value
+*/
+typedef enum __packed key_state_value {
+    /** \brief Key has been in an up state for at least the last two frames */
+    KEY_STATE_HELD_UP      = KEY_STATE_PACK(false, false),
+    /** \brief Key transitioned from up to pressed this frame */
+    KEY_STATE_CHANGED_DOWN = KEY_STATE_PACK(true, false),
+    /** \brief Key transitioned from down to released this frame */
+    KEY_STATE_CHANGED_UP   = KEY_STATE_PACK(false, true),
+    /** \brief Key has been held down for at least the last two frames */
+    KEY_STATE_HELD_DOWN    = KEY_STATE_PACK(true, true),
+} key_state_value_t;
+
+/** \brief Keyboard Key State
+
+    Union containing the the previous and current frames' state information for
+    a keyboard key.
+
+    \sa key_state_flags, key_state_value_t, kbd_state::key_states
+*/
+typedef union key_state {
+    /** \brief Convenience Bitfields */
+    struct {
+        uint8_t is_down  : 1; /**< \brief Whether down the current frame */
+        uint8_t was_down : 1; /**< \brief Whether down the previous frame */
+        uint8_t          : 6;
+    };
+    key_state_value_t value;  /**< \brief Enum for specific state */
+    uint8_t           raw;    /**< \brief Packed uint8_t of bitflags */
+} key_state_t;
+
+/** @} */
+
+/** \brief      Region Codes for the Dreamcast keyboard
+    \ingroup    kbd_status_grp
+
+    This is the list of possible values for kbd_state_t::region.
+*/
+typedef enum kbd_region {
+    KBD_REGION_JP = 1, /**< \brief Japanese keyboard */
+    KBD_REGION_US = 2, /**< \brief US keyboard */
+    KBD_REGION_UK = 3, /**< \brief UK keyboard */
+    KBD_REGION_DE = 4, /**< \brief German keyboard */
+    KBD_REGION_FR = 5, /**< \brief French keyboard */
+    KBD_REGION_IT = 6, /**< \brief Italian keyboard (not supported yet) */
+    KBD_REGION_ES = 7  /**< \brief Spanish keyboard */
+} kbd_region_t;
+
+/** \brief   Maximum number of keys a DC keyboard can have.
+
+    This is a hardware constant. The define prevents the magic number '256'
+    from appearing.
+**/
+#define KBD_MAX_KEYS    256
+
+/** \brief   Keyboard status structure.
+
+    This structure holds information about the current status of the keyboard
+    device. This is what maple_dev_status() will return.
+*/
+typedef struct kbd_state {
+    /** \brief Current (and previous) state of all keys in kbd_keys_t. */
+    key_state_t key_states[KBD_MAX_KEYS];
+
+    /** \brief Current modifier keys statuses */
+    kbd_mods_t modifiers;
+
+    /** \brief Current LED statuses */
+    kbd_leds_t leds;
+
+    /** \brief Keyboard type/region */
+    kbd_region_t region;
+} kbd_state_t;
+
+/** @} */
+
+/** \brief Raw Keyboard Key Identifiers
 
     This is the list of keys that are on the keyboard that may be pressed. The
     keyboard returns keys in this format.
@@ -215,10 +331,8 @@ typedef union kbd_leds {
     \note
     These are the raw keycodes returned by the US keyboard, and thus only cover
     the keys on US keyboards (even though they can be used with other keyboards).
-
-    \sa kbd_key_t
 */
-enum {
+typedef enum __packed kbd_key {
     KBD_KEY_NONE         = 0x00, /**< \brief No key */
     KBD_KEY_ERROR        = 0x01, /**< \brief ERROR_ROLLOVER */
     KBD_KEY_ERR2         = 0x02, /**< \brief Unknown error */
@@ -319,130 +433,115 @@ enum {
     KBD_KEY_PAD_0        = 0x62, /**< \brief Keypad 0 key */
     KBD_KEY_PAD_PERIOD   = 0x63, /**< \brief Keypad Period key */
     KBD_KEY_S3           = 0x65  /**< \brief S3 key */
-};
+} kbd_key_t;
 
-/** \brief Keyboard Key Type
 
-    Typedef which can hold a valid keyboard key ID.
+/** \brief Converts a kbd_key_t value into its corresponding ASCII value
+
+    This function attempts to convert \p key to its ASCII representation
+    using an internal translation table and additional keyboard state context.
+
+    \param  key         The raw key type to convert to ASCII
+    \param  region      The region type of the keyboard containing the key.
+    \param  mods        The modifier flags impacting the key
+    \param  leds        The LED state flags impacting the key
+
+    \returns            The ASCII value corresponding to \p key or NULL if
+                        the translation was unsuccessful.
 */
-typedef uint8_t kbd_key_t;
+char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
+                      kbd_mods_t mods, kbd_leds_t leds);
 
-/** \brief Region Codes for the Dreamcast keyboard
+/** \defgroup kbd_input     Querying for Input
+    \brief                  Various methods for checking keyboard input
 
-    This is the list of possible values for kbd_state_t::region.
-*/
-typedef enum kbd_region {
-    KBD_REGION_JP = 1, /**< \brief Japanese keyboard */
-    KBD_REGION_US = 2, /**< \brief US keyboard */
-    KBD_REGION_UK = 3, /**< \brief UK keyboard */
-    KBD_REGION_DE = 4, /**< \brief German keyboard */
-    KBD_REGION_FR = 5, /**< \brief French keyboard */
-    KBD_REGION_IT = 6, /**< \brief Italian keyboard (not supported yet) */
-    KBD_REGION_ES = 7  /**< \brief Spanish keyboard */
-} kbd_region_t;
+    There are 3 different ways to check for input with the keyboard API:
 
-/** \defgroup   key_state_defs  Key State Flags
-    \brief                      Bit flags comprising current key state
-
-    A key_state_t is a combination of two flags:
-        1. KEY_STATE_IS_DOWN: whether the key is currently pressed
-                              this frame.
-        2. KEY_STATE_WAS_DOWN: whether the key was previously pressed
-                               last frame.
-
-    Between these two flags, you can know whether a key state transition
-    event has occurred (when the two flags have different values).
-
-    \sa key_state_t::raw, key_state_value_t
+    Mechanism             | Description
+    ----------------------|--------------------------------------------
+    \ref kbd_polling      |Manual checks each key state every frame
+    \ref kbd_event_handler|Automatic callbacks upon key state changes
+    \ref kbd_queue        |Monitor for new key press events every frame
 
     @{
 */
-#define KEY_STATE_IS_DOWN    (1 << 0) /**< \brief If key is currenty down */
-#define KEY_STATE_WAS_DOWN   (1 << 1) /**< \brief If key was previously down */
-/** \brief Mask of all key state flags */
-#define KEY_STATE_MASK      (KEY_STATE_IS_DOWN | KEY_STATE_WAS_DOWN)
+
+/** \defgroup kbd_polling   State Polling
+    \brief                  Frame-based polling for keyboard input
+
+    One method of checking for key input is to simply poll
+    kbd_state_t::key_states for the desired key states each frame.
+
+    First, lets grab a pointer to the kbd_state_t:
+
+        kbd_state_t *kbd = kbd_get_state(device);
+
+    Then lets "move" every frame an arrow key is held down:
+
+        if(kbd->key_states[KBD_KEY_LEFT].is_down)
+            printf("Moving left!\n");
+        if(kbd->key_states[KBD_KEY_RIGHT].is_down)
+            printf("Moving right!\n");
+        if(kbd->key_states[KBD_KEY_UP].is_down)
+            printf("Moving up!\n");
+        if(kbd->key_states[KBD_KEY_DOWN].is_down)
+            printf("Moving down!\n");
+
+    Finally, lets "attack" for only a single frame each time the button is
+    pressed, requiring it to be released and pressed again to start the next
+    attack:
+
+        if(kbd->key_states[KBD_KEY_SPACE].value == KEY_STATE_CHANGED_DOWN)
+            printf("Attacking!\n");
+
+    @{
+*/
+
+/** \brief Retrieves the keyboard state from a maple device
+
+    Accessor method for safely retrieving a kbd_state_t from a maple_device_t
+    of a `MAPLE_FUNC_KEYBOARD` type. This function also checks for whether
+    the given device is actuallya keyboard and for whether it is currently
+    valid.
+
+    \param  device          Handle corresponding to a `MAPLE_FUNC_KEYBOARD`
+                            device.
+
+    \retval kbd_state_t*    Returns a pointer to the internal keyboard state
+                            upon success.
+    \retval NULL            Returns NULL upon failure.
+
+*/
+kbd_state_t *kbd_get_state(maple_device_t *device);
+
 /** @} */
 
-/** \brief Creates a packed key_state_t
+/** \defgroup kbd_event_handler     Event Handling
+    \brief                          Event-driven keyboard input mechanism
 
-    This macro is used to pack two frames worth of key state information
-    into a key_state_t, one bit per frame.
+    One method of checking for key input is to register an event handler,
+    which will be notified every time a key changes state.
+
+    We first create a simple handler to print `ENTER` key events:
+
+        static void on_key_event(maple_device_t *dev, kbd_key_t key,
+                                 key_state_t state, kbd_mods_t mods,
+                                 kbd_leds_t leds, void *user_data) {
+
+            if(key == KBD_KEY_ENTER) {
+                if(state.value == KEY_STATE_CHANGED_DOWN)
+                    printf("Enter pressed!\n");
+                else if(state.value == KEY_STATE_CHANGED_UP)
+                    printf("Enter released!\n");
+            }
+        }
+
+    We then register our callback as the keyboard event handler:
+
+        kbd_set_event_handler(on_key_event, NULL);
+
+    @{
 */
-#define KEY_STATE_PACK(is_down, was_down)   \
-    (((!!(is_down))?  KEY_STATE_IS_DOWN : 0) | \
-     ((!!(was_down))? KEY_STATE_WAS_DOWN : 0))
-
-/** \brief key_state_t values
-
-    Enumerates each of the 4 different states a key can be in,
-    by combining two frames worth of key down information
-    into two bits.
-
-    \note
-    Two of the values are for `HELD` states, meaning the same state has been
-    observed for both the current and the previous frame, while the other two
-    values are for `CHANGE` states, meaning the current frame has a different
-    state from the previous frame.
-
-    \sa key_state_defs, key_state_t::raw
-*/
-typedef enum __attribute__((packed)) key_state_value {
-    /** \brief Key has been in an up state for at least the last two frames */
-    KEY_STATE_HELD_UP      = KEY_STATE_PACK(false, false),
-    /** \brief Key transitioned from up to pressed this frame */
-    KEY_STATE_CHANGED_DOWN = KEY_STATE_PACK(true, false),
-    /** \brief Key transitioned from down to released this frame */
-    KEY_STATE_CHANGED_UP   = KEY_STATE_PACK(false, true),
-    /** \brief Key has been held down for at least the last two frames */
-    KEY_STATE_HELD_DOWN    = KEY_STATE_PACK(true, true),
-} key_state_value_t;
-
-
-/** \brief Keyboard Key State
-
-    Union containing the the previous and current frames' state information for
-    a keyboard key. The state may be accessed by:
-        1. Directly compare key_state_t::value to a \ref key_state_value_t.
-        2. Directly using a convenience bit field.
-        3. Bitwise AND of key_state_t::raw with one of the \ref key_state_defs.
-
-    \sa key_state_defs, key_state_value_t, kbd_state::key_states
-*/
-typedef union key_state {
-    /** \brief Convenience Bitfields */
-    struct {
-        uint8_t is_down  : 1; /**< \brief Whether down the current frame */
-        uint8_t was_down : 1; /**< \brief Whether down the previous frame */
-        uint8_t          : 6;
-    };
-    key_state_value_t value;  /**< \brief Enum for specific state */
-    uint8_t           raw;    /**< \brief Packed uint8_t of bitflags */
-} key_state_t;
-
-/** \brief   Keyboard status structure.
-
-    This structure holds information about the current status of the keyboard
-    device. This is what maple_dev_status() will return.
-*/
-typedef struct kbd_state {
-    /** \brief Key states */
-    key_state_t key_states[KBD_MAX_KEYS];
-
-    /** \brief Modifier keys statuses */
-    kbd_mods_t modifiers;
-
-    /** \brief LED statuses */
-    kbd_leds_t leds;
-
-    /** \brief Keyboard type/region */
-    kbd_region_t region;
-
-    /** \brief Repeated key press data */
-    struct {
-        kbd_key_t key;    /**< \brief Last key held which will repeat. */
-        uint64_t timeout; /**< \brief Time the next repeat will trigger. */
-    } repeater;
-} kbd_state_t;
 
 /** \brief Keyboard Event Handler Callback
 
@@ -482,6 +581,53 @@ typedef void (*kbd_event_handler_t)(maple_device_t *dev, kbd_key_t key,
 */
 void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data);
 
+/** @} */
+
+/** \defgroup kbd_queue    Queue Monitoring
+    \brief                 Monitor queue for key press events.
+
+    \par Popping from the Queue
+    One method of checking for key input is to use the internal key press
+    qeueue. This is most frequently used when keyboard input is used within
+    a text processing context, which is only concerned with individual key
+    press events, rather than the frame-by-frame state.
+
+    \par
+    We simply pop keys off of the queue in a loop, until the queue is empty:
+
+        int k;
+
+        while((k = kbd_queue_pop(device, true)) != KBD_QUEUE_END)
+            printf("Key pressed: %c!\n", (char)k);
+
+    \par Repeated Presses
+    As with a text processor, a key which has been held down for a duration of
+    time will generate periodic key press events which will be pushed onto the
+    queue. To configure this behavior, see kbd_set_repeat_timing().
+
+    @{
+*/
+
+/** \brief   Maximum number of keys the DC can read simultaneously.
+
+    This is a hardware constant. The define prevents the magic number '6' from
+    appearing.
+
+    \warning
+    The physical keyboard hardware can only report up to 6 simultaneous key
+    presses before erroring out and overflowing.
+**/
+#define KBD_MAX_PRESSED_KEYS    6
+
+/** \brief Delimeter value for kbd_queue_pop()
+
+    Value returned from kbd_queue_pop() when there are no more keys in the
+    queue.
+
+    \sa kbd_queue_pop()
+*/
+#define KBD_QUEUE_END     -1
+
 /** \brief Configures held key auto-repeat intervals
 
     This function is used to configure the specific timing behavior for how the
@@ -506,22 +652,6 @@ void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data);
 */
 void kbd_set_repeat_timing(uint16_t start, uint16_t interval);
 
-/** \brief Converts kbd_key_t value into its corresponding ASCII value
-
-    This function attempts to convert \p key to its ASCII representation
-    using an internal translation table and additional keyboard state context.
-
-    \param  key         The raw key type to convert to ASCII
-    \param  region      The region type of the keyboard containing the key.
-    \param  mods        The modifier flags impacting the key
-    \param  leds        The LED state flags impacting the key
-
-    \returns            The ASCII value corresponding to \p key or NULL if
-                        the translation was unsuccessful.
-*/
-char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
-                      kbd_mods_t mods, kbd_leds_t leds);
-
 /** \brief   Pop a key off a specific keyboard's queue.
 
     This function pops the front element off of the specified keyboard queue,
@@ -545,8 +675,9 @@ char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
                             responsible for figuring out what it is by the
                             region.
 
-    \return                 The value at the front of the queue, or -1 if there
-                            are no keys in the queue.
+    \return                 The value at the front of the queue, or -1
+                            (KBD_QUEUE_END) if there are no keys in the
+                            queue.
 */
 int kbd_queue_pop(maple_device_t *dev, bool to_ascii);
 
@@ -564,12 +695,13 @@ int kbd_queue_pop(maple_device_t *dev, bool to_ascii);
 
     The queue is by default on, unless you turn it off.
 
-    \param  active          Set to non-zero to activate the queue.
-    \note                   The global queue does not account for non-US
+    \warning                The global queue does not account for non-US
                             keyboard layouts and is deprecated. Please use the
                             individual queues instead for future code.
+
+    \param  active          Set to non-zero to activate the queue.
 */
-void kbd_set_queue(int active) __attribute__((deprecated));
+void kbd_set_queue(int active) __deprecated;
 
 /** \brief   Pop a key off the global keyboard queue.
     \deprecated
@@ -581,16 +713,22 @@ void kbd_set_queue(int active) __attribute__((deprecated));
     If a key does not have an ASCII value associated with it, the raw key code
     will be returned, shifted up by 8 bits.
 
-    \return                 The value at the front of the queue, or -1 if there
-                            are no keys in the queue or queueing is off.
-    \note                   This function does not account for non-US keyboard
+    \warning                This function does not account for non-US keyboard
                             layouts properly (for compatibility with old code),
                             and is deprecated. Use the individual keyboard
                             queues instead to properly account for non-US
+
+    \return                 The value at the front of the queue, or -1 if there
+                            are no keys in the queue or queueing is off.
                             keyboards.
+
     \see                    kbd_queue_pop()
 */
-int kbd_get_key(void) __attribute__((deprecated));
+int kbd_get_key(void) __deprecated;
+
+/** @} */
+
+/** @} */
 
 /** \cond Init / Shutdown */
 void kbd_init(void);
