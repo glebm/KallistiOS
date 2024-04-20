@@ -260,7 +260,7 @@ typedef enum kbd_region {
     KBD_REGION_US = 2, /**< \brief US keyboard */
     KBD_REGION_UK = 3, /**< \brief UK keyboard */
     KBD_REGION_DE = 4, /**< \brief German keyboard */
-    KBD_REGION_FR = 5, /**< \brief French keyboard (not supported yet) */
+    KBD_REGION_FR = 5, /**< \brief French keyboard */
     KBD_REGION_IT = 6, /**< \brief Italian keyboard (not supported yet) */
     KBD_REGION_ES = 7  /**< \brief Spanish keyboard */
 } kbd_region_t;
