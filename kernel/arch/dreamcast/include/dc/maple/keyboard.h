@@ -487,7 +487,7 @@ char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
         if(kbd->key_states[KBD_KEY_DOWN].is_down)
             printf("Moving down!\n");
 
-    Finally, lets "attack" for only a single frame each time the button is
+    Finally, let's "attack" for only a single frame each time the button is
     pressed, requiring it to be released and pressed again to start the next
     attack:
 
@@ -588,7 +588,7 @@ void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data);
 
     \par Popping from the Queue
     One method of checking for key input is to use the internal key press
-    qeueue. This is most frequently used when keyboard input is used within
+    queue. This is most frequently used when keyboard input is used within
     a text processing context, which is only concerned with individual key
     press events, rather than the frame-by-frame state.
 
