@@ -567,10 +567,6 @@ int kbd_queue_pop(maple_device_t *dev, bool to_ascii) {
     }
 }
 
-static inline key_state_t key_advance_state(key_state_t state, bool is_down) {
-    return (key_state_t) { .raw = KEY_STATE_PACK(is_down, state.is_down) };
-}
-
 /* Update the keyboard status; this will handle debounce handling as well as
    queueing keypresses for later usage. The key press queue uses 16-bit
    words so that we can store "special" keys as such. */
@@ -629,7 +625,7 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
                 }
 
                 if(event_handler.cb)
-                    event_handler.cb(frm->dev, state->key_states[k], k,
+                    event_handler.cb(frm->dev, k, state->key_states[k],
                                      cond->modifiers, cond->leds, event_handler.ud);
                 break;
 
@@ -646,7 +642,7 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
 
             case KEY_STATE_CHANGED_UP:
                 if(event_handler.cb)
-                    event_handler.cb(frm->dev, state->key_states[k], k,
+                    event_handler.cb(frm->dev, k, state->key_states[k],
                                      cond->modifiers, cond->leds, event_handler.ud);
                 break;
 

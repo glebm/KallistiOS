@@ -16,15 +16,14 @@
     code.
 
     \todo
-        - French/AZERTY keyboard keymaps
         - Italian/QWERTY keyboard keymaps
-        - Error key states are not handled properly
         - Remove legacy "global queue" API
         - Fix caps lock ASCII conversions
         - Error mechanisms:
-            * unknown region
-            * hardware key press limit exceeded
-            * queue buffer overflow
+            - error key states not handled at all
+            - unknown region
+            - hardware key press limit exceeded
+            - queue buffer overflow
 
     \author Jordan DeLong
     \author Megan Potter
@@ -45,21 +44,68 @@ __BEGIN_DECLS
 #include <stdbool.h>
 
 /** \defgroup kbd   Keyboard
-    \brief          Driver for the Dreamcast's Keyboard Input Device
+    \brief          Public API for the Dreamcast Keyboard Driver
     \ingroup        peripherals
+
+    \par Querying for a Device
+    You can grab a pointer to the `Nth`connected keyboard by using tte following:
+
+        maple_device_t *device = maple_enum_type(N, MAPLE_FUNC_KEYBOARD);
+
+        if(device)
+            printf("Keyboard found!\n");
+        else
+            printf("Keyboard not found!\n");
+
+    \par Polling for Input
+    The first method of checking for key input is to simply poll
+    kbd_state_t::key_states for the desired key states each frame.
+
+    \par
+    First, lets grab a pointer to the kbd_state_t:
+
+        kbd_state_t *kbd = (kbd_state_t *)device->status;
+
+    \par
+    Then lets "move" every frame an arrow key is held down:
+
+        if(kbd->key_states[KBD_KEY_LEFT].is_down)
+            printf("Moving left!\n");
+        if(kbd->key_states[KBD_KEY_RIGHT].is_down)
+            printf("Moving right!\n");
+        if(kbd->key_states[KBD_KEY_UP].is_down)
+            printf("Moving up!\n");
+        if(kbd->key_states[KBD_KEY_DOWN].is_down)
+            printf("Moving down!\n");
+
+    \par
+    Finally, lets "attack" for only a single frame each time the button is
+    pressed, requiring it to be released and pressed again to start the next
+    attack:
+
+        if(kbd->key_states[KBD_KEY_SPACE].value == KEY_STATE_CHANGED_DOWN)
+            printf("Attacking!\n");
+
+    \par Event-Driven Callbacks
 
     @{
 */
 
 /** \brief   Maximum number of keys the DC can read simultaneously.
 
-    This is a hardware constant. The define prevents the magic number '6' from appearing.
+    This is a hardware constant. The define prevents the magic number '6' from
+    appearing.
+
+    \warning
+    The physical keyboard hardware can only report up to 6 simultaneous key
+    presses before erroring out and overflowing.
 **/
 #define KBD_MAX_PRESSED_KEYS 6
 
 /** \brief   Maximum number of keys a DC keyboard can have.
 
-    This is a hardware constant. The define prevents the magic number '256' from appearing.
+    This is a hardware constant. The define prevents the magic number '256'
+    from appearing.
 **/
 #define KBD_MAX_KEYS 256
 
@@ -73,7 +119,7 @@ __BEGIN_DECLS
 
     @{
 */
-/* ===== Single-Key Modifiers ===== */
+/* Single-Key Modifiers */
 #define KBD_MOD_LCTRL       (1 << 0)    /**< \brief Left Control key */
 #define KBD_MOD_LSHIFT      (1 << 1)    /**< \brief Left Shift key */
 #define KBD_MOD_LALT        (1 << 2)    /**< \brief Left alternate key */
@@ -83,7 +129,7 @@ __BEGIN_DECLS
 #define KBD_MOD_RALT        (1 << 6)    /**< \brief Right Alternate key */
 #define KBD_MOD_S2          (1 << 7)    /**< \brief S2 key */
 
-/* ===== Multi-Key Modifiers ===== */
+/* Multi-Key Modifiers */
 /** \brief Either Control key */
 #define KBD_MOD_CTRL        (KBD_MOD_LCTRL | KBD_MOD_RCTRL)
 /** \brief Either Shift key */
@@ -99,7 +145,7 @@ __BEGIN_DECLS
         1. Directly using a convenience bit field.
         2. Bitwise AND of kbd_mods_t::raw with one of the \ref kbd_mods_defs.
 
-    \sa kbd_mods_defs
+    \sa kbd_mods_defs, kbd_state_t::modifiers
 */
 typedef union kbd_mods {
     /** \brief Convenience Bitfields */
@@ -403,18 +449,18 @@ typedef struct kbd_state {
     Function type which can be registered to listen to keyboard key events.
 
     \param  dev     The maple device the event originated from
-    \param  state   The new (transition) state of the key in question:
-                        1) KEY_STATE_TAPPED: key pressed event
-                        2) KEY_STATE_RELEASED: key released event
     \param  key     The raw key ID whose state change triggered the event
+    \param  state   The new (transition) state of the key in question:
+                        1. KEY_STATE_CHANGED_DOWN: key pressed event
+                        2. KEY_STATE_CHANGED_UP: key released event
     \param  mods    Flags containing the states of all modifier keys
     \param  leds    Flags containing the states of all LEDs
     \param  ud      Arbitrary user-pointer which was registered with this handler
 
     \sa kbd_set_event_handler
 */
-typedef void (*kbd_event_handler_t)(maple_device_t *dev, key_state_t state,
-                                    kbd_key_t key, kbd_mods_t mods,
+typedef void (*kbd_event_handler_t)(maple_device_t *dev, kbd_key_t key,
+                                    key_state_t state, kbd_mods_t mods,
                                     kbd_leds_t leds, void *ud);
 
 /** \brief Registers an Event Handler
@@ -423,7 +469,7 @@ typedef void (*kbd_event_handler_t)(maple_device_t *dev, key_state_t state,
     handler, also taking a generic user data pointer which gets passed back
     to the handler upon invocation.
 
-    The callback will be invoced any time a key state transition occurs on any
+    The callback will be invoked any time a key state transition occurs on any
     connected keyboard. That is a key has either gone from released to pressed
     or from pressed to released.
 
@@ -431,6 +477,8 @@ typedef void (*kbd_event_handler_t)(maple_device_t *dev, key_state_t state,
                         transition events
     \param  user_data   Generic pointer which is stored internally and gets
                         passed back to \p callback upon an event firing
+
+    \sa kbd_event_handler_t
 */
 void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data);
 
@@ -474,6 +522,34 @@ void kbd_set_repeat_timing(uint16_t start, uint16_t interval);
 char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
                       kbd_mods_t mods, kbd_leds_t leds);
 
+/** \brief   Pop a key off a specific keyboard's queue.
+
+    This function pops the front element off of the specified keyboard queue,
+    and returns the value of that key to the caller.
+
+    If the \p to_ascii parameter is true and the key represents an ISO-8859-1
+    character, that is the value that will be returned from this function.
+    Otherwise if the key cannot be converted into a valid ISO-8859-1 character,
+    it will return the raw key code, shifted up by 8 bits.
+
+    If the \p to_ascii parameter is false, the lower 8 bits of the returned
+    value will be the raw key code. The next 8 bits will be the modifier keys
+    that were down when the key was pressed (kbd_mods_t). The next 8 bits will
+    be the lock key/LED statuses (kbd_leds_t).
+
+    \param  dev             The keyboard device to read from.
+    \param  to_ascii        Set to true to do key translation to ASCII.
+                            Otherwise, you'll simply get the raw key value
+                            plus modifier and LED state information. Raw key
+                            values are not mapped at all, so you are
+                            responsible for figuring out what it is by the
+                            region.
+
+    \return                 The value at the front of the queue, or -1 if there
+                            are no keys in the queue.
+*/
+int kbd_queue_pop(maple_device_t *dev, bool to_ascii);
+
 /** \brief   Activate or deactivate global key queueing.
     \deprecated
 
@@ -515,34 +591,6 @@ void kbd_set_queue(int active) __attribute__((deprecated));
     \see                    kbd_queue_pop()
 */
 int kbd_get_key(void) __attribute__((deprecated));
-
-/** \brief   Pop a key off a specific keyboard's queue.
-
-    This function pops the front element off of the specified keyboard queue,
-    and returns the value of that key to the caller.
-
-    If the xlat parameter is true and the key represents an ISO-8859-1
-    character, that is the value that will be returned from this function.
-    Otherwise if the key cannot be converted into a valid ISO-8859-1 character,
-    it will return the raw key code, shifted up by 8 bits.
-
-    If the xlat parameter is false, the lower 8 bits of the returned value will
-    be the raw key code. The next 8 bits will be the modifier keys that were
-    down when the key was pressed (kbd_mods_t). The next 8 bits will be the
-    lock key/LED statuses (kbd_leds_t).
-
-    \param  dev             The keyboard device to read from.
-    \param  to_ascii        Set to true to do key translation to ASCII.
-                            Otherwise, you'll simply get the raw key value
-                            plus modifier and LED state information. Raw key
-                            values are not mapped at all, so you are
-                            responsible for figuring out what it is by the
-                            region.
-
-    \return                 The value at the front of the queue, or -1 if there
-                            are no keys in the queue.
-*/
-int kbd_queue_pop(maple_device_t *dev, bool to_ascii);
 
 /** \cond Init / Shutdown */
 void kbd_init(void);
