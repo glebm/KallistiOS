@@ -4,11 +4,8 @@
    Copyright (C) 2002 Megan Potter
    Copyright (C) 2012 Lawrence Sebald
    Copyright (C) 2018 Donald Haase
-<<<<<<< HEAD
-   Copyright (C) 2024 Falco Girgis
-=======
    Copyright (C) 2024 Paul Cercueil
->>>>>>> master
+   Copyright (C) 2024 Falco Girgis
 */
 
 #include <assert.h>
@@ -27,30 +24,33 @@ repeat handling.
 
 */
 
-/** \brief   Keyboard raw condition structure.
-    \ingroup kbd
+/*  Size of a keyboard queue.
+
+    Each keyboard queue will hold this many elements. Once the queue fills, no
+    new elements will be placed on the queue. As long as you check the queue
+    relatively frequently, the default of 16 should be plenty.
+
+    This MUST be a power of two.
+*/
+#define KBD_QUEUE_SIZE 16
+
+/* Keyboard raw condition structure.
 
     This structure is what the keyboard responds with as its current status.
-
-    \headerfile dc/maple/keyboard.h
 */
 typedef struct kbd_cond {
     kbd_mods_t modifiers;    /**< \brief Bitmask of set modifiers. */
     kbd_leds_t leds;         /**< \brief Bitmask of set LEDs */
-    kbd_key_t  keys[MAX_PRESSED_KEYS];      /**< \brief Key codes for currently pressed keys. */
+    kbd_key_t  keys[KBD_MAX_PRESSED_KEYS];      /**< \brief Key codes for currently pressed keys. */
 } kbd_cond_t;
 
 typedef struct kbd_state_private {
     kbd_state_t base;
 
-    /** \cond  Individual keyboard queue.
-    You should not access this variable directly. Please use the appropriate
-    function to access it. */
     uint32_t key_queue[KBD_QUEUE_SIZE];
     size_t queue_tail;                     /* Key queue tail. */
     size_t queue_head;                     /* Key queue head. */
     size_t queue_len;                      /* Current length of queue. */
-    /** \endcond */
 } kbd_state_private_t;
 
 static struct {
@@ -92,9 +92,9 @@ void kbd_set_repeat_timing(uint16_t start, uint16_t interval) {
     \headerfile dc/maple/keyboard.h
 */
 typedef struct kbd_keymap {
-    uint8_t base[MAX_KBD_KEYS];
-    uint8_t shifted[MAX_KBD_KEYS];
-    uint8_t alt[MAX_KBD_KEYS];
+    uint8_t base[KBD_MAX_KEYS];
+    uint8_t shifted[KBD_MAX_KEYS];
+    uint8_t alt[KBD_MAX_KEYS];
 } kbd_keymap_t;
 
 /* Built-in keymaps. */
@@ -491,7 +491,7 @@ static int kbd_enqueue(kbd_state_t *state, uint8_t keycode, uint32_t mods) {
 
     /* Figure out its key queue value */
     if(keycode <= 0x64) {
-        if(state->modifiers & (KBD_MOD_LSHIFT | KBD_MOD_RSHIFT))
+        if(state->modifiers.raw & KBD_MOD_SHIFT)
             ascii = keymap_shift[keycode];
         else
             ascii = keymap_noshift[keycode];
@@ -528,9 +528,9 @@ int kbd_get_key(void) {
 char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region, kbd_mods_t mods, kbd_leds_t leds) {
     char ascii = '\0';
 
-    if((mods & KBD_MOD_RALT) || (mods & (KBD_MOD_LCTRL | KBD_MOD_LALT)) == (KBD_MOD_LCTRL | KBD_MOD_LALT))
+    if(mods.ralt || (mods.lctrl && mods.lalt))
         ascii = keymaps[region - 1].alt[key];
-    else if((mods & (KBD_MOD_LSHIFT | KBD_MOD_RSHIFT)) || (leds & KBD_LED_CAPSLOCK))
+    else if((mods.raw & KBD_MOD_SHIFT) || leds.caps_lock)
         ascii = keymaps[region - 1].shifted[key];
     else
         ascii = keymaps[region - 1].base[key];
@@ -539,7 +539,7 @@ char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region, kbd_mods_t mods, kbd_l
 }
 
 /* Take a key off of a specific key queue. */
-int kbd_queue_pop(maple_device_t *dev, bool xlat) {
+int kbd_queue_pop(maple_device_t *dev, bool to_ascii) {
     kbd_state_private_t *state_private = (kbd_state_private_t *)dev->status;
     uint32_t rv;
     kbd_mods_t mods;
@@ -553,11 +553,11 @@ int kbd_queue_pop(maple_device_t *dev, bool xlat) {
     state_private->queue_tail = (state_private->queue_tail + 1) & (KBD_QUEUE_SIZE - 1);
     --state_private->queue_len;
 
-    if(!xlat)
+    if(!to_ascii)
         return (int)rv;
 
-    mods = (rv >> 8) & 0xff;
-    leds = (rv >> 16) & 0xff;
+    mods.raw = (rv >> 8) & 0xff;
+    leds.raw = (rv >> 16) & 0xff;
     rv &= 0xff;
 
     if((ascii = kbd_key_to_ascii(rv, state_private->base.region, mods, leds))) {
@@ -567,10 +567,9 @@ int kbd_queue_pop(maple_device_t *dev, bool xlat) {
     }
 }
 
-static inline key_state_t key_advance_state(key_state_t state, bool down) {
-    return (((state << 1) | (down)) & KEY_FLAG_ALL);
+static inline key_state_t key_advance_state(key_state_t state, bool is_down) {
+    return (key_state_t) { .raw = KEY_STATE_PACK(is_down, state.is_down) };
 }
-
 
 /* Update the keyboard status; this will handle debounce handling as well as
    queueing keypresses for later usage. The key press queue uses 16-bit
@@ -579,7 +578,7 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
     kbd_state_t *state = (kbd_state_t *)frm->dev->status;
 
     /* If the modifier keys have changed, end the key repeating. */
-    if(state->modifiers != cond->modifiers) {
+    if(state->modifiers.raw != cond->modifiers.raw) {
         state->repeater.key = KBD_KEY_NONE;
         state->repeater.timeout = 0;
     }
@@ -588,15 +587,15 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
     state->modifiers = cond->modifiers;
     state->leds = cond->leds;
 
-    const uint32_t mods = cond->modifiers | (cond->leds << 8);
+    const uint32_t mods = cond->modifiers.raw | (cond->leds.raw << 8);
 
     /* Update all key states */
-    for(unsigned k = 0; k < MAX_KBD_KEYS; ++k) {
-        state->keys[k] = (state->keys[k] << 1) & KEY_FLAG_ALL;
+    for(unsigned k = 0; k < KBD_MAX_KEYS; ++k) {
+        state->key_states[k].raw = (state->key_states[k].raw << 1) & KEY_STATE_MASK;
     }
 
     /* Process all pressed keys */
-    for(unsigned p = 0; p < MAX_PRESSED_KEYS; ++p) {
+    for(unsigned p = 0; p < KBD_MAX_PRESSED_KEYS; ++p) {
 
         /* Once we get to a 'none', the rest will be 'none' */
         if(cond->keys[p] == KBD_KEY_NONE) {
@@ -604,24 +603,24 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
                 or similar. This could be useful, but would make it a weird exception. */
             /* If the first key in the key array is none, there are no non-modifer keys pressed at all. */
             if(!p)
-                state->keys[KBD_KEY_NONE] |= true;
+                state->key_states[KBD_KEY_NONE].is_down = true;
             break;
         }
         /* Between None and A are error indicators. This would be a good place to do... something. If an error occurs the whole array will be error.*/
         else if(cond->keys[p] > KBD_KEY_NONE && cond->keys[p] < KBD_KEY_A) {
-            state->keys[cond->keys[p]] |= true;
+            state->key_states[cond->keys[p]].is_down = true;
             break;
         }
         /* The rest of the keys are treated normally */
         else {
-            state->keys[cond->keys[p]] |= true;
+            state->key_states[cond->keys[p]].is_down = true;
             state->repeater.key = cond->keys[p];
         }
     }
 
-    for(unsigned k = KBD_KEY_A; k < MAX_KBD_KEYS; ++k) {
-        switch(state->keys[k]) {
-            case KEY_STATE_TAPPED:
+    for(unsigned k = KBD_KEY_A; k < KBD_MAX_KEYS; ++k) {
+        switch(state->key_states[k].value) {
+            case KEY_STATE_CHANGED_DOWN:
                 kbd_enqueue(state, k, mods);
 
                 if(k == state->repeater.key && repeat_timing.start) {
@@ -630,7 +629,7 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
                 }
 
                 if(event_handler.cb)
-                    event_handler.cb(frm->dev, KEY_STATE_TAPPED, k,
+                    event_handler.cb(frm->dev, state->key_states[k], k,
                                      cond->modifiers, cond->leds, event_handler.ud);
                 break;
 
@@ -645,9 +644,9 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
                 }
                 break;
 
-            case KEY_STATE_RELEASED:
+            case KEY_STATE_CHANGED_UP:
                 if(event_handler.cb)
-                    event_handler.cb(frm->dev, KEY_STATE_RELEASED, k,
+                    event_handler.cb(frm->dev, state->key_states[k], k,
                                      cond->modifiers, cond->leds, event_handler.ud);
                 break;
 

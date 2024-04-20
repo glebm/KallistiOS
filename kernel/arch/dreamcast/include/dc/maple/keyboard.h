@@ -55,80 +55,111 @@ __BEGIN_DECLS
 
     This is a hardware constant. The define prevents the magic number '6' from appearing.
 **/
-#define MAX_PRESSED_KEYS 6
+#define KBD_MAX_PRESSED_KEYS 6
 
 /** \brief   Maximum number of keys a DC keyboard can have.
 
     This is a hardware constant. The define prevents the magic number '256' from appearing.
 **/
-#define MAX_KBD_KEYS 256
+#define KBD_MAX_KEYS 256
 
-/** \brief   Size of a keyboard queue.
-
-    Each keyboard queue will hold this many elements. Once the queue fills, no
-    new elements will be placed on the queue. As long as you check the queue
-    relatively frequently, the default of 16 should be plenty.
-
-    \note   This <strong>MUST</strong> be a power of two.
-*/
-#define KBD_QUEUE_SIZE 16
-
-/** \defgroup   kbd_mods    Modifier Keys
-    \brief                  Masks for the various keyboard modifier keys
+/** \defgroup   kbd_mods_defs   Modifier Keys
+    \brief                      Masks for the various keyboard modifier keys
 
     These are the various modifiers that can be pressed on the keyboard, and are
     reflected in the modifiers field of kbd_cond_t.
 
-    \sa kbd_mods_t
+    \sa kbd_mods_t::raw, kbd_state_t::modifiers
 
     @{
 */
-#define KBD_MOD_LCTRL       (1 << 0)
-#define KBD_MOD_LSHIFT      (1 << 1)
-#define KBD_MOD_LALT        (1 << 2)
-#define KBD_MOD_S1          (1 << 3)
-#define KBD_MOD_RCTRL       (1 << 4)
-#define KBD_MOD_RSHIFT      (1 << 5)
-#define KBD_MOD_RALT        (1 << 6)
-#define KBD_MOD_S2          (1 << 7)
+/* ===== Single-Key Modifiers ===== */
+#define KBD_MOD_LCTRL       (1 << 0)    /**< \brief Left Control key */
+#define KBD_MOD_LSHIFT      (1 << 1)    /**< \brief Left Shift key */
+#define KBD_MOD_LALT        (1 << 2)    /**< \brief Left alternate key */
+#define KBD_MOD_S1          (1 << 3)    /**< \brief S1 key */
+#define KBD_MOD_RCTRL       (1 << 4)    /**< \brief Right Control key */
+#define KBD_MOD_RSHIFT      (1 << 5)    /**< \brief Right Shift key */
+#define KBD_MOD_RALT        (1 << 6)    /**< \brief Right Alternate key */
+#define KBD_MOD_S2          (1 << 7)    /**< \brief S2 key */
+
+/* ===== Multi-Key Modifiers ===== */
+/** \brief Either Control key */
+#define KBD_MOD_CTRL        (KBD_MOD_LCTRL | KBD_MOD_RCTRL)
+/** \brief Either Shift key */
+#define KBD_MOD_SHIFT       (KBD_MOD_LSHIFT | KBD_MOD_RSHIFT)
+/** \brief Either Alternate key */
+#define KBD_MOD_ALT         (KBD_MOD_LALT | KBD_MOD_RALT)
 /** @} */
 
 /** \brief  Keyboard Modifier Keys
 
-    Typedef for a bitmask of modifier keys on the DC keyboard.
+    Union containing the state of all keyboard modifier keys. Each key state
+    can be accessed by:
+        1. Directly using a convenience bit field.
+        2. Bitwise AND of kbd_mods_t::raw with one of the \ref kbd_mods_defs.
 
-    \sa kbd_mods
+    \sa kbd_mods_defs
 */
-typedef uint8_t kbd_mods_t;
+typedef union kbd_mods {
+    /** \brief Convenience Bitfields */
+    struct {
+        uint8_t lctrl   : 1;    /**< \brief Left Control key */
+        uint8_t lshift  : 1;    /**< \brief Left Shift key */
+        uint8_t lalt    : 1;    /**< \brief Left Alternate key */
+        uint8_t s1      : 1;    /**< \brief S1 key */
+        uint8_t rctrl   : 1;    /**< \brief Right Control key */
+        uint8_t rshift  : 1;    /**< \brief Right Shift key */
+        uint8_t ralt    : 1;    /**< \brief Right Alternate key */
+        uint8_t s2      : 1;    /**< \brief S2 key */
+    };
+    uint8_t raw;    /**< \brief Packed 8-bit unsigned integer of bitflags*/
+} kbd_mods_t;
 
-/** \defgroup   kbd_leds    LEDs
-    \brief                  Values for the different keyboard LEDs
+/** \defgroup   kbd_leds_defs   LEDs
+    \brief                      Values for the different keyboard LEDs
 
-    This is the LEDs that can be turned on and off on the keyboard. This list
-    may not be exhaustive. Think of these sorta like an extension of the
+    These are the LEDs that can be turned on and off on the keyboard. This list
+    may not be exhaustive. Think of these sort of like an extension of the
     modifiers list.
 
-    \sa kbd_leds_t
+    \sa kbd_leds_t::raw
 
     @{
 */
-#define KBD_LED_NUMLOCK     (1 << 0)
-#define KBD_LED_CAPSLOCK    (1 << 1)
-#define KBD_LED_SCRLOCK     (1 << 2)
-#define KBD_LED_UNKNOWN1    (1 << 3)
-#define KBD_LED_UNKNOWN2    (1 << 4)
-#define KBD_LED_KANA        (1 << 5)
-#define KBD_LED_POWER       (1 << 6)
-#define KBD_LED_SHIFT       (1 << 7)
+#define KBD_LED_NUMLOCK     (1 << 0)    /**< \brief Num Lock LED */
+#define KBD_LED_CAPSLOCK    (1 << 1)    /**< \brief Caps Lock LED */
+#define KBD_LED_SCRLOCK     (1 << 2)    /**< \brief Scroll Lock LED */
+#define KBD_LED_UNKNOWN1    (1 << 3)    /**< \brief Unknown LED 1 */
+#define KBD_LED_UNKNOWN2    (1 << 4)    /**< \brief Unknown LED 2 */
+#define KBD_LED_KANA        (1 << 5)    /**< \brief Kana LED */
+#define KBD_LED_POWER       (1 << 6)    /**< \brief Power LED */
+#define KBD_LED_SHIFT       (1 << 7)    /**< \brief Shift LED */
 /** @} */
 
-/** \brief Keyboard LED States
+/** \brief Keyboard LEDs
 
-    Typedef for an integral type which can store the LED bit flags.
+    Union containing the state of all keyboard LEDs. Each LED state
+    can be accessed by:
+        1. Directly using a convenience bit field.
+        2. Bitwise AND of kbd_leds_t::raw with one of the \ref kbd_leds_defs.
 
-    \sa kbd_leds
+    \sa kbd_leds_defs, kbd_state_t::leds
 */
-typedef uint8_t kbd_leds_t;
+typedef union kbd_leds {
+    /** \brief Convenience Bitfields */
+    struct {
+        uint8_t num_lock    : 1;    /**< \brief Num Lock LED */
+        uint8_t caps_lock   : 1;    /**< \brief Caps Lock LED */
+        uint8_t scroll_lock : 1;    /**< \brief Scroll Lock LED */
+        uint8_t unknown1    : 1;    /**< \brief Unknown LED 1 */
+        uint8_t unknown2    : 1;    /**< \brief Unknown LED 2 */
+        uint8_t kana        : 1;    /**< \brief Kana LED */
+        uint8_t power       : 1;    /**< \brief Power LED */
+        uint8_t shift       : 1;    /**< \brief Shift LED */
+    };
+    uint8_t raw;    /**< \brief Packed 8-bit unsigned integer of bitflags */
+} kbd_leds_t;
 
 /**\brief Raw Keyboard Key Identifiers
 
@@ -137,7 +168,7 @@ typedef uint8_t kbd_leds_t;
 
     \note
     These are the raw keycodes returned by the US keyboard, and thus only cover
-    the keys on US keyboards.
+    the keys on US keyboards (even though they can be used with other keyboards).
 
     \sa kbd_key_t
 */
@@ -187,8 +218,8 @@ enum {
     KBD_KEY_BACKSPACE    = 0x2a, /**< \brief Backspace key */
     KBD_KEY_TAB          = 0x2b, /**< \brief Tab key */
     KBD_KEY_SPACE        = 0x2c, /**< \brief Space key */
-    KBD_KEY_MINUS        = 0x2d, /**< \brief - key */
-    KBD_KEY_PLUS         = 0x2e, /**< \brief + key */
+    KBD_KEY_MINUS        = 0x2d, /**< \brief Minus key */
+    KBD_KEY_PLUS         = 0x2e, /**< \brief Plus key */
     KBD_KEY_LBRACKET     = 0x2f, /**< \brief [ key */
     KBD_KEY_RBRACKET     = 0x30, /**< \brief ] key */
     KBD_KEY_BACKSLASH    = 0x31, /**< \brief \ key */
@@ -250,10 +281,9 @@ enum {
 */
 typedef uint8_t kbd_key_t;
 
-/** \brief Region Coes for the Dreamcast keyboard
+/** \brief Region Codes for the Dreamcast keyboard
 
-    This is the list of possible values for the "region" field in the
-    kbd_state_t structure.
+    This is the list of possible values for kbd_state_t::region.
 */
 typedef enum kbd_region {
     KBD_REGION_JP = 1, /**< \brief Japanese keyboard */
@@ -265,60 +295,83 @@ typedef enum kbd_region {
     KBD_REGION_ES = 7  /**< \brief Spanish keyboard */
 } kbd_region_t;
 
-/** \defgroup   key_flags   Key State Flags
-    \brief                  Bit flags comprising current key state
+/** \defgroup   key_state_defs  Key State Flags
+    \brief                      Bit flags comprising current key state
 
     A key_state_t is a combination of two flags:
-        1) KEY_FLAG_IS_PRESSED:  whether the key is currently pressed
-                                 this frame.
-        2) KEY_FLAG_WAS_PRESSED: whether the key was previously pressed
-                                 last frame.
+        1. KEY_STATE_IS_DOWN: whether the key is currently pressed
+                              this frame.
+        2. KEY_STATE_WAS_DOWN: whether the key was previously pressed
+                               last frame.
 
     Between these two flags, you can know whether a key state transition
     event has occurred (when the two flags have different values).
 
+    \sa key_state_t::raw, key_state_value_t
+
     @{
 */
-#define KEY_FLAG_IS_PRESSED  0x1 /**< \brief If key is currenty pressed */
-#define KEY_FLAG_WAS_PRESSED 0x2 /**< \brief If key was previously pressed */
-#define KEY_FLAG_ALL         0x3 /**< \brief If key is OR was pressed */
+#define KEY_STATE_IS_DOWN    (1 << 0) /**< \brief If key is currenty down */
+#define KEY_STATE_WAS_DOWN   (1 << 1) /**< \brief If key was previously down */
+/** \brief Mask of all key state flags */
+#define KEY_STATE_MASK      (KEY_STATE_IS_DOWN | KEY_STATE_WAS_DOWN)
 /** @} */
 
 /** \brief Creates a packed key_state_t
 
     This macro is used to pack two frames worth of key state information
-    into a key_state_t.
+    into a key_state_t, one bit per frame.
 */
-#define KEY_PACK_STATE(isDown, wasDown) \
-    ((!!(isDown)) | ((!!(wasDown)) << 0x1))
+#define KEY_STATE_PACK(is_down, was_down)   \
+    (((!!(is_down))?  KEY_STATE_IS_DOWN : 0) | \
+     ((!!(was_down))? KEY_STATE_WAS_DOWN : 0))
 
 /** \brief key_state_t values
 
     Enumerates each of the 4 different states a key can be in,
-    by combining two frames worth of key pressed information
+    by combining two frames worth of key down information
     into two bits.
 
-    \sa key_state_t, key_flags_t
+    \note
+    Two of the values are for `HELD` states, meaning the same state has been
+    observed for both the current and the previous frame, while the other two
+    values are for `CHANGE` states, meaning the current frame has a different
+    state from the previous frame.
+
+    \sa key_state_defs, key_state_t::raw
 */
-enum {
+typedef enum __attribute__((packed)) key_state_value {
     /** \brief Key has been in an up state for at least the last two frames */
-    KEY_STATE_HELD_UP   = KEY_PACK_STATE(false, false),
+    KEY_STATE_HELD_UP      = KEY_STATE_PACK(false, false),
     /** \brief Key transitioned from up to pressed this frame */
-    KEY_STATE_TAPPED    = KEY_PACK_STATE(true, false),
+    KEY_STATE_CHANGED_DOWN = KEY_STATE_PACK(true, false),
     /** \brief Key transitioned from down to released this frame */
-    KEY_STATE_RELEASED  = KEY_PACK_STATE(false, true),
+    KEY_STATE_CHANGED_UP   = KEY_STATE_PACK(false, true),
     /** \brief Key has been held down for at least the last two frames */
-    KEY_STATE_HELD_DOWN = KEY_PACK_STATE(true, true),
-};
+    KEY_STATE_HELD_DOWN    = KEY_STATE_PACK(true, true),
+} key_state_value_t;
+
 
 /** \brief Keyboard Key State
 
-    Stores the "state" value for a keyboard key (which is composed
-    of two frames worth of up/down bits).
+    Union containing the the previous and current frames' state information for
+    a keyboard key. The state may be accessed by:
+        1. Directly compare key_state_t::value to a \ref key_state_value_t.
+        2. Directly using a convenience bit field.
+        3. Bitwise AND of key_state_t::raw with one of the \ref key_state_defs.
 
-    \sa key_flags_t
+    \sa key_state_defs, key_state_value_t, kbd_state::key_states
 */
-typedef uint8_t key_state_t;
+typedef union key_state {
+    /** \brief Convenience Bitfields */
+    struct {
+        uint8_t is_down  : 1; /**< \brief Whether down the current frame */
+        uint8_t was_down : 1; /**< \brief Whether down the previous frame */
+        uint8_t          : 6;
+    };
+    key_state_value_t value;  /**< \brief Enum for specific state */
+    uint8_t           raw;    /**< \brief Packed uint8_t of bitflags */
+} key_state_t;
 
 /** \brief   Keyboard status structure.
 
@@ -327,7 +380,7 @@ typedef uint8_t key_state_t;
 */
 typedef struct kbd_state {
     /** \brief Key states */
-    key_state_t keys[MAX_KBD_KEYS];
+    key_state_t key_states[KBD_MAX_KEYS];
 
     /** \brief Modifier keys statuses */
     kbd_mods_t modifiers;
@@ -479,16 +532,17 @@ int kbd_get_key(void) __attribute__((deprecated));
     lock key/LED statuses (kbd_leds_t).
 
     \param  dev             The keyboard device to read from.
-    \param  xlat            Set to true to do key translation. Otherwise,
-                            you'll simply get the raw key value plus modifier
-                            and LED state information. Raw key values are not
-                            mapped at all, so you are responsible for
-                            figuring out what it is by the region.
+    \param  to_ascii        Set to true to do key translation to ASCII.
+                            Otherwise, you'll simply get the raw key value
+                            plus modifier and LED state information. Raw key
+                            values are not mapped at all, so you are
+                            responsible for figuring out what it is by the
+                            region.
 
     \return                 The value at the front of the queue, or -1 if there
                             are no keys in the queue.
 */
-int kbd_queue_pop(maple_device_t *dev, bool xlat);
+int kbd_queue_pop(maple_device_t *dev, bool to_ascii);
 
 /** \cond Init / Shutdown */
 void kbd_init(void);
