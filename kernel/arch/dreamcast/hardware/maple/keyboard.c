@@ -40,14 +40,14 @@ repeat handling.
 */
 typedef struct kbd_cond {
     kbd_mods_t modifiers;    /**< \brief Bitmask of set modifiers. */
-    kbd_leds_t leds;         /**< \brief Bitmask of set LEDs */
+    kbd_leds_t leds;         /**< \brief Bitmask of set LEDs. */
     kbd_key_t  keys[KBD_MAX_PRESSED_KEYS];      /**< \brief Key codes for currently pressed keys. */
 } kbd_cond_t;
 
 typedef struct kbd_state_private {
     kbd_state_t base;
 
-    /* Repeated key press state data */
+    /* Repeated key press state data. */
     struct {
         kbd_key_t key;    /* Last key held which will repeat. */
         uint64_t timeout; /* Time the next repeat will trigger. */
@@ -88,11 +88,11 @@ void kbd_set_repeat_timing(uint16_t start, uint16_t interval) {
     repeat_timing.interval = interval;
 }
 
-/** \brief   Keyboard keymap.
+/** \brief   Keyboard keymap
     \ingroup kbd
 
     This structure represents a mapping from raw key values to ASCII values, if
-    appropriate. This handles base values as well as shifted ("shift" and "Alt"
+    appropriate. This handles base values as well as shifted ("Shift" and "Alt"
     keys) values.
 
     \headerfile dc/maple/keyboard.h

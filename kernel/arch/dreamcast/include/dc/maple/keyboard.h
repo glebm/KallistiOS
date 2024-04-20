@@ -48,7 +48,7 @@ __BEGIN_DECLS
     \ingroup        peripherals
 
     \par Querying for a Device
-    You can grab a pointer to the `Nth`connected keyboard by using the following:
+    You can grab a pointer to the `Nth` connected keyboard by using the following:
 
         maple_device_t *device = maple_enum_type(N, MAPLE_FUNC_KEYBOARD);
 
@@ -275,7 +275,7 @@ typedef union key_state {
         uint8_t          : 6;
     };
     key_state_value_t value;  /**< \brief Enum for specific state */
-    uint8_t           raw;    /**< \brief Packed uint8_t of bitflags */
+    uint8_t           raw;    /**< \brief Packed 8-bit unsigned integer of bitflags */
 } key_state_t;
 
 /** @} */
@@ -302,13 +302,13 @@ typedef enum kbd_region {
 **/
 #define KBD_MAX_KEYS    256
 
-/** \brief   Keyboard status structure.
+/** \brief   Keyboard status structure
 
     This structure holds information about the current status of the keyboard
     device. This is what maple_dev_status() will return.
 */
 typedef struct kbd_state {
-    /** \brief Current (and previous) state of all keys in kbd_keys_t. */
+    /** \brief Current (and previous) state of all keys in kbd_keys_t */
     key_state_t key_states[KBD_MAX_KEYS];
 
     /** \brief Current modifier keys statuses */
@@ -441,10 +441,10 @@ typedef enum __packed kbd_key {
     This function attempts to convert \p key to its ASCII representation
     using an internal translation table and additional keyboard state context.
 
-    \param  key         The raw key type to convert to ASCII
+    \param  key         The raw key type to convert to ASCII.
     \param  region      The region type of the keyboard containing the key.
-    \param  mods        The modifier flags impacting the key
-    \param  leds        The LED state flags impacting the key
+    \param  mods        The modifier flags impacting the key.
+    \param  leds        The LED state flags impacting the key.
 
     \returns            The ASCII value corresponding to \p key or NULL if
                         the translation was unsuccessful.
@@ -476,7 +476,7 @@ char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
 
         kbd_state_t *kbd = kbd_get_state(device);
 
-    Then lets "move" every frame an arrow key is held down:
+    Then let's "move" every frame an arrow key is held down:
 
         if(kbd->key_states[KBD_KEY_LEFT].is_down)
             printf("Moving left!\n");
@@ -501,15 +501,14 @@ char kbd_key_to_ascii(kbd_key_t key, kbd_region_t region,
 
     Accessor method for safely retrieving a kbd_state_t from a maple_device_t
     of a `MAPLE_FUNC_KEYBOARD` type. This function also checks for whether
-    the given device is actuallya keyboard and for whether it is currently
+    the given device is actually a keyboard and for whether it is currently
     valid.
 
     \param  device          Handle corresponding to a `MAPLE_FUNC_KEYBOARD`
                             device.
 
-    \retval kbd_state_t*    Returns a pointer to the internal keyboard state
-                            upon success.
-    \retval NULL            Returns NULL upon failure.
+    \retval kbd_state_t*    A pointer to the internal keyboard state on success.
+    \retval NULL            On failure.
 
 */
 kbd_state_t *kbd_get_state(maple_device_t *device);
@@ -547,14 +546,14 @@ kbd_state_t *kbd_get_state(maple_device_t *device);
 
     Function type which can be registered to listen to keyboard key events.
 
-    \param  dev     The maple device the event originated from
-    \param  key     The raw key ID whose state change triggered the event
+    \param  dev     The maple device the event originated from.
+    \param  key     The raw key ID whose state change triggered the event.
     \param  state   The new (transition) state of the key in question:
                         1. KEY_STATE_CHANGED_DOWN: key pressed event
                         2. KEY_STATE_CHANGED_UP: key released event
-    \param  mods    Flags containing the states of all modifier keys
-    \param  leds    Flags containing the states of all LEDs
-    \param  ud      Arbitrary user-pointer which was registered with this handler
+    \param  mods    Flags containing the states of all modifier keys.
+    \param  leds    Flags containing the states of all LEDs.
+    \param  ud      Arbitrary user-pointer which was registered with this handler.
 
     \sa kbd_set_event_handler
 */
@@ -573,9 +572,9 @@ typedef void (*kbd_event_handler_t)(maple_device_t *dev, kbd_key_t key,
     or from pressed to released.
 
     \param  callback    Pointer to the function to be called upon key
-                        transition events
+                        transition events.
     \param  user_data   Generic pointer which is stored internally and gets
-                        passed back to \p callback upon an event firing
+                        passed back to \p callback upon an event firing.
 
     \sa kbd_event_handler_t
 */
@@ -619,7 +618,7 @@ void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data);
 **/
 #define KBD_MAX_PRESSED_KEYS    6
 
-/** \brief Delimeter value for kbd_queue_pop()
+/** \brief Delimiter value for kbd_queue_pop()
 
     Value returned from kbd_queue_pop() when there are no more keys in the
     queue.
