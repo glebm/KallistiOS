@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
+
 #include <arch/timer.h>
 #include <dc/maple.h>
 #include <dc/maple/keyboard.h>
@@ -54,9 +56,9 @@ typedef struct kbd_state_private {
     } repeater;
 
     uint32_t key_queue[KBD_QUEUE_SIZE];
-    size_t queue_tail;                     /* Key queue tail. */
-    size_t queue_head;                     /* Key queue head. */
-    size_t queue_len;                      /* Current length of queue. */
+    size_t queue_tail;          /* Key queue tail. */
+    size_t queue_head;          /* Key queue head. */
+    atomic_size_t queue_len;    /* Current length of queue. */
 } kbd_state_private_t;
 
 static struct {
@@ -485,10 +487,10 @@ static int kbd_enqueue(kbd_state_t *state, uint8_t keycode, uint32_t mods) {
         return 0;
 
     /* Queue the key up on the device-specific queue. */
-    if(state_private->queue_len < KBD_QUEUE_SIZE) {
+    if(atomic_load(&state_private->queue_len) < KBD_QUEUE_SIZE) {
         state_private->key_queue[state_private->queue_head] = keycode | (mods << 8);
         state_private->queue_head = (state_private->queue_head + 1) & (KBD_QUEUE_SIZE - 1);
-        ++state_private->queue_len;
+        atomic_fetch_add(&state_private->queue_len, 1);
     }
 
     /* If queueing is turned off, don't bother with the global queue. */
@@ -566,12 +568,12 @@ int kbd_queue_pop(maple_device_t *dev, bool to_ascii) {
     kbd_leds_t leds;
     char ascii;
 
-    if(!state_private->queue_len)
+    if(!atomic_load(&state_private->queue_len))
         return -1;
 
     rv = state_private->key_queue[state_private->queue_tail];
     state_private->queue_tail = (state_private->queue_tail + 1) & (KBD_QUEUE_SIZE - 1);
-    --state_private->queue_len;
+    atomic_fetch_sub(&state_private->queue_len, 1);
 
     if(!to_ascii)
         return (int)rv;
