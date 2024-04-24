@@ -5,12 +5,20 @@
 
 */
 
+#include <kos/thread.h>
+
 #include <sys/reent.h>
+
+#include <signal.h>
 #include <errno.h>
 
 int _kill_r(struct _reent *reent, int pid, int sig) {
-    (void)pid;
-    (void)sig;
-    reent->_errno = EINVAL;
-    return -1;
+    if(getpid() != KOS_PID) {
+        reent->_errno = EINVAL;
+        return -1;
+    }
+
+    printf("KILLING: %d", sig);
+
+    return raise(sig);
 }

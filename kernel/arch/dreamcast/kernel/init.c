@@ -36,6 +36,7 @@ extern int _bss_start, end;
 extern void _init(void);
 extern void _fini(void);
 extern void __verify_newlib_patch();
+extern int _init_signal(void);
 
 void (*__kos_init_early_fn)(void) __attribute__((weak,section(".data"))) = NULL;
 
@@ -288,6 +289,7 @@ void arch_main(void) {
     arch_auto_init();
 
     __verify_newlib_patch();
+    _init_signal();
 
     dbglog(DBG_INFO, "\n");
 
