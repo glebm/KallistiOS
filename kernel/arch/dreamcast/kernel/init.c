@@ -3,6 +3,7 @@
    init.c
    Copyright (C) 2003 Megan Potter
    Copyright (C) 2015 Lawrence Sebald
+   Copyright (C) 2024 Falco Girgis
 */
 
 #include <stdio.h>
@@ -286,6 +287,9 @@ static void signal_irq_handler(irq_t source, irq_context_t *context, void *data)
 }
 
 static void signals_init(void) {
+    /* Initialize Newlib's internal signal structure. */
+    _init_signal();
+
     irq_set_handler(EXC_ILLEGAL_INSTR, signal_irq_handler, NULL); 
     irq_set_handler(EXC_SLOT_ILLEGAL_INSTR, signal_irq_handler, NULL);   
     irq_set_handler(EXC_INSTR_ADDRESS, signal_irq_handler, NULL);
