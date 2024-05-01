@@ -13,6 +13,6 @@
    WITHOUT calling the atexit() handlers. This will eventually
    return EXIT_FAILURE as the program's return code. */
 __used void abort(void) {
-   arch_abort();
+   raise(SIGABRT);
 }
 
