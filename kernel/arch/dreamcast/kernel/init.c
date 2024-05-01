@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <kos/dbgio.h>
 #include <kos/init.h>
 #include <arch/arch.h>
@@ -258,6 +259,44 @@ void  __weak arch_auto_shutdown(void) {
     rtc_shutdown();
 }
 
+static void signal_irq_handler(irq_t source, irq_context_t *context, void *data) {
+    (void)context;
+    (void)data;
+
+    switch(source) {
+        case EXC_ILLEGAL_INSTR:
+        case EXC_SLOT_ILLEGAL_INSTR:
+            raise(SIGILL);
+            break;
+
+        /*case EXC_DATA_ADDRESS_READ:*/
+        case EXC_DATA_ADDRESS_WRITE:
+        case EXC_INSTR_ADDRESS:
+            raise(SIGSEGV);
+            break;
+
+        case EXC_FPU:
+        case EXC_SLOT_FPU:
+        case EXC_GENERAL_FPU:
+            raise(SIGFPE);
+            break;
+
+        default: assert(false);
+    }
+}
+
+static void signals_init(void) {
+    irq_set_handler(EXC_ILLEGAL_INSTR, signal_irq_handler, NULL); 
+    irq_set_handler(EXC_SLOT_ILLEGAL_INSTR, signal_irq_handler, NULL);   
+    irq_set_handler(EXC_INSTR_ADDRESS, signal_irq_handler, NULL);
+    irq_set_handler(EXC_DATA_ADDRESS_WRITE, signal_irq_handler, NULL);
+    irq_set_handler(EXC_FPU, signal_irq_handler, NULL);
+    irq_set_handler(EXC_SLOT_FPU, signal_irq_handler, NULL);
+    irq_set_handler(EXC_GENERAL_FPU, signal_irq_handler, NULL);
+}
+
+KOS_INIT_FLAG_WEAK(signals_init, true);
+
 /* This is the entry point inside the C program */
 void arch_main(void) {
     uint8 *bss_start = (uint8 *)(&_bss_start);
@@ -289,7 +328,8 @@ void arch_main(void) {
     arch_auto_init();
 
     __verify_newlib_patch();
-    _init_signal();
+
+    KOS_INIT_FLAG_CALL(signals_init);
 
     dbglog(DBG_INFO, "\n");
 
