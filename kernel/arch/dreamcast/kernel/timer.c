@@ -2,7 +2,7 @@
 
    timer.c
    Copyright (C) 2000, 2001, 2002 Megan Potter
-   Copyright (C) 2023 Falco Girgis
+   Copyright (C) 2023, 2024 Falco Girgis
    Copyright (C) 2023 Paul Cercueil <paul@crapouillou.net>
 */
 
@@ -73,7 +73,7 @@ static const unsigned tcnts[] = { TCNT0, TCNT1, TCNT2 };
 static const unsigned tcrs[] = { TCR0, TCR1, TCR2 };
 
 /* Apply timer configuration to registers. */
-static int timer_prime_apply(int which, uint32_t count, int interrupts) { 
+static int timer_prime_apply(timer_channel_t which, uint32_t count, bool interrupts) { 
     assert(which <= TMU2);
 
     TIMER32(tcnts[which]) = count;
@@ -92,7 +92,7 @@ static int timer_prime_apply(int which, uint32_t count, int interrupts) {
 
 /* Pre-initialize a timer; set values but don't start it.
    "speed" is the number of desired ticks per second. */
-int timer_prime(int which, uint32_t speed, int interrupts) {
+int timer_prime(timer_channel_t which, uint32_t speed, bool interrupts) {
     /* Initialize counters; formula is P0/(tps*div) */
     const uint32_t cd = TIMER_PCK / (speed * TDIV(TIMER_TPSC));
 
@@ -101,7 +101,7 @@ int timer_prime(int which, uint32_t speed, int interrupts) {
 
 /* Works like timer_prime, but takes an interval in milliseconds
    instead of a rate. Used by the primary timer stuff. */
-static int timer_prime_wait(int which, uint32_t millis, int interrupts) {
+static int timer_prime_wait(timer_channel_t which, uint32_t millis, bool interrupts) {
     /* Calculate the countdown, formula is P0 * millis/div*1000. We
        rearrange the math a bit here to avoid integer overflows. */
     const uint32_t cd = (TIMER_PCK / TDIV(TIMER_TPSC)) * millis / 1000;
@@ -110,7 +110,7 @@ static int timer_prime_wait(int which, uint32_t millis, int interrupts) {
 }
 
 /* Start a timer -- starts it running (and interrupts if applicable) */
-int timer_start(int which) {
+int timer_start(timer_channel_t which) {
     assert(which <= TMU2);
 
     TIMER8(TSTR) |= (1 << which);
@@ -118,7 +118,7 @@ int timer_start(int which) {
 }
 
 /* Stop a timer -- and disables its interrupt */
-int timer_stop(int which) {
+int timer_stop(timer_channel_t which) {
     assert(which <= TMU2);
 
     timer_disable_ints(which);
@@ -129,21 +129,21 @@ int timer_stop(int which) {
     return 0;
 }
 
-int timer_running(int which) {
+bool timer_running(timer_channel_t which) {
     assert(which <= TMU2);
 
     return !!(TIMER8(TSTR) & (1 << which));
 }
 
 /* Returns the count value of a timer */
-uint32_t timer_count(int which) {
+uint32_t timer_count(timer_channel_t which) {
     assert(which <= TMU2);
 
     return TIMER32(tcnts[which]);
 }
 
 /* Clears the timer underflow bit and returns what its value was */
-int timer_clear(int which) {
+int timer_clear(timer_channel_t which) {
     uint16_t value;
 
     assert(which <= TMU2);
@@ -153,38 +153,26 @@ int timer_clear(int which) {
     return !!(value & UNF);
 }
 
-/* Spin-loop kernel sleep func: uses the secondary timer in the
-   SH-4 to very accurately delay even when interrupts are disabled */
-void timer_spin_sleep(int ms) {
-    timer_prime(TMU1, 1000, 0);
-    timer_clear(TMU1);
-    timer_start(TMU1);
-
-    while(ms > 0) {
-        while(!(TIMER16(tcrs[TMU1]) & UNF))
-            ;
-
-        timer_clear(TMU1);
-        ms--;
-    }
-
-    timer_stop(TMU1);
-}
-
 /* Enable timer interrupts; needs to move to irq.c sometime. */
-void timer_enable_ints(int which) {
+void timer_enable_ints(timer_channel_t which) {
+    assert(which <= TMU2);
+
     volatile uint16_t *ipra = (uint16_t *)0xffd00004;
     *ipra |= (TIMER_PRIO << (12 - 4 * which));
 }
 
 /* Disable timer interrupts; needs to move to irq.c sometime. */
-void timer_disable_ints(int which) {
+void timer_disable_ints(timer_channel_t which) {
+    assert(which <= TMU2);
+
     volatile uint16_t *ipra = (uint16_t *)0xffd00004;
     *ipra &= ~(TIMER_PRIO << (12 - 4 * which));
 }
 
 /* Check whether ints are enabled */
-int timer_ints_enabled(int which) {
+bool timer_ints_enabled(timer_channel_t which) {
+    assert(which <= TMU2);
+
     volatile uint16_t *ipra = (uint16_t *)0xffd00004;
     return (*ipra & (TIMER_PRIO << (12 - 4 * which))) != 0;
 }
@@ -330,6 +318,24 @@ uint64_t timer_ns_gettime64(void) {
    const timer_val_t val = timer_getticks(tns_values_ns, 0);
 
     return (uint64_t)val.secs * 1000000000ull + (uint64_t)val.ticks;
+}
+
+void timer_spin_sleep_ms(uint32_t ms) {
+    const uint64_t target = timer_ms_gettime64() + ms;
+
+    while(timer_ms_gettime64() < target);
+}
+
+void timer_spin_sleep_us(uint32_t us) {
+    const uint64_t target = timer_us_gettime64() + us;
+
+    while(timer_us_gettime64() < target);
+}
+
+void timer_spin_sleep_ns(uint32_t ns) {
+    const uint64_t target = timer_ns_gettime64() + ns;
+
+    while(timer_ns_gettime64() < target);
 }
 
 /* Primary kernel timer. What we'll do here is handle actual timer IRQs
