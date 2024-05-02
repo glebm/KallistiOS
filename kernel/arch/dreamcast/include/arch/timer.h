@@ -48,7 +48,7 @@ __BEGIN_DECLS
     of 80ns ticks.
 
     \warning
-    Under normal circumstances, all 3 TMU channels are reserved by KOS for
+    Under normal circumstances, 2 TMU channels are reserved by KOS for
     various OS-related purposes. If you need a free general-purpose interval
     timer, consider using the Watchdog Timer.
 
@@ -80,9 +80,7 @@ typedef enum timer_channel {
 
     /** \brief  SH4 Timer Channel 1.
 
-        \warning
-        This timer channel is used for the timer_spin_sleep() function, which
-        also backs the kthread, C, C++, and POSIX sleep functions.
+        This timer is currently free to use by an application or driver.
     */
     TMU1 = 1,
 
@@ -350,15 +348,11 @@ uint64_t timer_ns_gettime64(void);
 
 /** @} */
 
-/** \defgroup tmu_sleep     Sleeping
-    \brief                  Low-level thread sleeping
+/** \defgroup tmu_spin_wait Spin Waiting
+    \brief                  Low-level spin waiting
 
     This API provides the low-level functionality used to implement thread
-    sleeping, used by the KOS, C, C++, and POSIX threading APIs.
-
-    \warning
-    This API and its underlying functionality are using \ref TMU1, so any
-    direct manipulation of it will interfere with the API's proper functioning.
+    spin waiting/sleeping, used by the KOS, C, C++, and POSIX threading APIs.
 
     @{
 */
@@ -375,7 +369,7 @@ uint64_t timer_ns_gettime64(void);
 /** \brief  Spin-loop millisecond sleep function.
 
     This function is meant as a very accurate delay function, even if threading
-    and interrupts are disabled. It uses \ref TMU1 to sleep.
+    and interrupts are disabled.
 
     \param  ms              The number of milliseconds to sleep.
 
@@ -386,7 +380,7 @@ void timer_spin_sleep_ms(uint32_t ms);
 /** \brief 	Spin-loop microsecond sleep function.
 
     This function is meant as a very accurate delay function, even if threading
-    and interrupts are disabled. It uses \ref TMU1 to sleep.
+    and interrupts are disabled.
 
     \param us 	            The number of microseconds to sleep.
 
@@ -397,7 +391,7 @@ void timer_spin_sleep_us(uint32_t us);
 /** \brief      Spin-loop nanosecond sleep function.
 
     This function is meant as a very accurate delay function, even if threading
-    and interrupts are disabled. It uses \ref TMU1 to sleep.
+    and interrupts are disabled.
 
     \param ns               The number of nanoseconds to sleep.
 
