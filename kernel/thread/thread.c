@@ -39,6 +39,9 @@ also using their queue library verbatim (sys/queue.h).
 
 */
 
+/* Imaginary object to pass to genwait() when sleeping a thread. */
+#define THREAD_SLEEP_GENWAIT_OBJECT ((void *)0xffffffff)
+
 /* TLS Section ELF data - exported from linker script. */
 extern int _tdata_start, _tdata_size;
 extern int _tbss_size;
@@ -634,7 +637,7 @@ void thd_schedule(int front_of_line, uint64_t now) {
     kthread_t *thd;
 
     if(now == 0)
-        now = timer_ms_gettime64();
+        now = timer_ns_gettime64();
 
     /* We won't re-enqueue the current thread if it's NULL (i.e., the
        thread blocked itself somewhere) or if it's a zombie (below) */
@@ -739,7 +742,7 @@ void thd_schedule_next(kthread_t *thd) {
 
 /* See kos/thread.h for description */
 irq_context_t *thd_choose_new(void) {
-    uint64_t now = timer_ms_gettime64();
+    uint64_t now = timer_ns_gettime64();
 
     //printf("thd_choose_new() woken at %d\n", (uint32_t)now);
 
@@ -758,7 +761,7 @@ irq_context_t *thd_choose_new(void) {
    threads, swap out contexts, and sleep. */
 static void thd_timer_hnd(irq_context_t *context) {
     /* Get the system time */
-    uint64_t now = timer_ms_gettime64();
+    uint64_t now = timer_ns_gettime64();
 
     (void)context;
 
@@ -773,18 +776,28 @@ static void thd_timer_hnd(irq_context_t *context) {
 /* Thread blocking based sleeping; this is the preferred way to
    sleep because it eases the load on the system for the other
    threads. */
-void thd_sleep(int ms) {
+void thd_sleep_ms(uint32_t ms) {
+    assert((uint64_t)ms * 1000000 <= UINT32_MAX);
+    thd_sleep_ns(ms * 1000000);
+}
+
+void thd_sleep_us(uint32_t us) {
+    assert((uint64_t)us * 1000 <= UINT32_MAX);
+    thd_sleep_ns(us * 1000);
+}
+
+void thd_sleep_ns(uint32_t ns) {
     /* This should never happen. This should, perhaps, assert. */
     if(thd_mode == THD_MODE_NONE) {
         dbglog(DBG_WARNING, "thd_sleep called when threading not "
                "initialized.\n");
-        timer_spin_sleep(ms);
+        timer_spin_sleep_ns(ns);
         return;
     }
 
     /* A timeout of zero is the same as thd_pass() and passing zero
        down to genwait_wait() causes bad juju. */
-    if(!ms) {
+    if(!ns) {
         thd_pass();
         return;
     }
@@ -794,7 +807,7 @@ void thd_sleep(int ms) {
        sleep cases into a single case, which is nice for scheduling
        purposes. 0xffffffff definitely doesn't exist as an object, so we'll
        use that for straight up timeouts. */
-    genwait_wait((void *)0xffffffff, "thd_sleep", ms, NULL);
+    genwait_wait_ns(THREAD_SLEEP_GENWAIT_OBJECT, "thd_sleep", ns, NULL);
 }
 
 /* Manually cause a re-schedule */
