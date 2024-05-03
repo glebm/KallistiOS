@@ -262,7 +262,7 @@ void timer_ms_disable(void);
 
     \note
     To get the total number of milliseconds since boot, calculate
-    (*secs * 1000) + *msecs, or uses the timmer_ms_gettime64() function.
+    (*secs * 1000) + *msecs, or use the timer_ms_gettime64() function.
 
     \param  secs            A pointer to store the number of seconds since
                             boot.
