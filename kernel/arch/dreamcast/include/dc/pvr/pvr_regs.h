@@ -1,6 +1,6 @@
 /* KallistiOS ##version##
 
-   dc/pvr.h
+   dc/pvr/pvr_regs.h
    Copyright (C) 2002 Megan Potter
    Copyright (C) 2014 Lawrence Sebald
    Copyright (C) 2023 Ruslan Rostovtsev

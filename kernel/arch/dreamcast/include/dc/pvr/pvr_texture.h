@@ -1,6 +1,6 @@
 /* KallistiOS ##version##
 
-   dc/pvr/pvr_texture.h
+dc/pvr/pvr_texture.h
    Copyright (C) 2002 Megan Potter
    Copyright (C) 2014 Lawrence Sebald
    Copyright (C) 2023 Ruslan Rostovtsev
@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_texture.h
-    \brief      VRAM Management a
+    \brief
     \ingroup    pvr_txr_mgmt
 
     \author Megan Potter
@@ -29,7 +29,6 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
-#include <pvr/pvr_mem.h>
 #include <kos/img.h>
 
 /** \defgroup pvr_txr_mgmt      Texturing
@@ -50,7 +49,7 @@ __BEGIN_DECLS
     \param  count           The size of the texture in bytes (must be a multiple
                             of 32).
 */
-void pvr_txr_load(void *src, pvr_ptr_t dst, size_t count);
+void pvr_txr_load(const void *src, pvr_ptr_t dst, size_t count);
 
 /** \defgroup pvr_txrload_constants     Flags
     \brief                              Texture loading constants
