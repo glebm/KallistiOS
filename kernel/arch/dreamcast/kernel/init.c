@@ -282,7 +282,7 @@ static void signal_irq_handler(irq_t source, irq_context_t *context, void *data)
     }
 }
 
-static void signals_init(void) {
+void signals_init(void) {
     /* Initialize Newlib's internal signal structure. */
     _init_signal();
 

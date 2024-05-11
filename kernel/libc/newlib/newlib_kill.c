@@ -38,14 +38,14 @@ int _kill_r(struct _reent *reent, int pid, int sig) {
         case SIGSEGV:
         case SIGILL:
         case SIGFPE:
-            exit(EXIT_FAILURE);
+            exit(sig);
             break;
 
         /* Exit with a generic success code when the user manually
            or programmatically requests program exit. */
         case SIGTERM:
         case SIGINT:
-            exit(EXIT_SUCCESS);
+            exit(sig);
             break;
 
         /* Warn if we're sent an unknown signal type. */
