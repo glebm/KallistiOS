@@ -54,7 +54,7 @@ void pvr_txr_load(const void *src, pvr_ptr_t dst, size_t count) {
 */
 void pvr_txr_load_ex(const void* src, pvr_ptr_t dst, size_t w, size_t h,
                      pvr_txr_load_t flags) {
-    uint32 x, y, yout, min, mask, bpp, invert;
+    uint32_t x, y, yout, min, mask, bpp, invert;
 
     /* Make sure we're attempting something we can do */
     switch(flags & PVR_TXRLOAD_FMT_MASK) {
@@ -144,7 +144,7 @@ void pvr_txr_load_ex(const void* src, pvr_ptr_t dst, size_t w, size_t h,
 
 /* Load a KOS Platform Independent Image (subject to restraint checking) */
 void pvr_txr_load_kimg(const kos_img_t *img, pvr_ptr_t dst, pvr_txr_load_t flags) {
-    uint32 fmt, w, h;
+    uint32_t fmt, w, h;
 
     /* First check and make sure it's a format we can use */
     fmt = KOS_IMG_FMT_I(img->fmt) & KOS_IMG_FMT_MASK;
