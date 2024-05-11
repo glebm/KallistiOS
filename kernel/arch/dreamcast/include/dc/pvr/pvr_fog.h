@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_fog.h
-    \brief      
+    \brief      Public API for the PVR's hardware fog.
     \ingroup    pvr_fog
 
     \author Megan Potter
@@ -31,14 +31,18 @@ __BEGIN_DECLS
     \brief                  Hardware Fog API for the PowerVR
     \ingroup                pvr_global
 
+    \todo Explain fog modes + equations
+
     \note 
     Thanks to Paul Boese for figuring this stuff out
+
+    @{
 */
 
-/** \brief   Set the table fog color.
-    \ingroup pvr_fog
+/** Set the table fog color.
 
-    This function sets the color of fog for table fog. 0-1 range for all colors.
+    This function sets the color of fog for table fog. `0-1` range for all
+    colors.
 
     \param  a               Alpha value of the fog
     \param  r               Red value of the fog
@@ -47,12 +51,16 @@ __BEGIN_DECLS
 */
 void pvr_fog_table_color(float a, float r, float g, float b);
 
-/** \brief   Set the vertex fog color.
-    \ingroup pvr_fog
+/** Set the vertex fog color.
 
-    This function sets the fog color for vertex fog. 0-1 range for all colors.
+    This function sets the fog color for vertex fog. `0-1` range for all colors.
+    
+    \todo
     This function is currently not implemented, as vertex fog is not supported
-    by KOS. Calling this function will cause an assertion failure.
+    by KOS. 
+    
+    \warning
+    Calling this function will cause an assertion failure.
 
     \param  a               Alpha value of the fog
     \param  r               Red value of the fog
@@ -61,61 +69,66 @@ void pvr_fog_table_color(float a, float r, float g, float b);
 */
 void pvr_fog_vertex_color(float a, float r, float g, float b);
 
-/** \brief   Set the fog far depth.
-    \ingroup pvr_fog
+/** Set the fog far depth.
 
-    This function sets the PVR_FOG_DENSITY register appropriately for the
+    This function sets the `PVR_FOG_DENSITY` register appropriately for the
     specified value.
 
     \param  d               The depth to set
 */
 void pvr_fog_far_depth(float d);
 
-/** \brief   Initialize the fog table using an exp2 algorithm (like GL_EXP2).
-    \ingroup pvr_fog
+/** Initialize the fog table using an exp2 algorithm (like `GL_EXP2`).
 
-    This function will automatically set the PVR_FOG_DENSITY register to
-    259.999999 as a part of its processing, then set up the fog table.
+    This function will automatically set the `PVR_FOG_DENSITY` register to
+    `259.999999` as a part of its processing, then set up the fog table.
 
     \param  density         Fog density value
+
+    \sa pvr_fog_table_exp(), pvr_fog_table_linear(), pvr_fog_table_custom()
 */
 void pvr_fog_table_exp2(float density);
 
-/** \brief   Initialize the fog table using an exp algorithm (like GL_EXP).
-    \ingroup pvr_fog
+/** Initialize the fog table using an exp algorithm (like `GL_EXP`).
 
-    This function will automatically set the PVR_FOG_DENSITY register to
-    259.999999 as a part of its processing, then set up the fog table.
+    This function will automatically set the `PVR_FOG_DENSITY` register to
+    `259.999999` as a part of its processing, then set up the fog table.
 
     \param  density         Fog density value
+
+    \sa pvr_fog_table_exp2(), pvr_fog_table_linear(), pvr_fog_table_custom()
 */
 void pvr_fog_table_exp(float density);
 
-/** \brief   Initialize the fog table using a linear algorithm (like GL_LINEAR).
-    \ingroup pvr_fog
+/** Initialize the fog table using a linear algorithm (like `GL_LINEAR`).
 
-    This function will set the PVR_FOG_DENSITY register to the as appropriate
+    This function will set the `PVR_FOG_DENSITY` register to the as appropriate
     for the end value, and initialize the fog table for perspectively correct
     linear fog.
 
     \param  start           Fog start point
     \param  end             Fog end point
+
+    \sa pvr_fog_table_exp(), pvr_fog_table_exp2(), pvr_fog_table_custom()
 */
 void pvr_fog_table_linear(float start, float end);
 
-/** \brief   Set a custom fog table from float values
-    \ingroup pvr_fog
+/** Set a custom fog table from float values
 
     This function allows you to specify whatever values you need to for your fog
-    parameters. All values should be clamped between 0 and 1, and its your
-    responsibility to set up the PVR_FOG_DENSITY register by calling
+    parameters. All values should be clamped between `0` and `1`, and its your
+    responsibility to set up the `PVR_FOG_DENSITY` register by calling
     pvr_fog_far_depth() with an appropriate value. The table passed in should
-    have 129 entries, where the 0th entry is farthest from the eye and the last
+    have `129` entries, where the `0`th entry is farthest from the eye and the last
     entry is nearest. Higher values = heavier fog.
 
     \param  tbl1            The table of fog values to set
+
+    \sa pvr_fog_table_exp2(), pvr_fog_table_exp(), pvr_fog_table_linear()
 */
-void pvr_fog_table_custom(float tbl1[]);
+void pvr_fog_table_custom(const float tbl1[]);
+
+/** @} */
 
 __END_DECLS
 

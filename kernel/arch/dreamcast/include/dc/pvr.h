@@ -18,6 +18,7 @@
     anything of the like. This is just a very thin wrapper around the actual
     hardware support.
 
+    \remark
     This file is used for pretty much everything related to the PVR, from memory
     management to actual primitive rendering.
 
@@ -67,6 +68,7 @@ __BEGIN_DECLS
 */
 
 /** PVR Primitive List Type
+    \ingroup pvr
     
     This type is an identifier for the different kinds of primitive lists.
 
@@ -76,12 +78,12 @@ __BEGIN_DECLS
     both primitives (polygons or sprites) and modifier volumes. 
 */
 typedef enum pvr_list {
-    PVR_LIST_OP_POLY = 0,  /**< \brief Opaque polygon list */
-    PVR_LIST_OP_MOD  = 1,  /**< \brief Opaque modifier list */
-    PVR_LIST_TR_POLY = 2,  /**< \brief Translucent polygon list */
-    PVR_LIST_TR_MOD  = 3,  /**< \brief Translucent modifier list*/
-    PVR_LIST_PT_POLY = 4,  /**< \brief Punch-thru polygon list */
-    PVR_LIST_COUNT   = 5   /**< \brief Number of list types */
+    PVR_LIST_OP_POLY = 0,  /**< Opaque polygon list */
+    PVR_LIST_OP_MOD  = 1,  /**< Opaque modifier list */
+    PVR_LIST_TR_POLY = 2,  /**< Translucent polygon list */
+    PVR_LIST_TR_MOD  = 3,  /**< Translucent modifier list*/
+    PVR_LIST_PT_POLY = 4,  /**< Punch-thru polygon list */
+    PVR_LIST_COUNT   = 5   /**< Number of list types */
 } pvr_list_t;
 
 #include "pvr/pvr_regs.h"
@@ -96,8 +98,11 @@ typedef enum pvr_list {
 #include "pvr/pvr_palette.h"
 #include "pvr/pvr_legacy.h"
 
-/** PVR Primitive Bin Sizes
+/** \addtogroup pvr 
+    @{
 */
+
+/** PVR Primitive Bin Sizes */
 typedef enum pvr_bin_size {
     PVR_BINSIZE_0  = 0,   /**< 0-length (disables the list) */
     PVR_BINSIZE_8  = 8,   /**< 8-word (32-byte) length */
@@ -125,7 +130,7 @@ typedef struct pvr_init_params {
 
         \warning
         This value should be a nice, round number, such as being in KB, or
-        evenly divisible by 1024.
+        evenly divisible by `1024`.
     */
     size_t        vertex_buf_size;
 
@@ -141,7 +146,8 @@ typedef struct pvr_init_params {
 
         Set to non-zero if horizontal scaling is to be enabled. By enabling this
         setting and stretching your image to double the native screen width, you
-        can get horizontal full-screen anti-aliasing. */
+        can get horizontal full-screen anti-aliasing. 
+    */
     bool          fsaa_enabled;
 
     /** Disable translucent polygon autosort?
@@ -149,7 +155,8 @@ typedef struct pvr_init_params {
         Set to non-zero to disable translucent polygon autosorting. By enabling
         this setting, the PVR acts more like a traditional Z-buffered system
         when rendering translucent polygons, meaning you must pre-sort them
-        yourself if you want them to appear in the right order. */
+        yourself if you want them to appear in the right order. 
+    */
     bool          autosort_disabled;
 
     /** OPB Overflow Count.
@@ -158,7 +165,8 @@ typedef struct pvr_init_params {
         to use the extra space when there's too much geometry in the first OPB.
     
         Increasing this value can eliminate artifacts where pieces of geometry
-        flicker in and out of existence along the tile boundaries. */
+        flicker in and out of existence along the tile boundaries. 
+    */
     size_t        opb_overflow_count;
 } pvr_init_params_t;
 
@@ -204,6 +212,8 @@ int pvr_init_defaults(void);
 */
 int pvr_shutdown(void);
 
+/** @} */
+
 /** \defgroup   pvr_scene_mgmt  Scene Submission
     \brief                      PowerVR API for submitting scene geometry
     \ingroup                    pvr
@@ -239,6 +249,7 @@ int pvr_shutdown(void);
     you can set a small buffer to gather translucent data and then it will
     get sent when you do a pvr_end_scene().
 
+    \remark
     Thanks to Mikael Kalms for the idea for this API.
 
     \note
@@ -251,8 +262,7 @@ int pvr_shutdown(void);
 */
 
 /** \defgroup  pvr_vertex_dma   Vertex DMA
-    \brief                      Use the DMA to transfer inactive lists to the PVR
-    \ingroup                    pvr_scene_mgmt
+    \brief     Use the DMA to transfer inactive lists to the PVR
 
     @{
 */
@@ -550,6 +560,8 @@ int pvr_check_ready(void);
 static inline bool pvr_is_ready(void) {
     return !pvr_check_ready();
 }
+
+/** @} */
 
 __END_DECLS
 
