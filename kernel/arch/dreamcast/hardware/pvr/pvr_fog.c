@@ -147,7 +147,7 @@ union ieee32_t {
 #define ABS(n) ( (n)<(0.0f) ? (-n):(n) )
 #define NEG(n) ( (n)>(0.0f) ? (-n):(n) )
 #define CLAMP01(x) \
-    ( (x)<(0.0f) ? ((x) = (0.0f)) : ((x)>(1.0f) ? ((x)=(1.0f)) : (x)) )
+    ( (x)<(0.0f) ? ((0.0f)) : ((x)>(1.0f) ? ((1.0f)) : (x)) )
 
 /* helper functions */
 #define FOG_EXP_TABLE_SIZE 256
@@ -229,10 +229,7 @@ void pvr_fog_table_color(float a, float r, float g, float b) {
 
 /* Set the fog vertex color */
 void pvr_fog_vertex_color(float a, float r, float g, float b) {
-    (void)a;
-    (void)r;
-    (void)g;
-    (void)b;
+    PVR_SET(PVR_FOG_VERTEX_COLOR, PVR_PACK_COLOR(a, r, g, b));
     assert_msg(0, "not implemented");
     /*  PVR_SET(PVR_FOG_VERTEX_COLOR, PVR_PACK_COLOR(a, r, g, b)); */
 }

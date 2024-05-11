@@ -62,13 +62,13 @@ __BEGIN_DECLS
 #include <arch/cache.h>
 #include <dc/sq.h>
 
-/** \defgroup pvr   PowerVR API
+/** \defgroup pvr   PowerVR
     \brief          Low-level PowerVR GPU Driver.
     \ingroup        video
 */
 
 /** PVR Primitive List Type
-    \ingroup pvr
+    \ingroup pvr_list_mgmt
     
     This type is an identifier for the different kinds of primitive lists.
 
@@ -98,7 +98,9 @@ typedef enum pvr_list {
 #include "pvr/pvr_palette.h"
 #include "pvr/pvr_legacy.h"
 
-/** \addtogroup pvr 
+/** \defgroup pvr_init  Initialization
+    \brief    PowerVR Initialization and Shutdown
+    \ingroup  pvr
     @{
 */
 
@@ -360,6 +362,8 @@ void pvr_scene_begin_txr(pvr_ptr_t txr, size_t *rx, size_t *ry);
 /** \defgroup pvr_list_mgmt Polygon Lists
     \brief                  PVR API for managing list submission
     \ingroup                pvr_scene_mgmt
+
+    @{
 */
 
 /** Begin collecting data for the given list type.
@@ -419,6 +423,8 @@ int pvr_list_finish(void);
     \retval -1              On error.
 */
 int pvr_prim(const void *data, size_t size);
+
+/** @} */
 
 /** \defgroup pvr_direct  Direct Rendering
     \brief                API for using direct rendering with the PVR
@@ -511,8 +517,6 @@ int pvr_list_flush(pvr_list_t list);
     \sa pvr_scene_begin(), pvr_scene_begin_txr()
 */
 int pvr_scene_finish(void);
-
-/** @} */
 
 /** Block until the PVR is ready for the next frame.
 

@@ -17,7 +17,6 @@
     \author Brian Paul
     \author Lawrence Sebald
     \author Benoit Miller
-    \author Ruslan Rostovtsev
     \author Falco Girgis
 */
 

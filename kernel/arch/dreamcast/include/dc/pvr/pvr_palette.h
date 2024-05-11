@@ -8,8 +8,8 @@
 */
 
 /** \file       dc/pvr/pvr_palette.h
-    \brief 
-    \ingroup    pvr_txr_mgmt
+    \brief      Palette API for the PowerVR
+    \ingroup    pvr_pal_mgmt
 
     \author Megan Potter
     \author Roger Cattermole

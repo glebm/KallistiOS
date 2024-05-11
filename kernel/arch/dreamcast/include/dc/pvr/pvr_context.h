@@ -330,14 +330,11 @@ typedef enum __packed pvr_uv {
     PVR_UVFMT_32BIT = 0,  /**< \brief 32-bit floating point U/V */
     PVR_UVFMT_16BIT = 1   /**< \brief 16-bit floating point U/V */
 } pvr_uv_t;
-/** @} */
 
 /** \defgroup pvr_ctx_modvol        Modifier Volumes
     \brief                          PowerVR modifier volume polygon context attributes
     \ingroup                        pvr_ctx_attrib
 */
-
-
 
 /** \brief    Modifier volume modes for PowerVR primitive contexts
     \ingroup  pvr_ctx_modvol

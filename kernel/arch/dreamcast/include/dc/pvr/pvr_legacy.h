@@ -8,8 +8,8 @@
 */
 
 /** \file    dc/pvr/pvr_legacy.h
-    \brief 
-    \ingroup 
+    \brief   All deprecated PVR API Constants
+    \ingroup pvr_legacy
 
     \author Megan Potter
     \author Roger Cattermole
@@ -27,6 +27,20 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
+/** \defgroup pvr_legacy    Legacy Constants
+    \ingroup  pvr
+    \brief    Deprecated and legacy defines for constants.
+    \deprecated
+
+    These were essentially pointless code-bloat and their respective fields
+    have since been refactored in the API to use regular C boolean types.
+
+    \note
+    This file remains only for backwards compatibility reasons.
+
+    @{
+*/
+
 /** \defgroup pvr_depth_switch      Write Toggle
     \brief                          Enable or Disable Depth Writes.
     \ingroup                        pvr_ctx_depth
@@ -36,7 +50,7 @@ __BEGIN_DECLS
 #define PVR_DEPTHWRITE_DISABLE  1   /**< \brief Do not update the Z value */
 /** @} */
 
-/** \defgroup pvr_txr_switch        Toggle
+/** \defgroup pvr_txr_switch        Texture Toggle
     \brief                          Enable or Disable Texturing on Polygons.
     \ingroup                        pvr_ctx_texture
     
@@ -124,7 +138,7 @@ __BEGIN_DECLS
 #define PVR_MIPMAP_ENABLE       1   /**< \brief Enable mipmap processing */
 /** @} */
 
-/** \defgroup pvr_mod_switch        Toggle
+/** \defgroup pvr_mod_switch        Modifier Toggle
     \brief                          Enable or Disable Modifier Effects
     \ingroup                        pvr_ctx_modvol
     @{
@@ -133,13 +147,15 @@ __BEGIN_DECLS
 #define PVR_MODIFIER_ENABLE     1   /**< \brief Enable modifier effects */
 /** @} */
 
-/** \defgroup pvr_mod_types         Types
+/** \defgroup pvr_mod_types         Modifier Types
     \brief                          Modifier volume types for PowerVR primitive contexts
     \ingroup                        pvr_ctx_modvol
     @{
 */
 #define PVR_MODIFIER_CHEAP_SHADOW   0
 #define PVR_MODIFIER_NORMAL         1
+/** @} */
+
 /** @} */
 
 __END_DECLS
