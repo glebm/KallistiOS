@@ -4,7 +4,6 @@
 
 TARGET = serpent.elf
 OBJS = serpent.o perfmeter.o romdisk.o
-
 KOS_ROMDISK_DIR = romdisk
 
 all: rm-elf $(TARGET)
@@ -18,7 +17,7 @@ rm-elf:
 	-rm -f $(TARGET)
 
 $(TARGET): $(OBJS)
-	kos-cc -o $(TARGET) $(OBJS) -lparallax -lkosutils -lpng -ljpeg -lkmg -lz -lm
+	kos-cc -o $(TARGET) $(OBJS) -lparallax -lkosutils -lm
 
 run: $(TARGET)
 	$(KOS_LOADER) $(TARGET)

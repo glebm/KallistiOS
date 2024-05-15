@@ -5,6 +5,7 @@
 
 TARGET = gltest.elf
 OBJS = gltest.o romdisk.o
+KOS_ROMDISK_DIR = romdisk
 
 all: rm-elf $(TARGET)
 
@@ -17,13 +18,7 @@ rm-elf:
 	-rm -f $(TARGET) romdisk.*
 
 $(TARGET): $(OBJS)
-	kos-c++ -o $(TARGET) $(OBJS) -lGL -lkosutils
-
-romdisk.img:
-	$(KOS_GENROMFS) -f romdisk.img -d romdisk -v
-
-romdisk.o: romdisk.img
-	$(KOS_BASE)/utils/bin2o/bin2o romdisk.img romdisk romdisk.o
+	kos-c++ -o $(TARGET) $(OBJS) -lGL -lm -lkosutils
 
 run: $(TARGET)
 	$(KOS_LOADER) $(TARGET)

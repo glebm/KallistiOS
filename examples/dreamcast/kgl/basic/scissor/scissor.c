@@ -19,9 +19,9 @@
 
 #include <kos.h>
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+#include <KGL/gl.h>
+#include <KGL/glu.h>
+#include <KGL/glut.h>
 
 #define NUM_DEMOS 5
 enum { USERCLIP_INSIDE = 0, USERCLIP_OUTSIDE, USERCLIP_DISABLED,
@@ -211,9 +211,6 @@ pvr_init_params_t params = {
     /* Vertex buffer size 512K */
     512 * 1024
 };
-
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 
 int main(int argc, char **argv) {
     maple_device_t *cont;

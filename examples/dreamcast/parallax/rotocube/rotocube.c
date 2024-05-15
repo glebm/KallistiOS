@@ -35,26 +35,11 @@ to a translucent poly to interfere with the cube.
 
 */
 
-// Draw a single point in 3D space. Uses the currently loaded matrix.
-void drawpnt(float x, float y, float z, float a, float r, float g, float b) {
-    uint32 col = plx_pack_color(a, r, g, b);
-
-    // Transform the point, clip the Z plane to avoid artifacts.
-    plx_mat_tfip_3d(x, y, z);
-
-    if(z <= 0.00001f) z = 0.00001f;
-
-    // Draw it.
-    plx_vert_inp(PLX_VERT, x, y + 1.0f, z, col);
-    plx_vert_inp(PLX_VERT, x, y, z, col);
-    plx_vert_inp(PLX_VERT, x + 1.0f, y + 1.0f, z, col);
-    plx_vert_inp(PLX_VERT_EOS, x + 1.0f, y, z, col);
-}
+static plx_dr_state_t dr;
 
 // Draws the full cube at the current position.
 void drawcube(void) {
     uint32 color = 0xff808080;
-    plx_dr_state_t dr;
 
     plx_dr_init(&dr);
 
@@ -93,6 +78,8 @@ void drawcube(void) {
     plx_vert_indm3(&dr, PLX_VERT, -3, 3,  3, color);
     plx_vert_indm3(&dr, PLX_VERT,  3, 3, -3, color);
     plx_vert_indm3(&dr, PLX_VERT_EOS,  3, 3,  3, color);
+
+    plx_dr_finish();
 }
 
 // Draws the wave in the background (2D)
@@ -100,24 +87,21 @@ void drawwave(int theta) {
     uint32 color = 0xffa0a0a0;
     int i, divs = 320;
     float x, y, t;
-    plx_dr_state_t dr;
-
-    plx_dr_init(&dr);
 
     // Convert to radians for sin/cos
-    t = theta * 2 * M_PI / 360.0f;
+    t = theta * 2 * F_PI / 360.0f;
 
     for(i = 0; i <= divs; i++) {
         x = i * 640.0f / divs;
 
         // These are more or less magic numbers I played with until
         // it looked neat.
-        y = 240.0f + fsin(t + i * M_PI / 64.0f) * 30.0f * fsin(t * 4);
-        y += fcos(t + i * M_PI / 36.0f) * 40.0f * fcos(t * 6);
-        y += fcos(t + i * M_PI / 30.0f) * 24.0f * fcos(t * 8);
+        y = 240.0f + fsin(t + i * F_PI / 64.0f) * 30.0f * fsin(t * 4);
+        y += fcos(t + i * F_PI / 36.0f) * 40.0f * fcos(t * 6);
+        y += fcos(t + i * F_PI / 30.0f) * 24.0f * fcos(t * 8);
 
-        plx_vert_ind(&dr, PLX_VERT, x, y, 0.0001f, color);
-        plx_vert_ind(&dr, i == divs ? PLX_VERT_EOS : PLX_VERT, x, 480.0f, 0.0001f, color);
+        plx_vert_inp(PLX_VERT, x, y, 0.0001f, color);
+        plx_vert_inp(i == divs ? PLX_VERT_EOS : PLX_VERT, x, 480.0f, 0.0001f, color);
     }
 }
 
@@ -194,7 +178,7 @@ int main(int argc, char **argv) {
     // You have to keep a watch on these, especially the vertex used
     // for really poly intensive effects.
     pvr_get_stats(&stats);
-    dbglog(DBG_DEBUG, "3D Stats: %ld vblanks, frame rate ~%f fps, max vertex used %d bytes\n",
+    dbglog(DBG_DEBUG, "3D Stats: %d vblanks, frame rate ~%f fps, max vertex used %d bytes\n",
            stats.vbl_count, (double)stats.frame_rate, stats.vtx_buffer_used_max);
 
     return 0;

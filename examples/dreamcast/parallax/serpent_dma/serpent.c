@@ -2,13 +2,14 @@
    KallistiOS ##version##
    serpent.c
 
-   Copyright (C)2002,2004 Megan Potter
-   Copyright (C)2004 Jim Ursetto
+   Copyright (C) 2002,2004 Megan Potter
+   Copyright (C) 2004 Jim Ursetto
 */
 
 #include <kos.h>
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <plx/matrix.h>
 #include <plx/prim.h>
 #include <plx/context.h>
@@ -60,13 +61,13 @@ static void sphere(sphere_t *s) { /* {{{ */
 
     /* Iterate over stacks */
     for(i = 0; i < s->stacks; i++) {
-        pitch = 2 * M_PI * ((float)i / (float)s->stacks);
-        pitch2 = 2 * M_PI * ((float)(i + 1) / (float)s->stacks);
+        pitch = 2 * F_PI * ((float)i / (float)s->stacks);
+        pitch2 = 2 * F_PI * ((float)(i + 1) / (float)s->stacks);
 
         /* Iterate over slices: each entire stack will be one
            long triangle strip. */
         for(j = 0; j <= s->slices / 2; j++) {
-            yaw = 2 * M_PI * ((float)j / (float)s->slices);
+            yaw = 2 * F_PI * ((float)j / (float)s->slices);
 
             /* x, y+1 */
             v->x = s->radius * fcos(yaw) * fcos(pitch2);
@@ -129,10 +130,8 @@ static void draw_sphere(sphere_t *s, int list) {
 
     /* Transform and write vertices to the TA via the store queues */
     vd = (pvr_vertex_t *)pvr_vertbuf_tail(list);
-    QACR0 = ((((uint32)vd) >> 26) << 2) & 0x1c;
-    QACR1 = ((((uint32)vd) >> 26) << 2) & 0x1c;
-    sqd = (void *)
-          (0xe0000000 | (((uint32)vd) & 0x03ffffe0));
+    sq_lock(vd);
+    sqd = (void *) SQ_MASK_DEST_ADDR(vd);
     /* {
         int o = irq_disable();
         printf("transforming to %p, len %d\n",
@@ -141,6 +140,7 @@ static void draw_sphere(sphere_t *s, int list) {
     } */
 
     mat_transform_sq(v, sqd, s->stacks * (s->slices + 2));
+    sq_unlock();
 
     pvr_vertbuf_written(list, 32 * s->stacks * (s->slices + 2));
 
@@ -172,7 +172,7 @@ static void sphere_frame(void) {
     plx_mat3d_push();
 
     for(i = 0; i < SPHERE_CNT; i++) {
-        plx_mat3d_translate(6.0f * fcos(i * 2 * M_PI / SPHERE_CNT), 0.0f, 6.0f * fsin(i * 2 * M_PI / SPHERE_CNT));
+        plx_mat3d_translate(6.0f * fcos(i * 2 * F_PI / SPHERE_CNT), 0.0f, 6.0f * fsin(i * 2 * F_PI / SPHERE_CNT));
         plx_mat3d_rotate(r, 1.0f, 1.0f, 1.0f);
 
         if(!(i % 2))
@@ -192,7 +192,7 @@ static void sphere_frame(void) {
     plx_mat3d_push();
 
     for(i = 0; i < SPHERE_CNT; i++) {
-        plx_mat3d_translate(3.0f * fcos(i * 2 * M_PI / SPHERE_CNT), 0.0f, 3.0f * fsin(i * 2 * M_PI / SPHERE_CNT));
+        plx_mat3d_translate(3.0f * fcos(i * 2 * F_PI / SPHERE_CNT), 0.0f, 3.0f * fsin(i * 2 * F_PI / SPHERE_CNT));
         plx_mat3d_rotate(r, 1.0f, 1.0f, 1.0f);
 
         if(!(i % 2))
@@ -212,7 +212,7 @@ static void sphere_frame(void) {
     //printf("%d\n", (uint32)(timer_ms_gettime64() - start));
 
     r++;
-    phase += 2 * M_PI / 240.0f;
+    phase += 2 * F_PI / 240.0f;
 
     pm_draw();
 
@@ -249,15 +249,21 @@ pvr_init_params_t params = {
     2560 * 1024,
 
     /* Vertex DMA enabled */
-    1
+    1,
+
+    /* No FSAA */
+    0,
+
+    /* Translucent Autosort enabled. */
+    0,
+
+    /* Extra OPBs */
+    3
 };
 
 // DMA buffers. This should ideally be in separate memory banks to take
 // advantage of greater speed, but this will work for now.
 uint8 dmabuffers[2][4 * 1024 * 1024] __attribute__((aligned(32)));
-
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 
 int main(int argc, char **argv) {
     /* Init PVR API */
@@ -268,9 +274,6 @@ int main(int argc, char **argv) {
 
     pvr_set_vertbuf(PVR_LIST_OP_POLY, dmabuffers[0], 4 * 1024 * 1024);
     pvr_set_vertbuf(PVR_LIST_TR_POLY, dmabuffers[1], 4 * 1024 * 1024);
-
-    // Escape hatch
-    cont_btn_callback(0, CONT_START | CONT_A, (cont_btn_callback_t)arch_exit);
 
     /* Init matrices */
     plx_mat3d_init();
@@ -287,8 +290,8 @@ int main(int argc, char **argv) {
     do_sphere_test();
 
     pvr_get_stats(&stats);
-    dbglog(DBG_DEBUG, "3D Stats: %ld vblanks, frame rate ~%f fps, max vertex used %d bytes\n",
-           stats.vbl_count, (double)stats.frame_rate, stats.vtx_buffer_used_max);
+    dbglog(DBG_DEBUG, "3D Stats: %u vblanks, frame rate ~%f fps, max vertex used %u bytes\n",
+           stats.vbl_count, stats.frame_rate, stats.vtx_buffer_used_max);
 
     return 0;
 }

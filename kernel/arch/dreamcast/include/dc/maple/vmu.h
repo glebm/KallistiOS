@@ -3,7 +3,7 @@
    dc/maple/vmu.h
    Copyright (C) 2000-2002 Jordan DeLong, Megan Potter
    Copyright (C) 2008 Donald Haase
-   Copyright (C) 2023 Falco Girgis
+   Copyright (C) 2023 Falco Girgis, Andy Barajas
 
 */
 
@@ -37,6 +37,7 @@ __BEGIN_DECLS
 
 /** \defgroup vmu Visual Memory Unit
     \brief    VMU/VMS Maple Peripheral API
+    \ingroup  peripherals
 
     The Sega Dreamcast's Visual Memory Unit (VMU) 
     is an 8-Bit gaming device which, when plugged into 
@@ -66,7 +67,7 @@ __BEGIN_DECLS
     following functions:
     - <b>MEMCARD</b>: Storage device used for saving and 
                       loading game files.
-    - <b>LCD</b>:     Secondary LCD display on which additonal
+    - <b>LCD</b>:     Secondary LCD display on which additional
                       information may be presented to the player.
     - <b>CLOCK</b>:   A device which maintains the current date 
                       and time, provides at least one buzzer for
@@ -87,13 +88,43 @@ __BEGIN_DECLS
     a VMU has been formatted.
 */
 
+/** \brief   Get the status of a VMUs extra 41 blocks
+    \ingroup vmu_settings
+
+    This function checks if the extra 41 blocks of a VMU have been
+    enabled.
+
+    \param  dev             The device to check the status of.
+
+    \retval 1               On success: extra blocks are enabled
+    \retval 0               On success: extra blocks are disabled
+    \retval -1              On failure
+*/
+int vmu_has_241_blocks(maple_device_t *dev);
+
+/** \brief   Enable the extra 41 blocks of a VMU
+    \ingroup vmu_settings
+
+    This function enables/disables the extra 41 blocks of a specific VMU.
+
+    \warning    Enabling the extra blocks of a VMU may render it unusable
+                for a very few commercial games.
+
+    \param  dev             The device to enable/disable 41 blocks.
+    \param  enable          Values other than 0 enables. Equal to 0 disables.
+
+    \retval 0               On success
+    \retval -1              On failure
+*/
+int vmu_toggle_241_blocks(maple_device_t *dev, int enable);
+
 /** \brief   Enable custom color of a VMU
     \ingroup vmu_settings
 
     This function enables/disables the custom color of a specific VMU. 
     This color is only displayed in the Dreamcast's file manager.
 
-    \param  dev             The device to enable custom color.
+    \param  dev             The device to enable/disable custom color.
     \param  enable          Values other than 0 enables. Equal to 0 disables.
 
     \retval 0               On success
@@ -289,7 +320,7 @@ void vmu_set_icon(const char *vmu_icon);
 
     The Memory Card Maple function is for exposing a low-level,
     block-based API that allows you to read from and write to
-    random blocks within the memory card's filesytem.
+    random blocks within the memory card's filesystem.
 
     \note
     A standard memory card has a block size of 512 bytes; however,
@@ -559,7 +590,7 @@ typedef union vmu_state {
     as extended controller inputs.
 
     \note
-    Polling for VMU input is disabled by default to reduce unecessary
+    Polling for VMU input is disabled by default to reduce unnecessary
     Maple BUS traffic.
 
     \sa vmu_get_buttons_enabled
@@ -573,7 +604,7 @@ void vmu_set_buttons_enabled(int enable);
     the VMU's button states has been enabled in the driver.
 
     \note
-    Polling for VMU input is disabled by default to reduce unecessary
+    Polling for VMU input is disabled by default to reduce unnecessary
     Maple BUS traffic.
 
     \sa vmu_set_buttons_enabled
@@ -584,7 +615,7 @@ int vmu_get_buttons_enabled(void);
 
 /** \cond */
 /* Init / Shutdown -- Managed internally by KOS */
-int vmu_init(void);
+void vmu_init(void);
 void vmu_shutdown(void);
 /** \endcond */
 

@@ -8,10 +8,10 @@
 */
 
 #include <kos.h>
-#include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+#include <KGL/gl.h>
+#include <KGL/glext.h>
+#include <KGL/glu.h>
+#include <KGL/glut.h>
 
 /* Load a PVR texture - located in pvr-texture.c */
 extern GLuint glTextureLoadPVR(char *fname, unsigned char isMipMapped, unsigned char glMipMap);
@@ -90,8 +90,21 @@ void RenderCallback(GLuint texID0, GLuint texID1) {
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
+static int check_start(void) {
+    maple_device_t *cont;
+    cont_state_t *state;
+
+    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+
+    if(cont) {
+        state = (cont_state_t *)maple_dev_status(cont);
+
+        if(state)
+            return state->buttons & CONT_START;
+    }
+
+    return 0;
+}
 
 int main(int argc, char **argv) {
     /* Notice we do not init the PVR here, that is handled by Open GL */
@@ -108,6 +121,9 @@ int main(int argc, char **argv) {
     GLuint texID1 = glTextureLoadPVR("/rd/FlareWS_256.pvr", 0, 0);
 
     while(1) {
+        if(check_start())
+            break;
+
         /* Draw the "scene" */
         RenderCallback(texID0, texID1);
 

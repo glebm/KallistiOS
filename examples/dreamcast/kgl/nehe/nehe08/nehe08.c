@@ -9,9 +9,9 @@
 
 #include <kos.h>
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+#include <KGL/gl.h>
+#include <KGL/glu.h>
+#include <KGL/glut.h>
 
 /* Simple OpenGL example to demonstrate blending and lighting.
 
@@ -111,9 +111,6 @@ void draw_gl(void) {
     xrot += xspeed;
     yrot += yspeed;
 }
-
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 
 int main(int argc, char **argv) {
     maple_device_t *cont;

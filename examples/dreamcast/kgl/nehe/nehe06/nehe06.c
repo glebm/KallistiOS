@@ -9,9 +9,9 @@
 
 #include <kos.h>
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+#include <KGL/gl.h>
+#include <KGL/glu.h>
+#include <KGL/glut.h>
 
 /* Simple KGL example to demonstrate texturing.
 
@@ -100,9 +100,6 @@ void draw_gl(void) {
     yrot += 0.2f;
     zrot += 0.4f;
 }
-
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 
 int main(int argc, char **argv) {
     maple_device_t *cont;

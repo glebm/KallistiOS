@@ -15,7 +15,9 @@
 
 #define SIP_START_SAMPLING 0x80
 
-static void sip_start_sampling_cb(maple_frame_t *frame) {
+static void sip_start_sampling_cb(maple_state_t *st, maple_frame_t *frame) {
+    (void)st;
+
     sip_state_t *sip;
     maple_response_t *resp;
 
@@ -36,7 +38,9 @@ static void sip_start_sampling_cb(maple_frame_t *frame) {
     genwait_wake_all(frame);
 }
 
-static void sip_stop_sampling_cb(maple_frame_t *frame) {
+static void sip_stop_sampling_cb(maple_state_t *st, maple_frame_t *frame) {
+    (void)st;
+
     sip_state_t *sip;
     maple_response_t *resp;
 
@@ -207,7 +211,9 @@ int sip_stop_sampling(maple_device_t *dev, int block) {
     return MAPLE_EOK;
 }
 
-static void sip_reply(maple_frame_t *frm) {
+static void sip_reply(maple_state_t *st, maple_frame_t *frm) {
+    (void)st;
+
     maple_response_t *resp;
     uint32 *respbuf;
     sip_state_t *sip;
@@ -297,10 +303,9 @@ static maple_driver_t sip_drv = {
 };
 
 /* Add the SIP to the driver chain */
-int sip_init(void) {
+void sip_init(void) {
     if(!sip_drv.drv_list.le_prev)
-        return maple_driver_reg(&sip_drv);
-    return -1;
+        maple_driver_reg(&sip_drv);
 }
 
 void sip_shutdown(void) {

@@ -1,12 +1,13 @@
 /* KallistiOS ##version##
 
    include/kos/cond.h
-   Copyright (C)2001,2003 Megan Potter
+   Copyright (C) 2001, 2003 Megan Potter
 
 */
 
 /** \file   kos/cond.h
     \brief  Condition variables.
+    \ingroup kthreads
 
     This file contains the definition of a Condition Variable. Condition
     Variables (or condvars for short) are used with a mutex to act as a lock and
@@ -16,8 +17,8 @@
     \li The associated mutex is locked.
     \li A predicate is checked to see if it is safe to do something.
     \li If it is not safe, you call cond_wait(), which releases the mutex.
-    \li When cond_wait() returns, the mutex is reaquired, and work can go on.
-    \li Update any predicates so that we konw that the work is done, and unlock
+    \li When cond_wait() returns, the mutex is reacquired, and work can go on.
+    \li Update any predicates so that we know that the work is done, and unlock
         the mutex.
 
     Meanwhile, the thread updating the condition works as follows:
@@ -70,6 +71,7 @@ typedef struct condvar {
 
     This function allocates and initializes a new condition variable for use.
 
+    \deprecated
     This function is formally deprecated and should not be used in new code.
     Instead you should use either the static initializer or the cond_init()
     function.

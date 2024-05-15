@@ -9,7 +9,9 @@
 #include <string.h>
 #include <assert.h>
 
-static void mouse_reply(maple_frame_t *frm) {
+static void mouse_reply(maple_state_t *st, maple_frame_t *frm) {
+    (void)st;
+
     maple_response_t    *resp;
     uint32          *respbuf;
     mouse_cond_t        *raw;
@@ -79,10 +81,9 @@ static maple_driver_t mouse_drv = {
 };
 
 /* Add the mouse to the driver chain */
-int mouse_init(void) {
+void mouse_init(void) {
     if(!mouse_drv.drv_list.le_prev)
-        return maple_driver_reg(&mouse_drv);
-    return -1;
+        maple_driver_reg(&mouse_drv);
 }
 
 void mouse_shutdown(void) {

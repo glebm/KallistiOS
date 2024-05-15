@@ -4,14 +4,9 @@
    Copyright (C) 2014 Lawrence Sebald
 */
 
-#ifndef __KOS_OPTS_H
-#define __KOS_OPTS_H
-
-#include <sys/cdefs.h>
-__BEGIN_DECLS
-
-/** \file   kos/opts.h
-    \brief  Compile-time options regarding debugging and other topics.
+/** \file    kos/opts.h
+    \brief   Compile-time options regarding debugging and other topics.
+    \ingroup debugging_options
 
     This file is meant to be a kind of Grand Central Station for all of the
     various compile-time options that can be set when building KOS. Each of the
@@ -31,8 +26,21 @@ __BEGIN_DECLS
     \author Lawrence Sebald
 */
 
-/* Various debug options. Uncomment the #define line to enable the specific
-   option described. */
+#ifndef __KOS_OPTS_H
+#define __KOS_OPTS_H
+
+#include <sys/cdefs.h>
+__BEGIN_DECLS
+
+/** \defgroup debugging_options Options
+    \brief                      Compile-time options for debugging KOS
+    \ingroup                    debugging
+
+   Various debug options. Uncomment the `#define` line to enable the specific
+   option described. 
+
+   @{
+*/
 
 /* Enable debugging in fs_vmu. */
 /* #define VMUFS_DEBUG 1 */
@@ -59,6 +67,9 @@ __BEGIN_DECLS
 /* #define PVR_KM_DBG 1 */
 /* #define PVR_KM_DBG_VERBOSE 1 */
 
+/* Enable this define to enable PVR error interrupts and to have the interrupt
+   handler print them when they occur.  */
+/* #define PVR_RENDER_DBG */
 
 /* Aggregate debugging levels. It's probably best to enable these with your
    KOS_CFLAGS when compiling KOS itself, but they're all documented here and
@@ -83,6 +94,9 @@ __BEGIN_DECLS
    malloc, as well as everything in level 2. */
 /* #define KOS_DEBUG 3 */
 
+#ifndef KOS_DEBUG 
+#define KOS_DEBUG 0
+#endif
 
 #if KOS_DEBUG >= 1
 #define MALLOC_DEBUG 1
@@ -101,13 +115,21 @@ __BEGIN_DECLS
 #endif
 
 /** \brief  The maximum number of cd files that can be open at a time. */
+#ifndef FS_CD_MAX_FILES
 #define FS_CD_MAX_FILES 8
+#endif
 
 /** \brief  The maximum number of romdisk files that can be open at a time. */
+#ifndef FS_ROMDISK_MAX_FILES
 #define FS_ROMDISK_MAX_FILES 16
+#endif
 
 /** \brief  The maximum number of ramdisk files that can be open at a time. */
+#ifndef FS_RAMDISK_MAX_FILES
 #define FS_RAMDISK_MAX_FILES 8
+#endif
+
+/** @} */
 
 __END_DECLS
 

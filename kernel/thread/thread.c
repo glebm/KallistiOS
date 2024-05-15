@@ -3,6 +3,8 @@
    kernel/thread/thread.c
    Copyright (C) 2000, 2001, 2002, 2003 Megan Potter
    Copyright (C) 2010, 2016 Lawrence Sebald
+   Copyright (C) 2023 Colton Pawielski
+   Copyright (C) 2023, 2024 Falco Girgis
 */
 
 #include <stdlib.h>
@@ -10,6 +12,8 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 #include <reent.h>
 #include <errno.h>
 #include <kos/thread.h>
@@ -35,8 +39,21 @@ also using their queue library verbatim (sys/queue.h).
 
 */
 
+/* TLS Section ELF data - exported from linker script. */
+extern int _tdata_start, _tdata_size;
+extern int _tbss_size;
+extern long _tdata_align, _tbss_align;
+
+/* Utility function for aligning an address or offset. */
+static inline size_t align_to(size_t address, size_t alignment) {
+    return (address + (alignment - 1)) & ~(alignment - 1);
+}
+
 /*****************************************************************************/
 /* Thread scheduler data */
+
+/* Scheduler timer interrupt frequency (Hertz) */
+static unsigned int thd_sched_ms = 1000 / HZ;
 
 /* Thread list. This includes all threads except dead ones. */
 static struct ktlist thd_list;
@@ -92,9 +109,11 @@ static const char *thd_state_to_str(kthread_t *thd) {
 
 int thd_each(int (*cb)(kthread_t *thd, void *user_data), void *data) {
     kthread_t *cur;
+    int retval;
 
     LIST_FOREACH(cur, &thd_list, t_list) {
-        cb(cur, data);
+        if((retval = cb(cur, data)))
+            return retval;
     }
 
     return 0;
@@ -325,6 +344,88 @@ int thd_remove_from_runnable(kthread_t *thd) {
     return 0;
 }
 
+/* Creates and initializes the static TLS segment for a thread,
+   composed of a Thread Control Block (TCB), followed by .TDATA,
+   followed by .TBSS, very carefully ensuring alignment of each
+   subchunk. 
+*/
+static void *thd_create_tls_data(void) {
+    size_t align, tdata_offset, tdata_end, tbss_offset, 
+        tbss_end, align_rem, tls_size;
+    
+    tcbhead_t *tcbhead;
+    void *tdata_segment, *tbss_segment;
+
+    /* Cached and typed local copies of TLS segment data for sizes, 
+       alignments, and initial value data pointer, exported by the 
+       linker script. 
+
+       SIZES MUST BE VOLATILE or the optimizer on non-debug builds will 
+       optimize zero-check conditionals away, since why would the 
+       address of a variable be NULL? (Linker script magic, it can be.)
+   */
+    const volatile size_t   tdata_size  = (size_t)(&_tdata_size);
+    const volatile size_t   tbss_size   = (size_t)(&_tbss_size);
+    const          size_t   tdata_align = tdata_size ? (size_t)_tdata_align : 1;
+    const          size_t   tbss_align  = tbss_size ? (size_t)_tbss_align : 1;
+    const          uint8_t *tdata_start = (const uint8_t *)(&_tdata_start);
+
+    /* Each subsegment of the requested memory chunk must be aligned
+       by the largest segment's memory alignment requirements. 
+   */
+    align = 8;               /* tcbhead_t has to be aligned by 8. */
+    if(tdata_align > align)
+        align = tdata_align; /* .TDATA segment's alignment */
+    if(tbss_align > align)
+        align = tbss_align;  /* .TBSS segment's alignment */
+
+    /* Calculate the sizing and offset location of each subsegment. */
+    tdata_offset = align_to(sizeof(tcbhead_t), align);
+    tdata_end    = tdata_offset + tdata_size;
+    tbss_offset  = align_to(tdata_end, tbss_align);
+    tbss_end     = tbss_offset + tbss_size; 
+
+    /* Calculate final aligned size requirement. */
+    align_rem = tbss_end % align;
+    tls_size  = tbss_end;
+
+    if(align_rem)
+        tls_size += (align - align_rem);
+
+    /* Allocate combined chunk with calculated size and alignment.  */
+    tcbhead = memalign(align, tls_size);
+    assert(tcbhead);    
+    assert(!((uintptr_t)tcbhead % 8)); 
+
+    /* Since we aren't using either member within it, zero out tcbhead. */
+    memset(tcbhead, 0, sizeof(tcbhead_t));  
+
+    /* Initialize .TDATA */
+    if(tdata_size) { 
+        tdata_segment = (uint8_t *)tcbhead + tdata_offset;
+
+        /* Verify proper alignment. */   
+        assert(!((uintptr_t)tdata_segment % tdata_align));
+
+        /* Initialize tdata_segment with .tdata bytes from ELF. */
+        memcpy(tdata_segment, tdata_start, tdata_size);
+    }
+
+    /* Initialize .TBSS */
+    if(tbss_size) { 
+        tbss_segment = (uint8_t *)tcbhead + tbss_offset; 
+
+        /* Verify proper alignment. */
+        assert(!((uintptr_t)tbss_segment % tbss_align));
+           
+        /* Zero-initialize tbss_segment. */
+        memset(tbss_segment, 0, tbss_size);
+    }
+
+    /* Return segment head: this is what GBR points to. */
+    return tcbhead;
+}
+
 /* New thread function; given a routine address, it will create a
    new kernel thread with the given attributes. When the routine
    returns, the thread will exit. Returns the new thread struct. */
@@ -359,7 +460,7 @@ kthread_t *thd_create_ex(const kthread_attr_t *restrict attr,
 
     if(tid >= 0) {
         /* Create a new thread structure */
-        nt = malloc(sizeof(kthread_t));
+        nt = memalign(32, sizeof(kthread_t));
 
         if(nt != NULL) {
             /* Clear out potentially unused stuff */
@@ -381,6 +482,9 @@ kthread_t *thd_create_ex(const kthread_attr_t *restrict attr,
 
             nt->stack_size = real_attr.stack_size;
 
+            /* Create static TLS data */
+            nt->tcbhead = thd_create_tls_data();
+
             /* Populate the context */
             params[0] = (uint32_t)routine;
             params[1] = (uint32_t)param;
@@ -390,6 +494,8 @@ kthread_t *thd_create_ex(const kthread_attr_t *restrict attr,
                                ((uint32_t)nt->stack) + nt->stack_size,
                                (uint32_t)thd_birth, params, 0);
 
+            /* Set Thread Pointer */
+            nt->context.gbr = (uint32_t)nt->tcbhead;
             nt->tid = tid;
             nt->prio = real_attr.prio;
             nt->flags = THD_DEFAULTS;
@@ -472,6 +578,9 @@ int thd_destroy(kthread_t *thd) {
 
     /* Free its stack */
     free(thd->stack);
+
+    /* Free static TLS segment */
+    free(thd->tcbhead);
 
     /* Free the thread */
     free(thd);
@@ -604,6 +713,10 @@ void thd_schedule_next(kthread_t *thd) {
     if(!irq_inside_int())
         return;
 
+    /* We're already running now! */
+    if(thd == thd_current)
+        return;
+
     /* Can't boost a blocked thread */
     if(thd->state != STATE_READY)
         return;
@@ -640,7 +753,7 @@ irq_context_t *thd_choose_new(void) {
 /*****************************************************************************/
 
 /* Timer function. Check to see if we were woken because of a timeout event
-   or because of a pre-empt. For timeouts, just go take care of it and sleep
+   or because of a preempt. For timeouts, just go take care of it and sleep
    again until our next context switch (if any). For pre-empts, re-schedule
    threads, swap out contexts, and sleep. */
 static void thd_timer_hnd(irq_context_t *context) {
@@ -652,7 +765,7 @@ static void thd_timer_hnd(irq_context_t *context) {
     //printf("timer woke at %d\n", (uint32_t)now);
 
     thd_schedule(0, now);
-    timer_primary_wakeup(1000 / HZ);
+    timer_primary_wakeup(thd_sched_ms);
 }
 
 /*****************************************************************************/
@@ -676,7 +789,7 @@ void thd_sleep(int ms) {
         return;
     }
 
-    /* We can genwait on a non-existant object here with a timeout and
+    /* We can genwait on a non-existent object here with a timeout and
        have the exact same effect; as a nice bonus, this collapses both
        sleep cases into a single case, which is nice for scheduling
        purposes. 0xffffffff definitely doesn't exist as an object, so we'll
@@ -787,7 +900,7 @@ int thd_detach(kthread_t *thd) {
 
 
 /*****************************************************************************/
-/* Retrive / set thread label */
+/* Retrieve / set thread label */
 const char *thd_get_label(kthread_t *thd) {
     return thd->label;
 }
@@ -830,6 +943,19 @@ int thd_set_mode(int mode) {
 
 int thd_get_mode(void) {
     return thd_mode;
+}
+
+unsigned thd_get_hz(void) {
+    return 1000 / thd_sched_ms;
+}
+
+int thd_set_hz(unsigned int hertz) {
+    if(!hertz || hertz > 1000)
+        return -1;
+
+    thd_sched_ms = 1000 / hertz;
+
+    return 0;
 }
 
 /* Delete a TLS key. Note that currently this doesn't prevent you from reusing
@@ -910,6 +1036,9 @@ int thd_init(void) {
     strcpy(kern->label, "[kernel]");
     kern->state = STATE_RUNNING;
 
+    /* Initialize GBR register for Main Thread */
+    __builtin_set_thread_pointer((void*)kern->context.gbr);
+
     /* De-scehdule the thread (it's STATE_RUNNING) */
     thd_remove_from_runnable(kern);
 
@@ -937,9 +1066,9 @@ int thd_init(void) {
     timer_primary_set_callback(thd_timer_hnd);
 
     /* Schedule our first wakeup */
-    timer_primary_wakeup(1000 / HZ);
+    timer_primary_wakeup(thd_sched_ms);
 
-    dbglog(DBG_INFO, "thd: pre-emption enabled, HZ=%d\n", HZ);
+    dbglog(DBG_INFO, "thd: pre-emption enabled, HZ=%u\n", thd_get_hz());
 
     return 0;
 }

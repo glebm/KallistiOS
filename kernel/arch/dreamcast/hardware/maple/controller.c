@@ -29,7 +29,7 @@ static cont_btn_callback_t btn_callback = NULL;
 static uint8_t btn_callback_addr = 0;
 static uint32_t btn_callback_btns = 0;
 
-/* Check whether the controller has EXACTLY the given capabilties. */
+/* Check whether the controller has EXACTLY the given capabilities. */
 int cont_is_type(const maple_device_t *cont, uint32_t type) {
     return cont ? cont->info.function_data[CONT_FUNCTION_DATA_INDEX] == type :
                   -1;
@@ -49,7 +49,9 @@ void cont_btn_callback(uint8_t addr, uint32_t btns, cont_btn_callback_t cb) {
 }
 
 /* Response callback for the GETCOND Maple command. */
-static void cont_reply(maple_frame_t *frm) {
+static void cont_reply(maple_state_t *st, maple_frame_t *frm) {
+    (void)st;
+
     maple_response_t *resp;
     uint32_t         *respbuf;
     cont_cond_t      *raw;
@@ -134,10 +136,9 @@ static maple_driver_t controller_drv = {
 };
 
 /* Add the controller to the driver chain */
-int cont_init(void) {
+void cont_init(void) {
     if(!controller_drv.drv_list.le_prev)
-        return maple_driver_reg(&controller_drv);
-    return -1;
+        maple_driver_reg(&controller_drv);
 }
 
 void cont_shutdown(void) {

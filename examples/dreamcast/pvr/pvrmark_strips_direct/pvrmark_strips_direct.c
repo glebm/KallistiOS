@@ -33,8 +33,8 @@ void stats(void) {
     pvr_stats_t stats;
 
     pvr_get_stats(&stats);
-    dbglog(DBG_DEBUG, "3D Stats: %ld frames, frame rate ~%f fps\n",
-           stats.vbl_count, stats.frame_rate);
+    dbglog(DBG_DEBUG, "3D Stats: %d frames, frame rate ~%f fps\n",
+           stats.vbl_count, (double)stats.frame_rate);
 }
 
 
@@ -87,7 +87,7 @@ void do_frame(void) {
     pvr_list_begin(PVR_LIST_OP_POLY);
     pvr_prim(&hdr, sizeof(hdr));
 
-    pvr_dr_init(dr_state);
+    pvr_dr_init(&dr_state);
 
     x = getnum(1024);
     nextnum();
@@ -151,7 +151,7 @@ void check_switch(void) {
 
     if(now >= (begin + 5)) {
         begin = time(NULL);
-        printf("  Average Frame Rate: ~%f fps (%d pps)\n", avgfps, (int)(polycnt * avgfps));
+        printf("  Average Frame Rate: ~%f fps (%d pps)\n", (double)avgfps, (int)(polycnt * avgfps));
 
         switch(phase) {
             case PHASE_HALVE:

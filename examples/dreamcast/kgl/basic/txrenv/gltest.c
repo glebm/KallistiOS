@@ -16,9 +16,9 @@
 
 #include <kos.h>
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+#include <KGL/gl.h>
+#include <KGL/glu.h>
+#include <KGL/glut.h>
 
 static GLuint tex[2];
 
@@ -115,9 +115,6 @@ int InputCallback(void) {
 
     return 1;
 }
-
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 
 int main(int argc, char **argv) {
     printf("OpenGL TXR_ENV Example v.0.1 (C) 2014 PH3NOM\n");

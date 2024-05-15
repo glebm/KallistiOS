@@ -5,7 +5,8 @@
 */
 
 /** \file   threads.h
-    \brief  C11 threading functionality.
+    \brief  C11 Threading API.
+    \ingroup threading_c11
 
     This file contains the definitions needed for using C11 threads. The C11
     standard defines a number of threading-related primitives, which we wrap
@@ -36,7 +37,15 @@
 
 __BEGIN_DECLS
 
-/** \defgroup c11_thd_rvs               C11 Thread function return values
+/** \defgroup threading_c11     C11
+    \brief                      C11 Threading APIs
+    \ingroup                    threading
+    
+    @{
+*/
+
+/** \name Return values
+    \brief C11 Thread function return values
 
     Most of the C11 thread-related functions that return a result code return
     one of these.
@@ -60,7 +69,7 @@ __BEGIN_DECLS
 */
 typedef kthread_once_t once_flag;
 
-/** \brief  Macro to initiallize a once_flag object. */
+/** \brief  Macro to initialize a once_flag object. */
 #define ONCE_FLAG_INIT KTHREAD_ONCE_INIT
 
 /** \brief  Call a function one time, no matter how many threads try.
@@ -83,7 +92,8 @@ extern void call_once(once_flag *flag, void (*func)(void));
 */
 typedef mutex_t mtx_t;
 
-/** \defgroup c11_mutex_types           C11 mutual exclusion lock types
+/** \name  Mutex types
+    \brief C11 mutual exclusion lock types
 
     These are the possible types of mutex locks that C11 allows for. Note that
     mtx_plain or mtx_recursive can be ORed with mtx_timed as well.
@@ -111,8 +121,7 @@ extern void mtx_destroy(mtx_t *mtx);
     protect critical sections of code.
 
     \param  mtx             The mutex to initialize.
-    \param  type            The type of mutex desired (see
-                            \ref c11_mutex_types).
+    \param  type            The type of mutex desired
     \retval thrd_success    On success.
     \retval thrd_error      If the request could not be honored.
 */
@@ -160,7 +169,7 @@ extern int mtx_timedlock(mtx_t *__RESTRICT mtx,
 
 /** \brief  Attempt to acquire a mutex lock.
 
-    This function attempts to acquire the specififed mutex and will not block if
+    This function attempts to acquire the specified mutex and will not block if
     it cannot be obtained.
 
     \param  mtx             The mutex to lock.
@@ -496,6 +505,8 @@ extern void *tss_get(tss_t key);
     \retval thrd_error      If the request cannot be honored.
 */
 extern int tss_set(tss_t key, void *val);
+
+/** @} */
 
 __END_DECLS
 

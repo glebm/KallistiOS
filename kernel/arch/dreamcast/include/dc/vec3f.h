@@ -5,8 +5,9 @@
 
 */
 
-/** \file   dc/vec3f.h
-    \brief  Basic matrix operations.
+/** \file    dc/vec3f.h
+    \brief   Basic matrix operations.
+    \ingroup math_matrices
 
     This file contains various basic vector math functionality for using the
     SH4's vector instructions. Higher level functionality in KGL is built off
@@ -22,12 +23,19 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
+/** \addtogroup math_matrices
+    @{
+*/
+
+/** \brief 3D floating-point vector */
 typedef struct vec3f {
     float x, y, z;
 } vec3f_t;
 
-#define R_DEG 182.04444443623349541909523793743
-#define R_RAD 10430.37835
+/** \cond */
+#define R_DEG 182.04444443623349541909523793743f
+#define R_RAD 10430.37835f
+/* \endcond */
 
 /** \brief  Macro to return the scalar dot product of two 3d vectors.
 
@@ -109,7 +117,7 @@ typedef struct vec3f {
         register float __z  __asm__("fr2") = (z2-z1); \
         register float __w  __asm__("fr3"); \
         __asm__ __volatile__( \
-                       "fldi0 fr3\n" \
+                              "fldi0 fr3\n" \
                               "fipr  fv0,fv0\n" \
                               "fsqrt fr3\n" \
                               : "+f" (__w) \
@@ -431,6 +439,8 @@ typedef struct vec3f {
                               : "f" (__py), "f" (__pz), "f" (__r), "f" (__s) ); \
         py = __cy; pz = __cz; \
     }
+
+/** @} */
 
 __END_DECLS
 

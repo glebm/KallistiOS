@@ -5,8 +5,9 @@
 
 */
 
-/** \file   dc/maple/sip.h
-    \brief  Definitions for using the Sound Input Peripheral.
+/** \file    dc/maple/sip.h
+    \brief   Definitions for using the Sound Input Peripheral.
+    \ingroup peripherals_mic
 
     This file contains the definitions needed to access the Maple microphone
     type device (the Seaman mic). Many thanks go out to ZeZu who pointed me
@@ -27,6 +28,13 @@ __BEGIN_DECLS
 
 #include <sys/types.h>
 #include <dc/maple.h>
+
+/** \defgroup peripherals_mic   Microphone
+    \brief                      Maple driver for microphone input devices
+    \ingroup                    peripherals
+
+    @{
+*/
 
 /** \brief  Type for a microphone sample callback.
 
@@ -196,9 +204,11 @@ int sip_stop_sampling(maple_device_t *dev, int block);
 
 /* \cond */
 /* Init / Shutdown */
-int sip_init(void);
+void sip_init(void);
 void sip_shutdown(void);
 /* \endcond */
+
+/** @} */
 
 __END_DECLS
 

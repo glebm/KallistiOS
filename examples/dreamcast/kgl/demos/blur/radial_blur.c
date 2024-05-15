@@ -11,10 +11,10 @@
 
 #include <kos.h>
 
-#include <GL/gl.h>
-#include <GL/glext.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
+#include <KGL/gl.h>
+#include <KGL/glext.h>
+#include <KGL/glu.h>
+#include <KGL/glut.h>
 
 /* 
    OpenGL example to demonstrate blending and lighting.
@@ -23,7 +23,7 @@
    submitted vertex data to a texture, without flushing the vertex
    data in main ram.  This makes using the "Radial Blur" effect
    quite efficient in terms of CPU usage.  GPU usage, however, is a
-   different story altogehter.  The PowerVR really struggles blending
+   different story altogether.  The PowerVR really struggles blending
    overlapped polygons, as we can see as we increase the number of
    polygons to be rendered into the translucent list by the radial
    blur effect.
@@ -290,9 +290,21 @@ int InputCallback(void) {
     return 1;
 }
 
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
+static int check_start(void) {
+    maple_device_t *cont;
+    cont_state_t *state;
 
+    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+
+    if(cont) {
+        state = (cont_state_t *)maple_dev_status(cont);
+
+        if(state)
+            return state->buttons & CONT_START;
+    }
+
+    return 0;
+}
 
 int main(int argc, char **argv) {
     printf("glRadialBlur beginning\n");
@@ -327,6 +339,9 @@ int main(int argc, char **argv) {
     GLubyte enable_radial = 0, radial_iterations = 8;
 
     while(1) {
+
+        if(check_start())
+            break;
 
         /* Draw the GL "scene" */
         if(enable_radial) {
