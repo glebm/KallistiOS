@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_fog.h
-    \brief      Public API for the PVR's hardware fog.
+    \brief      Public API for the PVR's hardware fog
     \ingroup    pvr_fog
 
     \author Megan Potter

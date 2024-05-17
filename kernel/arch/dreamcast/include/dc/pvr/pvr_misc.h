@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_misc.h
-    \brief      
+    \brief      Miscellaneous utilities for the PVR API
     \ingroup    
 
     \author Megan Potter

@@ -8,7 +8,7 @@ dc/pvr/pvr_texture.h
 */
 
 /** \file       dc/pvr/pvr_texture.h
-    \brief
+    \brief      Texture management with the PVR 3D API
     \ingroup    pvr_txr_mgmt
 
     \author Megan Potter

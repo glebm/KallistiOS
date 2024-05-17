@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_context.h
-    \brief      pvr_ctx
+    \brief      API for creating and compiling PowerVR primitive contexts
     \ingroup    pvr_vram
 
     \author Megan Potter

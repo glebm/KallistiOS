@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_dma.h
-    \brief 
+    \brief      API for utilizing the DMA with the PVR for rendering
     \ingroup    pvr_dma
 
     \author Megan Potter
