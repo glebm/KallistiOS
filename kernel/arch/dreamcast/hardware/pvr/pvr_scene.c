@@ -71,7 +71,7 @@ void *pvr_vertbuf_tail(pvr_list_t list) {
 }
 
 void pvr_vertbuf_written(pvr_list_t list, size_t amt) {
-    uint32 val;
+    uint32_t val;
 
     // Check the validity of the request.
     assert(list < PVR_OPB_COUNT);

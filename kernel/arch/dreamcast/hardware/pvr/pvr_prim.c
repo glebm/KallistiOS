@@ -22,7 +22,7 @@
 /* Compile a polygon context into a polygon header */
 void pvr_poly_compile(pvr_poly_hdr_t *dst, const pvr_poly_cxt_t *src) {
     int u, v;
-    uint32  txr_base;
+    uint32_t  txr_base;
 
     /* Basically we just take each parameter, clip it, shift it
        into place, and OR it into the final result. */
@@ -323,7 +323,7 @@ void pvr_sprite_cxt_txr(pvr_sprite_cxt_t *dst, pvr_list_t list,
 
 void pvr_sprite_compile(pvr_sprite_hdr_t *dst, const pvr_sprite_cxt_t *src) {
     int u, v;
-    uint32 txr_base;
+    uint32_t txr_base;
 
     /* Basically we just take each parameter, clip it, shift it
        into place, and OR it into the final result. */
@@ -459,7 +459,7 @@ void pvr_mod_compile(pvr_mod_hdr_t *dst, pvr_list_t list, pvr_mod_t mode,
    modifier volumes */
 void pvr_poly_mod_compile(pvr_poly_mod_hdr_t *dst, const pvr_poly_cxt_t *src) {
     int u, v;
-    uint32  txr_base;
+    uint32_t  txr_base;
 
     /* Basically we just take each parameter, clip it, shift it
        into place, and OR it into the final result. */
