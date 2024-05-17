@@ -229,7 +229,6 @@ void pvr_fog_table_color(float a, float r, float g, float b) {
 
 /* Set the fog vertex color */
 void pvr_fog_vertex_color(float a, float r, float g, float b) {
-    PVR_SET(PVR_FOG_VERTEX_COLOR, PVR_PACK_COLOR(a, r, g, b));
     assert_msg(0, "not implemented");
     /*  PVR_SET(PVR_FOG_VERTEX_COLOR, PVR_PACK_COLOR(a, r, g, b)); */
 }
