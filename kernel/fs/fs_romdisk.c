@@ -274,6 +274,16 @@ static ssize_t romdisk_read(void * h, void *buf, size_t bytes) {
     return bytes;
 }
 
+/* Just to get the errno that might be better recognized upstream. */
+static ssize_t romdisk_write(void * h, const void *buf, size_t bytes) {
+    (void)h;
+    (void)buf;
+    (void)bytes;
+    
+    errno = ENXIO;
+    return -1;
+}
+
 /* Seek elsewhere in a file */
 static off_t romdisk_seek(void * h, off_t offset, int whence) {
     file_t fd = (file_t)h;
@@ -393,6 +403,15 @@ static dirent_t *romdisk_readdir(void * h) {
     return &fh[fd].dirent;
 }
 
+/* Just to get the errno that might be better recognized upstream. */
+static int romdisk_unlink(vfs_handler_t * vfs, const char *fn) {
+    (void)vfs;
+    (void)fn;
+
+    errno = EROFS;
+    return -1;
+}
+
 static void *romdisk_mmap(void * h) {
     file_t fd = (file_t)h;
 
@@ -479,6 +498,26 @@ static int romdisk_fstat(void *h, struct stat *st) {
     return 0;
 }
 
+static int romdisk_stat(vfs_handler_t *vfs, const char *path, struct stat *st,
+                        int flag) {
+    rd_image_t      *mnt = (rd_image_t *)vfs->privdata;
+    file_t fd;
+
+    (void)flag;
+
+    /* Someone did stat("/rd") */
+    /* XXX: Maybe this should be disallowed with ENOENT */
+    if(strlen(path) == 0) {
+        fd = romdisk_find(mnt, "", 1);
+    }
+    else {
+        fd = romdisk_find(mnt, path + 1,
+            ((path + strlen(path)) == strrchr(path,'/')) );
+    }
+
+    return romdisk_fstat(&fd, st);
+}
+
 /* This is a template that will be used for each mount */
 static vfs_handler_t vh = {
     /* Name Handler */
@@ -496,17 +535,17 @@ static vfs_handler_t vh = {
     romdisk_open,
     romdisk_close,
     romdisk_read,
-    NULL,                       /* write */
+    romdisk_write,
     romdisk_seek,
     romdisk_tell,
     romdisk_total,
     romdisk_readdir,
     NULL,                       /* ioctl */
     NULL,                       /* rename */
-    NULL,                       /* unlink */
+    romdisk_unlink,
     romdisk_mmap,
     NULL,                       /* complete */
-    NULL,                       /* stat */
+    romdisk_stat,
     NULL,                       /* mkdir */
     NULL,                       /* rmdir */
     romdisk_fcntl,
