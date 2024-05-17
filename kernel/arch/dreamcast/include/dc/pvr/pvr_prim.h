@@ -8,7 +8,7 @@
 */
 
 /** \file       dc/pvr/pvr_prim.h
-    \brief      
+    \brief      API for working with PowerVR 3D primitive types
     \ingroup    
 
     \author Megan Potter
@@ -47,8 +47,6 @@ __BEGIN_DECLS
     @{
 */
 
-
-
 /** \defgroup pvr_commands          TA Command Values
     \brief                          Command values for submitting data to the TA
     \ingroup                        pvr_primitives_headers
@@ -75,99 +73,98 @@ __BEGIN_DECLS
 
     @{
 */
-#define PVR_TA_CMD_TYPE_SHIFT       24
-#define PVR_TA_CMD_TYPE_MASK        (7 << PVR_TA_CMD_TYPE_SHIFT)
+#define PVR_TA_CMD_TYPE_SHIFT           24
+#define PVR_TA_CMD_TYPE_MASK            (7 << PVR_TA_CMD_TYPE_SHIFT)
 
-#define PVR_TA_CMD_USERCLIP_SHIFT   16
-#define PVR_TA_CMD_USERCLIP_MASK    (3 << PVR_TA_CMD_USERCLIP_SHIFT)
+#define PVR_TA_CMD_USERCLIP_SHIFT       16
+#define PVR_TA_CMD_USERCLIP_MASK        (3 << PVR_TA_CMD_USERCLIP_SHIFT)
 
-#define PVR_TA_CMD_CLRFMT_SHIFT     4
-#define PVR_TA_CMD_CLRFMT_MASK      (7 << PVR_TA_CMD_CLRFMT_SHIFT)
+#define PVR_TA_CMD_CLRFMT_SHIFT         4
+#define PVR_TA_CMD_CLRFMT_MASK          (7 << PVR_TA_CMD_CLRFMT_SHIFT)
 
-#define PVR_TA_CMD_SPECULAR_SHIFT   2
-#define PVR_TA_CMD_SPECULAR_MASK    (1 << PVR_TA_CMD_SPECULAR_SHIFT)
+#define PVR_TA_CMD_SPECULAR_SHIFT       2
+#define PVR_TA_CMD_SPECULAR_MASK        (1 << PVR_TA_CMD_SPECULAR_SHIFT)
 
-#define PVR_TA_CMD_SHADE_SHIFT      1
-#define PVR_TA_CMD_SHADE_MASK       (1 << PVR_TA_CMD_SHADE_SHIFT)
+#define PVR_TA_CMD_SHADE_SHIFT          1
+#define PVR_TA_CMD_SHADE_MASK           (1 << PVR_TA_CMD_SHADE_SHIFT)
 
-#define PVR_TA_CMD_UVFMT_SHIFT      0
-#define PVR_TA_CMD_UVFMT_MASK       (1 << PVR_TA_CMD_UVFMT_SHIFT)
+#define PVR_TA_CMD_UVFMT_SHIFT          0
+#define PVR_TA_CMD_UVFMT_MASK           (1 << PVR_TA_CMD_UVFMT_SHIFT)
 
-#define PVR_TA_CMD_MODIFIER_SHIFT   7
-#define PVR_TA_CMD_MODIFIER_MASK    (1 <<  PVR_TA_CMD_MODIFIER_SHIFT)
+#define PVR_TA_CMD_MODIFIER_SHIFT       7
+#define PVR_TA_CMD_MODIFIER_MASK        (1 <<  PVR_TA_CMD_MODIFIER_SHIFT)
 
 #define PVR_TA_CMD_MODIFIERMODE_SHIFT   6
 #define PVR_TA_CMD_MODIFIERMODE_MASK    (1 <<  PVR_TA_CMD_MODIFIERMODE_SHIFT)
 
-#define PVR_TA_PM1_DEPTHCMP_SHIFT   29
-#define PVR_TA_PM1_DEPTHCMP_MASK    (7 << PVR_TA_PM1_DEPTHCMP_SHIFT)
+#define PVR_TA_PM1_DEPTHCMP_SHIFT       29
+#define PVR_TA_PM1_DEPTHCMP_MASK        (7 << PVR_TA_PM1_DEPTHCMP_SHIFT)
 
-#define PVR_TA_PM1_CULLING_SHIFT    27
-#define PVR_TA_PM1_CULLING_MASK     (3 << PVR_TA_PM1_CULLING_SHIFT)
+#define PVR_TA_PM1_CULLING_SHIFT        27
+#define PVR_TA_PM1_CULLING_MASK         (3 << PVR_TA_PM1_CULLING_SHIFT)
 
-#define PVR_TA_PM1_DEPTHWRITE_SHIFT 26
-#define PVR_TA_PM1_DEPTHWRITE_MASK  (1 << PVR_TA_PM1_DEPTHWRITE_SHIFT)
+#define PVR_TA_PM1_DEPTHWRITE_SHIFT     26
+#define PVR_TA_PM1_DEPTHWRITE_MASK      (1 << PVR_TA_PM1_DEPTHWRITE_SHIFT)
 
-#define PVR_TA_PM1_TXRENABLE_SHIFT  25
-#define PVR_TA_PM1_TXRENABLE_MASK   (1 << PVR_TA_PM1_TXRENABLE_SHIFT)
+#define PVR_TA_PM1_TXRENABLE_SHIFT      25
+#define PVR_TA_PM1_TXRENABLE_MASK       (1 << PVR_TA_PM1_TXRENABLE_SHIFT)
 
 #define PVR_TA_PM1_MODIFIERINST_SHIFT   29
 #define PVR_TA_PM1_MODIFIERINST_MASK    (3 <<  PVR_TA_PM1_MODIFIERINST_SHIFT)
 
-#define PVR_TA_PM2_SRCBLEND_SHIFT   29
-#define PVR_TA_PM2_SRCBLEND_MASK    (7 << PVR_TA_PM2_SRCBLEND_SHIFT)
+#define PVR_TA_PM2_SRCBLEND_SHIFT       29
+#define PVR_TA_PM2_SRCBLEND_MASK        (7 << PVR_TA_PM2_SRCBLEND_SHIFT)
 
-#define PVR_TA_PM2_DSTBLEND_SHIFT   26
-#define PVR_TA_PM2_DSTBLEND_MASK    (7 << PVR_TA_PM2_DSTBLEND_SHIFT)
+#define PVR_TA_PM2_DSTBLEND_SHIFT       26
+#define PVR_TA_PM2_DSTBLEND_MASK        (7 << PVR_TA_PM2_DSTBLEND_SHIFT)
 
-#define PVR_TA_PM2_SRCENABLE_SHIFT  25
-#define PVR_TA_PM2_SRCENABLE_MASK   (1 << PVR_TA_PM2_SRCENABLE_SHIFT)
+#define PVR_TA_PM2_SRCENABLE_SHIFT      25
+#define PVR_TA_PM2_SRCENABLE_MASK       (1 << PVR_TA_PM2_SRCENABLE_SHIFT)
 
-#define PVR_TA_PM2_DSTENABLE_SHIFT  24
-#define PVR_TA_PM2_DSTENABLE_MASK   (1 << PVR_TA_PM2_DSTENABLE_SHIFT)
+#define PVR_TA_PM2_DSTENABLE_SHIFT      24
+#define PVR_TA_PM2_DSTENABLE_MASK       (1 << PVR_TA_PM2_DSTENABLE_SHIFT)
 
-#define PVR_TA_PM2_FOG_SHIFT        22
-#define PVR_TA_PM2_FOG_MASK     (3 << PVR_TA_PM2_FOG_SHIFT)
+#define PVR_TA_PM2_FOG_SHIFT            22
+#define PVR_TA_PM2_FOG_MASK             (3 << PVR_TA_PM2_FOG_SHIFT)
 
-#define PVR_TA_PM2_CLAMP_SHIFT      21
-#define PVR_TA_PM2_CLAMP_MASK       (1 << PVR_TA_PM2_CLAMP_SHIFT)
+#define PVR_TA_PM2_CLAMP_SHIFT          21
+#define PVR_TA_PM2_CLAMP_MASK           (1 << PVR_TA_PM2_CLAMP_SHIFT)
 
-#define PVR_TA_PM2_ALPHA_SHIFT      20
-#define PVR_TA_PM2_ALPHA_MASK       (1 << PVR_TA_PM2_ALPHA_SHIFT)
+#define PVR_TA_PM2_ALPHA_SHIFT          20
+#define PVR_TA_PM2_ALPHA_MASK           (1 << PVR_TA_PM2_ALPHA_SHIFT)
 
-#define PVR_TA_PM2_TXRALPHA_SHIFT   19
-#define PVR_TA_PM2_TXRALPHA_MASK    (1 << PVR_TA_PM2_TXRALPHA_SHIFT)
+#define PVR_TA_PM2_TXRALPHA_SHIFT       19
+#define PVR_TA_PM2_TXRALPHA_MASK        (1 << PVR_TA_PM2_TXRALPHA_SHIFT)
 
-#define PVR_TA_PM2_UVFLIP_SHIFT     17
-#define PVR_TA_PM2_UVFLIP_MASK      (3 << PVR_TA_PM2_UVFLIP_SHIFT)
+#define PVR_TA_PM2_UVFLIP_SHIFT         17
+#define PVR_TA_PM2_UVFLIP_MASK          (3 << PVR_TA_PM2_UVFLIP_SHIFT)
 
-#define PVR_TA_PM2_UVCLAMP_SHIFT    15
-#define PVR_TA_PM2_UVCLAMP_MASK     (3 << PVR_TA_PM2_UVCLAMP_SHIFT)
+#define PVR_TA_PM2_UVCLAMP_SHIFT        15
+#define PVR_TA_PM2_UVCLAMP_MASK         (3 << PVR_TA_PM2_UVCLAMP_SHIFT)
 
-#define PVR_TA_PM2_FILTER_SHIFT     12
-#define PVR_TA_PM2_FILTER_MASK      (7 << PVR_TA_PM2_FILTER_SHIFT)
+#define PVR_TA_PM2_FILTER_SHIFT         12
+#define PVR_TA_PM2_FILTER_MASK          (7 << PVR_TA_PM2_FILTER_SHIFT)
 
-#define PVR_TA_PM2_MIPBIAS_SHIFT    8
-#define PVR_TA_PM2_MIPBIAS_MASK     (15 << PVR_TA_PM2_MIPBIAS_SHIFT)
+#define PVR_TA_PM2_MIPBIAS_SHIFT        8
+#define PVR_TA_PM2_MIPBIAS_MASK         (15 << PVR_TA_PM2_MIPBIAS_SHIFT)
 
-#define PVR_TA_PM2_TXRENV_SHIFT     6
-#define PVR_TA_PM2_TXRENV_MASK      (3 << PVR_TA_PM2_TXRENV_SHIFT)
+#define PVR_TA_PM2_TXRENV_SHIFT         6
+#define PVR_TA_PM2_TXRENV_MASK          (3 << PVR_TA_PM2_TXRENV_SHIFT)
 
-#define PVR_TA_PM2_USIZE_SHIFT      3
-#define PVR_TA_PM2_USIZE_MASK       (7 << PVR_TA_PM2_USIZE_SHIFT)
+#define PVR_TA_PM2_USIZE_SHIFT          3
+#define PVR_TA_PM2_USIZE_MASK           (7 << PVR_TA_PM2_USIZE_SHIFT)
 
-#define PVR_TA_PM2_VSIZE_SHIFT      0
-#define PVR_TA_PM2_VSIZE_MASK       (7 << PVR_TA_PM2_VSIZE_SHIFT)
+#define PVR_TA_PM2_VSIZE_SHIFT          0
+#define PVR_TA_PM2_VSIZE_MASK           (7 << PVR_TA_PM2_VSIZE_SHIFT)
 
-#define PVR_TA_PM3_MIPMAP_SHIFT     31
-#define PVR_TA_PM3_MIPMAP_MASK      (1 << PVR_TA_PM3_MIPMAP_SHIFT)
+#define PVR_TA_PM3_MIPMAP_SHIFT         31
+#define PVR_TA_PM3_MIPMAP_MASK          (1 << PVR_TA_PM3_MIPMAP_SHIFT)
 
-#define PVR_TA_PM3_TXRFMT_SHIFT     0
-#define PVR_TA_PM3_TXRFMT_MASK      0xffffffff
+#define PVR_TA_PM3_TXRFMT_SHIFT         0
+#define PVR_TA_PM3_TXRFMT_MASK          0xffffffff
 /** @} */
 
-
-/** \brief   PVR polygon header.
+/** PVR polygon header.
 
     This is the hardware equivalent of a rendering context; you'll create one of
     these from your pvr_poly_cxt_t and use it for submission to the hardware.
@@ -183,7 +180,7 @@ typedef struct pvr_poly_hdr {
     uint32_t d4;                 /**< \brief Dummy value */
 } pvr_poly_hdr_t;
 
-/** \brief   PVR polygon header with intensity color.
+/** PVR polygon header with intensity color.
 
     This is the equivalent of pvr_poly_hdr_t, but for use with intensity color.
 */
@@ -198,7 +195,7 @@ typedef struct pvr_poly_ic_hdr {
     float   b;                   /**< \brief Face color blue component */
 } pvr_poly_ic_hdr_t;
 
-/** \brief   PVR polygon header to be used with modifier volumes.
+/** PVR polygon header to be used with modifier volumes.
 
     This is the equivalent of a pvr_poly_hdr_t for use when a polygon is to be
     used with modifier volumes.
@@ -214,7 +211,7 @@ typedef struct pvr_poly_mod_hdr {
     uint32_t d2;                 /**< \brief Dummy value */
 } pvr_poly_mod_hdr_t;
 
-/** \brief   PVR polygon header specifically for sprites.
+/** PVR polygon header specifically for sprites.
 
     This is the equivalent of a pvr_poly_hdr_t for use when a quad/sprite is to
     be rendered. Note that the color data is here, not in the vertices.
@@ -230,7 +227,7 @@ typedef struct pvr_sprite_hdr {
     uint32_t d2;                 /**< \brief Dummy value */
 } pvr_sprite_hdr_t;
 
-/** \brief   Modifier volume header.
+/** Modifier volume header.
 
     This is the header that should be submitted when dealing with setting a
     modifier volume.
@@ -255,11 +252,13 @@ typedef struct pvr_mod_hdr {
     @{
 */
 
-/** \brief   Generic PVR vertex type.
+/** Generic PVR vertex type.
 
     The PVR chip itself supports many more vertex types, but this is the main
     one that can be used with both textured and non-textured polygons, and is
     fairly fast.
+
+    \sa pvr_vertex_pcm, pvr_vertex_tpcm
 */
 typedef struct pvr_vertex {
     uint32_t flags;              /**< \brief TA command (vertex flags) */
@@ -272,11 +271,12 @@ typedef struct pvr_vertex {
     uint32_t oargb;              /**< \brief Vertex offset color */
 } pvr_vertex_t;
 
-/** \brief   PVR vertex type: Non-textured, packed color, affected by modifier
-             volume.
+/** PVR vertex type: Non-textured, packed color, modifiers.
 
     This vertex type has two copies of colors. The second color is used when
     enclosed within a modifier volume.
+
+    \sa pvr_vertex, pvr_vertex_tpcm
 */
 typedef struct pvr_vertex_pcm {
     uint32_t flags;              /**< \brief TA command (vertex flags) */
@@ -289,11 +289,13 @@ typedef struct pvr_vertex_pcm {
     uint32_t d2;                 /**< \brief Dummy value */
 } pvr_vertex_pcm_t;
 
-/** \brief   PVR vertex type: Textured, packed color, affected by modifier volume.
+/** PVR vertex type: Textured, packed color, modifiers.
 
     Note that this vertex type has two copies of colors, offset colors, and
     texture coords. The second set of texture coords, colors, and offset colors
     are used when enclosed within a modifier volume.
+
+    \sa pvr_vertex, pvr_vertex_pcm
 */
 typedef struct pvr_vertex_tpcm {
     uint32_t flags;              /**< \brief TA command (vertex flags) */
@@ -314,7 +316,7 @@ typedef struct pvr_vertex_tpcm {
     uint32_t d4;                 /**< \brief Dummy value */
 } pvr_vertex_tpcm_t;
 
-/** \brief   PVR vertex type: Textured sprite.
+/** PVR vertex type: Textured sprite.
 
     This vertex type is to be used with the sprite polygon header and the sprite
     related commands to draw textured sprites. Note that there is no fourth Z
@@ -323,6 +325,8 @@ typedef struct pvr_vertex_tpcm {
     The U/V coordinates in here are in the 16-bit per coordinate form. Also,
     like the fourth Z value, there is no fourth U or V, so it must get
     interpolated from the others.
+
+    \sa pvr_sprite_col
 */
 typedef struct pvr_sprite_txr {
     uint32_t flags;               /**< \brief TA command (vertex flags) */
@@ -343,10 +347,12 @@ typedef struct pvr_sprite_txr {
     uint32_t cuv;                 /**< \brief Third U/V texture coordinates */
 } pvr_sprite_txr_t;
 
-/** \brief   PVR vertex type: Untextured sprite.
+/** PVR vertex type: Untextured sprite.
 
     This vertex type is to be used with the sprite polygon header and the sprite
     related commands to draw untextured sprites (aka, quads).
+
+    \sa pvr_sprite_txr
 */
 typedef struct pvr_sprite_col {
     uint32_t flags;              /**< \brief TA command (vertex flags) */
@@ -367,7 +373,7 @@ typedef struct pvr_sprite_col {
     uint32_t d4;                 /**< \brief Dummy value */
 } pvr_sprite_col_t;
 
-/** \brief   PVR vertex type: Modifier volume.
+/** PVR vertex type: Modifier volume.
 
     This vertex type is to be used with the modifier volume header to specify
     triangular modifier areas.
