@@ -41,6 +41,7 @@ __BEGIN_DECLS
 */
 
 /** \defgroup bfont_size  Dimensions
+    \brief    Sizes for of the BIOS font's dimensions
     @{
 */
 #define BFONT_THIN_WIDTH                        12   /**< \brief Width of Thin Font (ISO8859_1, half-JP) */
