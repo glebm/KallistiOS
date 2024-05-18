@@ -138,19 +138,26 @@ void irq_handle_exception(int code) {
     irq_t evt = 0;
     bool handled = false;
 
-    /* If it's a code 0, well, we shouldn't be here. */
-    if(code == 0)
-        arch_panic("spurious RESET exception");
+    switch(code) {
+        /* If it's a code 0, well, we shouldn't be here. */
+        case 0:
+            arch_panic("spurious RESET exception");
+            break;
 
-    /* If it's a code 1 or 2, grab the event from expevt. */
-    if(code == 1 || code == 2)
-        evt = EXPEVT;
+        /* If it's a code 1 or 2, grab the event from expevt. */
+        case 1:
+        case 2:
+            evt = EXPEVT;
+            break;
 
-    /* If it's a code 3, grab the event from intevt. */
-    if(code == 3)
-        evt = INTEVT;
+        /* If it's a code 3, grab the event from intevt. */
+        case 3:
+            evt = INTEVT;
+        default:
+            break;
+    }
 
-    if(inside_int) {
+    if(__unlikely(inside_int)) {
         hnd = &irq_handlers[EXC_DOUBLE_FAULT >> 4];
 
         if(hnd->hdl)
@@ -168,36 +175,19 @@ void irq_handle_exception(int code) {
     inside_int = ((code & 0xf) << 16) | (evt & 0xffff);
 
     /* If there's a global handler, call it */
-    if(irq_hnd_global) {
+    if(__unlikely(irq_hnd_global)) {
         irq_hnd_global(evt, irq_srt_addr, irq_hnd_global_data);
-        handled = true;
-    }
-
-    /* dbgio_printf("got int %04x %04x\n", code, evt); */
-
-    /* If it's a timer interrupt, clear the status */
-    if(evt >= EXC_TMU0_TUNI0 && evt <= EXC_TMU2_TUNI2) {
-        if(evt == EXC_TMU0_TUNI0) {
-            timer_clear(TMU0);
-        }
-        else if(evt == EXC_TMU1_TUNI1) {
-            timer_clear(TMU1);
-        }
-        else {
-            timer_clear(TMU2);
-        }
-
         handled = true;
     }
 
     /* If there's a handler, call it */
     hnd = &irq_handlers[evt >> 4];
-    if(hnd->hdl) {
+    if(__likely(hnd->hdl)) {
         hnd->hdl(evt, irq_srt_addr, hnd->data);
         handled = true;
     }
 
-    if(!handled) {
+    if(__unlikely(!handled)) {
         hnd = &irq_handlers[EXC_UNHANDLED_EXC >> 4];
         if(hnd->hdl)
             hnd->hdl(evt, irq_srt_addr, hnd->data);
@@ -290,6 +280,7 @@ static void irq_def_timer(irq_t src, irq_context_t *context, void *data) {
     (void)src;
     (void)context;
     (void)data;
+    timer_clear((int)data);
 }
 
 /* Default FPU exception handler (can't seem to turn these off) */
@@ -325,8 +316,10 @@ int irq_init(void) {
     /* Default to not in an interrupt */
     inside_int = 0;
 
-    /* Set a default timer handler */
-    irq_set_handler(TIMER_IRQ, irq_def_timer, NULL);
+    /* Set default timer handlers */
+    irq_set_handler(EXC_TMU0_TUNI0, irq_def_timer, (void *)0);
+    irq_set_handler(EXC_TMU1_TUNI1, irq_def_timer, (void *)1);
+    irq_set_handler(EXC_TMU2_TUNI2, irq_def_timer, (void *)2);
 
     /* Set a trapa handler */
     irq_set_handler(EXC_TRAPA, irq_handle_trapa, trapa_handlers);
