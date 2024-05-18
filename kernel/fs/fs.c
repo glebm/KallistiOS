@@ -51,10 +51,6 @@ typedef struct fs_hnd {
 /* The global file descriptor table */
 fs_hnd_t * fd_table[FD_SETSIZE] = { NULL };
 
-/* For some reason, Newlib doesn't seem to define this function in stdlib.h. */
-extern char *realpath(const char *, char[PATH_MAX]);
-
-
 /* Internal file commands for root dir reading */
 static fs_hnd_t * fs_root_opendir(void) {
     return calloc(1, sizeof(fs_hnd_t));
@@ -504,7 +500,7 @@ uint64 fs_total64(file_t fd) {
 dirent_t *fs_readdir(file_t fd) {
     fs_hnd_t *h = fs_map_hnd(fd);
 
-    if(h == NULL) return -1;
+    if(h == NULL) return NULL;
 
     if(h->handler == NULL)
         return fs_root_readdir(h);
