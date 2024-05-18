@@ -1,3 +1,11 @@
+/* KallistiOS ##version##
+
+   signal.c
+   Copyright (C) 2024 Falco Girgis
+*/
+
+#define _GNU_SOURCE 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -5,6 +13,7 @@
 #include <assert.h>
 #include <math.h>
 #include <float.h>
+#include <fenv.h>
 #include <kos.h>
 
 static struct {
@@ -80,12 +89,29 @@ static bool sig_tester(int signum, void (*activator)(void)) {
 }
 
 static void div_zero(void) {
-   sig_data.signal = FLT_MAX;
-   sig_data.signal /= 0.0f;
+   feclearexcept(FE_ALL_ACCEPT);
+   feenableexcept(FE_DIVBYZERO);
+
+   //fenv_t env;
+   //fegetenv(&env);
+   feraiseexcept(FE_DIVBYZERO);
+
+   if(__builtin_sh_get_fpscr() & 0xffb)
+   printf("WORKX\n");
+
+
+#if 0
+   volatile float a = 100.0f;
+   volatile float b = 0.0f;
+   volatile float c = a / b;
+   (void)c;
+#endif
+
+
 }
 
 static void null_deref(void) {
-   *(int *)(NULL) = 3;
+   *(volatile int *)(0) = 3;
 }
 
 int main(int argc, const char* argv[]) {

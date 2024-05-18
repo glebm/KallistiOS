@@ -6,6 +6,7 @@
 
 TARGET = signal.elf
 OBJS = signal.o
+KOS_CFLAGS += -std=gnu17
 
 all: rm-elf $(TARGET)
 
@@ -18,7 +19,7 @@ rm-elf:
 	-rm -f $(TARGET)
 
 $(TARGET): $(OBJS)
-	kos-cc -o $(TARGET) $(OBJS)
+	kos-cc -o $(TARGET) $(OBJS) -lm
 
 run: $(TARGET)
 	$(KOS_LOADER) $(TARGET)
