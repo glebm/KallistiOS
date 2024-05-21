@@ -703,9 +703,8 @@ static const char *figure_outfilename(const char *f, const char *newext) {
         newname = (char *)malloc(len);
 
         if(newname) {
-            strcpy(newname, f);
-            ext = strrchr(newname, '.') + 1;
-            strcpy(ext, newext);
+            strncpy(newname, f, ext - f);
+            sprintf(newname + (ext - f), ".%s", newext);
         }
     }
 
