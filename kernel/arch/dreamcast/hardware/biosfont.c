@@ -47,6 +47,15 @@ static uint32_t bfont_fgcolor = 0xFFFFFFFF;
 static uint32_t bfont_bgcolor = 0x00000000;
 static int bfont_32bit = 0;
 
+static uint8_t *font_address = NULL;
+
+static uint8_t *get_font_address(void) {
+    if(!font_address)
+        font_address = syscall_font_address();
+
+    return font_address;
+}
+
 /* Select an encoding for Japanese (or disable) */
 void bfont_set_encoding(bfont_code_t enc) {
     if(enc <= BFONT_CODE_RAW)
@@ -128,7 +137,7 @@ static uint32_t euc2jis(uint32_t euc) {
 
 /* Given an ASCII character, find it in the BIOS font if possible */
 uint8_t *bfont_find_char(uint32_t ch) {
-    uint8_t   *fa = syscall_font_address();
+    uint8_t   *fa = get_font_address();
     /* By default, map to a space */
     uint32_t index = 72 << 2;
 
@@ -145,7 +154,7 @@ uint8_t *bfont_find_char(uint32_t ch) {
 
 /* JIS -> (kuten) -> address conversion */
 uint8_t *bfont_find_char_jp(uint32_t ch) {
-    uint8_t   *fa = syscall_font_address();
+    uint8_t   *fa = get_font_address();
     uint32_t ku, ten, kuten = 0;
 
     /* Do the requested code conversion */
@@ -178,7 +187,7 @@ uint8_t *bfont_find_char_jp(uint32_t ch) {
 
 /* Half-width kana -> address conversion */
 uint8_t *bfont_find_char_jp_half(uint32_t ch) {
-    uint8_t *fa = syscall_font_address();
+    uint8_t *fa = get_font_address();
     return fa + (32 + ch) * (BFONT_THIN_WIDTH*BFONT_HEIGHT/8);
 }
 
@@ -250,7 +259,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
 
     /* Translate the character */
     if(bfont_code_mode == BFONT_CODE_RAW)
-        ch = syscall_font_address() + c;
+        ch = get_font_address() + c;
     else if(wide && ((bfont_code_mode == BFONT_CODE_EUC) || (bfont_code_mode == BFONT_CODE_SJIS)))
         ch = bfont_find_char_jp(c);
     else {
@@ -309,7 +318,7 @@ size_t bfont_draw_wide(void *b, uint32_t bufwidth, bool opaque, uint32_t c) {
 
 void bfont_draw_str_ex_va(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp, bool opaque, 
                           const char *fmt, va_list *var_args) {
-    char string[1024 * 4];
+    char string[1088]; /* Maximum of 1060 thin characters onscreen, plus padding for multiple of 32. */
     uint16_t nChr, nMask, nFlag;
     uint8_t *buffer = (uint8_t *)b;
     char *str = string;
@@ -394,6 +403,6 @@ uint8_t *bfont_find_icon(bfont_vmu_icon_t icon) {
 
     int icon_offset = BFONT_VMU_DREAMCAST_SPECIFIC +
         (icon * BFONT_ICON_DIMEN * BFONT_ICON_DIMEN / 8);
-    uint8_t *fa = syscall_font_address();
+    uint8_t *fa = get_font_address();
     return fa + icon_offset;
 }
