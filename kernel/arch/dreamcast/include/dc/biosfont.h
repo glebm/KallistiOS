@@ -64,7 +64,7 @@ __BEGIN_DECLS
 /* JISX-0208 Rows 1-7 and 16-84 are encoded between BFONT_WIDE_START and BFONT_DREAMCAST_SPECIFIC.
     Only the box-drawing characters (row 8) are missing. */
 /** \brief Size of a row for JISX-0208 characters */
-#define JISX_0208_ROW_SIZE  94
+#define JISX_0208_ROW_SIZE          94
 /** \brief Start of Wide Characters in Font Block */
 #define BFONT_WIDE_START            (288 * BFONT_THIN_WIDTH * BFONT_HEIGHT / 8)
 /** \brief Start of JISX-0208 Rows 1-7 in Font Block */   
