@@ -291,19 +291,19 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
 
 /* Draw half-width kana */
 size_t bfont_draw_thin(void *b, uint32_t bufwidth, bool opaque, uint32_t c, bool iskana) {
-    return bfont_draw_ex((uint8_t *)b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
+    return bfont_draw_ex(b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
                          (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 0, iskana);
 }
 
 /* Compat function */
 size_t bfont_draw(void *buffer, uint32_t bufwidth, bool opaque, uint32_t c) {
-    return bfont_draw_ex((uint8_t *)buffer, bufwidth, bfont_fgcolor, bfont_bgcolor, 
+    return bfont_draw_ex(buffer, bufwidth, bfont_fgcolor, bfont_bgcolor, 
                         (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 0, 0);
 }
 
 /* Draw wide character */
 size_t bfont_draw_wide(void *b, uint32_t bufwidth, bool opaque, uint32_t c) {
-    return bfont_draw_ex((uint8_t *)b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
+    return bfont_draw_ex(b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
                          (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 1, 0);
 }
 
