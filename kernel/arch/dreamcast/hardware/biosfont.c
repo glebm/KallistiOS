@@ -264,7 +264,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
     for(y = 0; y < BFONT_HEIGHT; y+= (2-wide),ch+=((BFONT_THIN_WIDTH*2)/8)) {
         /* Do the first row, or half row */
         word = (((uint16_t)ch[0]) << 4) | ((ch[1] >> 4) & 0x0f);
-        buffer = (uint8_t*)bfont_draw_one_row((uint16_t*)buffer, word, opaque, fg, bg, bpp);
+        buffer = (uint8_t *)bfont_draw_one_row((uint16_t *)buffer, word, opaque, fg, bg, bpp);
 
         /* If we're thin, increment to next row, otherwise continue the row */
         if(!wide) buffer += ((bufwidth - BFONT_THIN_WIDTH)*bpp)/8;
@@ -272,7 +272,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
         /* Do the second row, or second half */
         word = ((((uint16_t)ch[1]) << 8) & 0xf00) | ch[2];
 
-        buffer = (uint8_t*)bfont_draw_one_row((uint16_t*)buffer, word, opaque, fg, bg, bpp);
+        buffer = (uint8_t *)bfont_draw_one_row((uint16_t *)buffer, word, opaque, fg, bg, bpp);
 
         /* Increment to the next row. */
         if(!wide) buffer += ((bufwidth - BFONT_THIN_WIDTH)*bpp)/8;
