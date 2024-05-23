@@ -229,7 +229,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
     uint8_t *ch;
     uint16_t word;
     uint8_t y;
-    uint8_t *buffer = (uint8_t*)buf;
+    uint8_t *buffer = (uint8_t *)buf;
 
     /* If they're requesting a wide char and in the wrong format, kick this out */
     if(wide && (bfont_code_mode == BFONT_CODE_ISO8859_1)) {
