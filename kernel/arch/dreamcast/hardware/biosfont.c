@@ -238,7 +238,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
     uint8_t *ch;
     uint16_t word;
     uint8_t y;
-    uint8_t *buffer = (uint8_t*)buf;
+    uint8_t *buffer = (uint8_t *)buf;
 
     /* If they're requesting a wide char and in the wrong format, kick this out */
     if(wide && (bfont_code_mode == BFONT_CODE_ISO8859_1)) {
@@ -273,7 +273,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
     for(y = 0; y < BFONT_HEIGHT; y+= (2-wide),ch+=((BFONT_THIN_WIDTH*2)/8)) {
         /* Do the first row, or half row */
         word = (((uint16_t)ch[0]) << 4) | ((ch[1] >> 4) & 0x0f);
-        buffer = (uint8_t*)bfont_draw_one_row((uint16_t*)buffer, word, opaque, fg, bg, bpp);
+        buffer = (uint8_t *)bfont_draw_one_row((uint16_t *)buffer, word, opaque, fg, bg, bpp);
 
         /* If we're thin, increment to next row, otherwise continue the row */
         if(!wide) buffer += ((bufwidth - BFONT_THIN_WIDTH)*bpp)/8;
@@ -281,7 +281,7 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
         /* Do the second row, or second half */
         word = ((((uint16_t)ch[1]) << 8) & 0xf00) | ch[2];
 
-        buffer = (uint8_t*)bfont_draw_one_row((uint16_t*)buffer, word, opaque, fg, bg, bpp);
+        buffer = (uint8_t *)bfont_draw_one_row((uint16_t *)buffer, word, opaque, fg, bg, bpp);
 
         /* Increment to the next row. */
         if(!wide) buffer += ((bufwidth - BFONT_THIN_WIDTH)*bpp)/8;
@@ -300,19 +300,19 @@ size_t bfont_draw_ex(void *buf, uint32_t bufwidth, uint32_t fg, uint32_t bg,
 
 /* Draw half-width kana */
 size_t bfont_draw_thin(void *b, uint32_t bufwidth, bool opaque, uint32_t c, bool iskana) {
-    return bfont_draw_ex((uint8_t *)b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
+    return bfont_draw_ex(b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
                          (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 0, iskana);
 }
 
 /* Compat function */
 size_t bfont_draw(void *buffer, uint32_t bufwidth, bool opaque, uint32_t c) {
-    return bfont_draw_ex((uint8_t *)buffer, bufwidth, bfont_fgcolor, bfont_bgcolor, 
+    return bfont_draw_ex(buffer, bufwidth, bfont_fgcolor, bfont_bgcolor, 
                         (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 0, 0);
 }
 
 /* Draw wide character */
 size_t bfont_draw_wide(void *b, uint32_t bufwidth, bool opaque, uint32_t c) {
-    return bfont_draw_ex((uint8_t *)b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
+    return bfont_draw_ex(b, bufwidth, bfont_fgcolor, bfont_bgcolor, 
                          (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 1, 0);
 }
 
