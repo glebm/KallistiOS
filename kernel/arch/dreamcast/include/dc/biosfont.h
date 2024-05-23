@@ -20,6 +20,9 @@
     \author Kazuaki Matsumoto
     \author Donald Haase
     \author Falco Girgis
+
+    \todo
+        - More user-friendly way to fetch/print DC-specific icons.
 */
 
 #ifndef __DC_BIOSFONT_H
