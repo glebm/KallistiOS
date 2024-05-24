@@ -17,9 +17,12 @@
 
 #include <arch/types.h>
 #include <arch/arch.h>
+#include <arch/mm.h>
 #include <arch/irq.h>
+
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 /* End of program, exported from the linker script. */
 extern unsigned long end;
@@ -36,9 +39,9 @@ int mm_init(void) {
     /* Longword align. */
     base = (base + 3) & -4;
     /* Set current position and start to base. */  
-    brk_current = brk_start = (void*)base;
+    brk_current = brk_start = (void *)base;
     /* Set end position and max to stack_end - 1. */
-    brk_end = brk_max = _arch_mem_top - 65536 - 1;
+    brk_end = brk_max = (void *)(_arch_mem_top - 65536 - 1);
 
     /* Newly claimed memory from sbrk() should be 
        zero-initialized the first time it is requested! */
@@ -76,18 +79,18 @@ int mm_brk_set_size(size_t bytes) {
 }
 
 int mm_brk_set_capacity(size_t bytes) {
-    if(capacity < mm_brk_size() || 
-       capacity > mm_brk_max_capacity())
+    if(bytes < mm_brk_size() || 
+       bytes > mm_brk_max_capacity())
         return -1;
     
     const int irqs = irq_disable();
     brk_end = (void*)((size_t)brk_start + bytes);
-    irq_restore(irq);
+    irq_restore(irqs);
 
     return 0;
 }
 
-size_t mm_unused_size(void) {
+size_t mm_unused_capacity(void) {
     return brk_max - brk_end;
 }
 
@@ -100,10 +103,11 @@ void *mm_unused_end(void) {
 }
 
 int mm_brk(void *new_end) {
-    return mm_sbrk(new_end - brk_end);
+    void *ret = mm_sbrk(new_end - brk_end);
+    return ret == (void *)-1? -1 : 0;
 }
 
-void *mm_sbrk(intpr_t increment) {
+void *mm_sbrk(intptr_t increment) {
     if(!increment)
         return brk_current;
 
