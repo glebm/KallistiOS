@@ -5,15 +5,7 @@
    Copyright (C) 2024 Falco Girgis
 */
 
-/* Defines a simple UNIX-style memory pool system. Since the Dreamcast has
-   multiple distinct areas of memory used for different things, we'll
-   want to keep separate pools. Mainly this will be used with the PowerVR
-   and the system RAM, since the SPU has its own program (that can do its
-   own memory management). */
-
-
-/* Note: right now we only support system RAM */
-
+/* Defines a simple UNIX-style memory pool system. */
 
 #include <arch/types.h>
 #include <arch/arch.h>
@@ -43,7 +35,7 @@ int mm_init(void) {
     /* Set current position and start to base. */  
     brk_current = brk_start = (void *)base;
     /* Set end position and max to stack_end - 1. */
-    brk_end = brk_max = (void *)(_arch_mem_top - 65536 - 1);
+    brk_end = brk_max = (void *)(_arch_mem_top - MM_KERNEL_STACK_SIZE - 1);
 
     /* Newly claimed memory from sbrk() should be 
        zero-initialized the first time it is requested! */

@@ -224,14 +224,7 @@ void hardware_shutdown(void);
 */
 int hardware_sys_mode(int *region);
 
-/** @} */
-
-/** \addtogroup arch 
-    @{
-*/
-
-/** \brief   Dreamcast specific sleep mode "function". 
-*/
+/** \brief   Dreamcast specific sleep mode "function". */
 #define arch_sleep() do { \
         __asm__ __volatile__("sleep"); \
     } while(0)
