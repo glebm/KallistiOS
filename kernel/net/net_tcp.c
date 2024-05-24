@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <poll.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 
 #include <kos/fs.h>
 #include <kos/net.h>
@@ -239,7 +240,7 @@ static int thd_cb_id = 0;
 #define SEQ_GT(x, y)    (((int32_t)((x) - (y))) > 0)
 #define SEQ_GE(x, y)    (((int32_t)((x) - (y))) >= 0)
 
-#define MAX(x, y)       (x > y ? x : y)
+#define MAX(x, y)       ((x) > (y) ? (x) : (y))
 
 /* Forward declarations */
 static fs_socket_proto_t proto;
@@ -713,7 +714,7 @@ static int net_tcp_accept(net_socket_t *hnd, struct sockaddr *addr,
 
     newhnd->data = sock2;
 
-    /* Bad way of generating an initial sequence number, but techincally correct
+    /* Bad way of generating an initial sequence number, but technically correct
        by the wording of the RFC... */
     sock2->data.snd.iss = (uint32_t)(timer_us_gettime64() >> 2);
     sock2->data.snd.nxt = sock2->data.snd.iss + 1;
@@ -1688,6 +1689,10 @@ static int net_tcp_getsockopt(net_socket_t *hnd, int level, int option_name,
                     tmp = sock->state == TCP_STATE_LISTEN;
                     goto copy_int;
 
+                case SO_ERROR:
+                    /* Checking/resetting errors not implemented */
+                    goto simply_return;
+
                 case SO_RCVBUF:
                     tmp = sock->rcvbuf_sz;
                     goto copy_int;
@@ -1704,7 +1709,6 @@ static int net_tcp_getsockopt(net_socket_t *hnd, int level, int option_name,
             break;
 
         case IPPROTO_IP:
-
             if(sock->domain != AF_INET)
                 goto ret_inval;
 
@@ -1717,7 +1721,6 @@ static int net_tcp_getsockopt(net_socket_t *hnd, int level, int option_name,
             break;
 
         case IPPROTO_IPV6:
-
             if(sock->domain != AF_INET6)
                 goto ret_inval;
 
@@ -1730,6 +1733,17 @@ static int net_tcp_getsockopt(net_socket_t *hnd, int level, int option_name,
                     tmp = !!(sock->flags & FS_SOCKET_V6ONLY);
                     goto copy_int;
             }
+
+            break;
+
+        case IPPROTO_TCP:
+            switch(option_name) {
+                case TCP_NODELAY:
+                    tmp = 1;
+                    goto copy_int;
+            }
+
+            break;
     }
 
     /* If it wasn't handled, return that error. */
@@ -1753,6 +1767,7 @@ copy_int:
         memcpy(option_value, &tmp, *option_len);
     }
 
+simply_return:
     mutex_unlock(&sock->mutex);
     rwsem_read_unlock(&tcp_sem);
     return 0;
@@ -1762,6 +1777,7 @@ static int net_tcp_setsockopt(net_socket_t *hnd, int level, int option_name,
                               const void *option_value, socklen_t option_len) {
     struct tcp_sock *sock;
     int tmp;
+    uint8_t *new_ptr;
 
     if(!option_value || !option_len) {
         errno = EFAULT;
@@ -1797,24 +1813,60 @@ static int net_tcp_setsockopt(net_socket_t *hnd, int level, int option_name,
 
     switch(level) {
         case SOL_SOCKET:
-
             switch(option_name) {
                 case SO_ACCEPTCONN:
                 case SO_ERROR:
                 case SO_TYPE:
                     goto ret_inval;
+
+                case SO_RCVBUF:
+                    if(option_len != sizeof(uint32_t))
+                        goto ret_inval;
+
+                    tmp = *(uint32_t *)option_value;
+                    /* Receive buffer size must be in the range 256 - 65535 */
+                    if(tmp < 256)
+                        tmp = 256;
+                    else if(tmp > 65535)
+                        tmp = 65535;
+
+                    new_ptr = realloc(sock->data.rcvbuf, tmp);
+                    if(!new_ptr)
+                        goto ret_nomem;
+
+                    sock->data.rcvbuf = new_ptr;
+                    sock->rcvbuf_sz = tmp;
+                    goto ret_success;
+
+                case SO_SNDBUF:
+                    if(option_len != sizeof(uint32_t))
+                        goto ret_inval;
+
+                    tmp = *(uint32_t *)option_value;
+                    /* Send buffer size must be in the range 2048 - 65535 */
+                    if(tmp < 2048)
+                        tmp = 2048;
+                    else if(tmp > 65535)
+                        tmp = 65535;
+
+                    new_ptr = realloc(sock->data.sndbuf, tmp);
+                    if(!new_ptr) {
+                        goto ret_nomem;
+                    }
+
+                    sock->data.sndbuf = new_ptr;
+                    sock->sndbuf_sz = tmp;
+                    goto ret_success;
             }
 
             break;
 
         case IPPROTO_IP:
-
             if(sock->domain != AF_INET)
                 goto ret_inval;
 
             switch(option_name) {
                 case IP_TTL:
-
                     if(option_len != sizeof(int))
                         goto ret_inval;
 
@@ -1833,13 +1885,11 @@ static int net_tcp_setsockopt(net_socket_t *hnd, int level, int option_name,
             break;
 
         case IPPROTO_IPV6:
-
             if(sock->domain != AF_INET6)
                 goto ret_inval;
 
             switch(option_name) {
                 case IPV6_UNICAST_HOPS:
-
                     if(option_len != sizeof(int))
                         goto ret_inval;
 
@@ -1855,7 +1905,6 @@ static int net_tcp_setsockopt(net_socket_t *hnd, int level, int option_name,
                     goto ret_success;
 
                 case IPV6_V6ONLY:
-
                     if(option_len != sizeof(int))
                         goto ret_inval;
 
@@ -1865,6 +1914,22 @@ static int net_tcp_setsockopt(net_socket_t *hnd, int level, int option_name,
                         sock->flags |= FS_SOCKET_V6ONLY;
                     else
                         sock->flags &= ~FS_SOCKET_V6ONLY;
+
+                    goto ret_success;
+            }
+
+            break;
+
+        case IPPROTO_TCP:
+            switch(option_name) {
+                case TCP_NODELAY:
+                    if(option_len != sizeof(int))
+                        goto ret_inval;
+
+                    tmp = *((int *)option_value);
+
+                    if(tmp == 0)
+                        goto ret_inval;
 
                     goto ret_success;
             }
@@ -1882,6 +1947,12 @@ ret_inval:
     mutex_unlock(&sock->mutex);
     rwsem_read_unlock(&tcp_sem);
     errno = EINVAL;
+    return -1;
+
+ret_nomem:
+    mutex_unlock(&sock->mutex);
+    rwsem_read_unlock(&tcp_sem);
+    errno = ENOMEM;
     return -1;
 
 ret_success:
@@ -2474,7 +2545,7 @@ static int listen_pkt(netif_t *src, const struct in6_addr *srca,
         mss = 1460;
 
     /* If the SYN bit is set, we should check the security/compartment. We just
-       silently ignore them for now. We also ignore the precidence... Thus, the
+       silently ignore them for now. We also ignore the precedence... Thus, the
        next thing is to make sure that we don't already have this connection in
        the queue... */
     for(j = s->listen.head; j < s->listen.tail; ++j) {

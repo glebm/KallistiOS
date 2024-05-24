@@ -1,9 +1,11 @@
 /* KallistiOS ##version##
 
    pvr_dma.c
-   Copyright (C)2002 Roger Cattermole
-   Copyright (C)2004 Megan Potter
-   Copyright (C)2023 Andy Barajas
+   Copyright (C) 2002 Roger Cattermole
+   Copyright (C) 2004 Megan Potter
+   Copyright (C) 2023 Andy Barajas
+   Copyright (C) 2023 Ruslan Rostovtsev
+
    http://www.boob.co.uk
  */
 
@@ -11,6 +13,8 @@
 #include <errno.h>
 #include <dc/pvr.h>
 #include <dc/asic.h>
+#include <dc/dmac.h>
+#include <dc/sq.h>
 #include <kos/thread.h>
 #include <kos/sem.h>
 
@@ -20,19 +24,12 @@
 
 /* Signaling semaphore */
 static semaphore_t dma_done;
-static int dma_blocking;
+static int32_t dma_blocking;
 static pvr_dma_callback_t dma_callback;
-static ptr_t dma_cbdata;
+static void *dma_cbdata;
 
 /* DMA registers */
-static vuint32  * const pvrdma = (vuint32 *)0xa05f6800;
-static vuint32  * const shdma  = (vuint32 *)0xffa00000;
-
-/* DMAC registers */
-#define DMAC_SAR2    0x20/4
-#define DMAC_DMATCR2 0x28/4
-#define DMAC_CHCR2   0x2c/4
-#define DMAC_DMAOR   0x40/4
+static vuint32 * const pvr_dma = (vuint32 *)0xa05f6800;
 
 /* PVR Dma registers - Offset by 0xA05F6800 */
 #define PVR_STATE   0x00
@@ -41,20 +38,19 @@ static vuint32  * const shdma  = (vuint32 *)0xffa00000;
 #define PVR_LMMODE0 0x84/4
 #define PVR_LMMODE1 0x88/4
 
-static void pvr_dma_irq_hnd(uint32 code) {
+static void pvr_dma_irq_hnd(uint32_t code, void *data) {
     (void)code;
+    (void)data;
 
-    if(shdma[DMAC_DMATCR2] != 0)
+    if(DMAC_DMATCR2 != 0)
         dbglog(DBG_INFO, "pvr_dma: The dma did not complete successfully\n");
 
-    // DBG(("pvr_dma_irq_hnd\n"));
-
-    // Call the callback, if any.
+    /* Call the callback, if any. */
     if(dma_callback) {
-        // This song and dance is necessary because the handler
-        // could chain to itself.
+        /* This song and dance is necessary because the handler
+           could chain to itself. */
         pvr_dma_callback_t cb = dma_callback;
-        ptr_t d = dma_cbdata;
+        void *d = dma_cbdata;
 
         dma_callback = NULL;
         dma_cbdata = 0;
@@ -62,7 +58,7 @@ static void pvr_dma_irq_hnd(uint32 code) {
         cb(d);
     }
 
-    // Signal the calling thread to continue, if any.
+    /* Signal the calling thread to continue, if any. */
     if(dma_blocking) {
         sem_signal(&dma_done);
         thd_schedule(1, 0);
@@ -70,57 +66,43 @@ static void pvr_dma_irq_hnd(uint32 code) {
     }
 }
 
-int pvr_dma_transfer(void * src, uint32 dest, uint32 count, int type,
-                     int block, pvr_dma_callback_t callback, ptr_t cbdata) {
-    uint32 val;
-    uint32 src_addr = ((uint32)src);
-    uint32 dest_addr;
+static uintptr_t pvr_dest_addr(uintptr_t dest, int type) {
+    uintptr_t dest_addr;
 
-    // Send the data to the right place
-    if(type == PVR_DMA_TA)
-        dest_addr = (((unsigned long)dest) & 0xFFFFFF) | PVR_TA_INPUT;
-    else if(type == PVR_DMA_YUV)
-        dest_addr = (((unsigned long)dest) & 0xFFFFFF) | PVR_TA_YUV_CONV;
-    else
-        dest_addr = (((unsigned long)dest) & 0xFFFFFF) | PVR_TA_TEX_MEM;
-
-    // Make sure we're not already DMA'ing
-    if(pvrdma[PVR_DST] != 0) {
-        dbglog(DBG_ERROR, "pvr_dma: PVR_DST != 0\n");
-        errno = EINPROGRESS;
-        return -1;
+    /* Send the data to the right place */
+    if(type == PVR_DMA_TA) {
+        dest_addr = ((uintptr_t)dest & 0xffffff) | PVR_TA_INPUT;
+    }
+    else if(type == PVR_DMA_YUV) {
+        dest_addr = ((uintptr_t)dest & 0xffffff) | PVR_TA_YUV_CONV;
+    }
+    else if(type == PVR_DMA_VRAM64) {
+        dest_addr = ((uintptr_t)dest & 0xffffff) | PVR_TA_TEX_MEM;
+    }
+    else if(type == PVR_DMA_VRAM32) {
+        dest_addr = ((uintptr_t)dest & 0xffffff) | PVR_TA_TEX_MEM_32;
+    }
+    else if(type == PVR_DMA_VRAM64_SB) {
+        dest_addr = ((uintptr_t)dest & 0xffffff) | PVR_RAM_BASE_64_P0;
+    }
+    else if(type == PVR_DMA_VRAM32_SB) {
+        dest_addr = ((uintptr_t)dest & 0xffffff) | PVR_RAM_BASE_32_P0;
+    }
+    else {
+        dest_addr = dest;
     }
 
-    val = shdma[DMAC_CHCR2];
+    return dest_addr;
+}
 
-    if(val & 0x1)  /* DE bit set so we must clear it */
-        shdma[DMAC_CHCR2] = val & ~0x1;
-
-    if(val & 0x2)  /* TE bit set so we must clear it */
-        shdma[DMAC_CHCR2] = val & ~0x2;
+int pvr_dma_transfer(void *src, uintptr_t dest, size_t count, int type,
+                     int block, pvr_dma_callback_t callback, void *cbdata) {
+    uintptr_t src_addr = ((uintptr_t)src);
 
     /* Check for 32-byte alignment */
-    if(src_addr & 0x1F)
-        dbglog(DBG_WARNING, "pvr_dma: src is not 32-byte aligned\n");
-
-    /* Align the source address (src_addr) to a 32-byte boundary */
-    src_addr &= 0x0FFFFFE0;
-
-    if(src_addr < 0x0c000000) {
-        dbglog(DBG_ERROR, "pvr_dma: src address < 0x0c000000\n");
+    if(src_addr & 0x1F) {
+        dbglog(DBG_ERROR, "pvr_dma: src is not 32-byte aligned\n");
         errno = EFAULT;
-        return -1;
-    }
-
-    shdma[DMAC_SAR2] = src_addr;
-    shdma[DMAC_DMATCR2] = count / 32;
-    shdma[DMAC_CHCR2] = 0x12c1;
-
-    val = shdma[DMAC_DMAOR];
-
-    if((val & 0x8007) != 0x8001) {
-        dbglog(DBG_ERROR, "pvr_dma: Failed DMAOR check\n");
-        errno = EIO;
         return -1;
     }
 
@@ -128,10 +110,32 @@ int pvr_dma_transfer(void * src, uint32 dest, uint32 count, int type,
     dma_callback = callback;
     dma_cbdata = cbdata;
 
-    pvrdma[PVR_LMMODE0] = type == PVR_DMA_VRAM64 ? 0 : 1;
-    pvrdma[PVR_STATE] = dest_addr;
-    pvrdma[PVR_LEN] = count;
-    pvrdma[PVR_DST] = 0x1;
+    /* Make sure we're not already DMA'ing */
+    if(pvr_dma[PVR_DST] != 0) {
+        dbglog(DBG_ERROR, "pvr_dma: Previous DMA has not finished\n");
+        errno = EINPROGRESS;
+        return -1;
+    }
+
+    if(DMAC_CHCR2 & 0x1)  /* DE bit set so we must clear it */
+        DMAC_CHCR2 &= ~0x1;
+
+    if(DMAC_CHCR2 & 0x2)  /* TE bit set so we must clear it */
+        DMAC_CHCR2 &= ~0x2;
+
+    DMAC_SAR2 = src_addr;
+    DMAC_DMATCR2 = count / 32;
+    DMAC_CHCR2 = 0x12c1;
+
+    if((DMAC_DMAOR & DMAOR_STATUS_MASK) != DMAOR_NORMAL_OPERATION) {
+        dbglog(DBG_ERROR, "pvr_dma: Failed DMAOR check\n");
+        errno = EIO;
+        return -1;
+    }
+
+    pvr_dma[PVR_STATE] = pvr_dest_addr(dest, type);
+    pvr_dma[PVR_LEN] = count;
+    pvr_dma[PVR_DST] = 0x1;
 
     /* Wait for us to be signaled */
     if(block)
@@ -141,24 +145,24 @@ int pvr_dma_transfer(void * src, uint32 dest, uint32 count, int type,
 }
 
 /* Count is in bytes. */
-int pvr_txr_load_dma(void * src, pvr_ptr_t dest, uint32 count, int block,
-                    pvr_dma_callback_t callback, ptr_t cbdata) {
-    return pvr_dma_transfer(src, (uint32)dest, count, PVR_DMA_VRAM64, block, 
+int pvr_txr_load_dma(void *src, pvr_ptr_t dest, size_t count, int block,
+                    pvr_dma_callback_t callback, void *cbdata) {
+    return pvr_dma_transfer(src, (uintptr_t)dest, count, PVR_DMA_VRAM64, block, 
                             callback, cbdata);
 }
 
-int pvr_dma_load_ta(void * src, uint32 count, int block, 
-                    pvr_dma_callback_t callback, ptr_t cbdata) {
-    return pvr_dma_transfer(src, 0, count, PVR_DMA_TA, block, callback, cbdata);
+int pvr_dma_load_ta(void *src, size_t count, int block, 
+                    pvr_dma_callback_t callback, void *cbdata) {
+    return pvr_dma_transfer(src, (uintptr_t)0, count, PVR_DMA_TA, block, callback, cbdata);
 }
 
-int pvr_dma_yuv_conv(void * src, uint32 count, int block,
-                    pvr_dma_callback_t callback, ptr_t cbdata) {
-    return pvr_dma_transfer(src, 0, count, PVR_DMA_YUV, block, callback, cbdata);
+int pvr_dma_yuv_conv(void *src, size_t count, int block,
+                    pvr_dma_callback_t callback, void *cbdata) {
+    return pvr_dma_transfer(src, (uintptr_t)0, count, PVR_DMA_YUV, block, callback, cbdata);
 }
 
 int pvr_dma_ready(void) {
-    return pvrdma[PVR_DST] == 0;
+    return pvr_dma[PVR_DST] == 0;
 }
 
 void pvr_dma_init(void) {
@@ -168,19 +172,73 @@ void pvr_dma_init(void) {
     dma_callback = NULL;
     dma_cbdata = 0;
 
-    /* Hook the neccessary interrupts */
-    asic_evt_set_handler(ASIC_EVT_PVR_DMA, pvr_dma_irq_hnd);
+    /* Use 2x32-bit TA->VRAM buses for PVR_TA_TEX_MEM */
+    pvr_dma[PVR_LMMODE0] = 0;
+
+    /* Use single 32-bit TA->VRAM bus for PVR_TA_TEX_MEM_32 */
+    pvr_dma[PVR_LMMODE1] = 1;
+
+    /* Hook the necessary interrupts */
+    asic_evt_set_handler(ASIC_EVT_PVR_DMA, pvr_dma_irq_hnd, NULL);
     asic_evt_enable(ASIC_EVT_PVR_DMA, ASIC_IRQ_DEFAULT);
 }
 
 void pvr_dma_shutdown(void) {
-    /* XXX Need to ensure that no DMA is in progress, does this work?? */
+    /* Need to ensure that no DMA is in progress */
     if(!pvr_dma_ready()) {
-        pvrdma[PVR_DST] = 0;
+        pvr_dma[PVR_DST] = 0;
     }
 
     /* Clean up */
     asic_evt_disable(ASIC_EVT_PVR_DMA, ASIC_IRQ_DEFAULT);
-    asic_evt_set_handler(ASIC_EVT_PVR_DMA, NULL);
+    asic_evt_remove_handler(ASIC_EVT_PVR_DMA);
     sem_destroy(&dma_done);
+}
+
+/* Copies n bytes from src to PVR dest, dest must be 32-byte aligned */
+void *pvr_sq_load(void *dest, const void *src, size_t n, int type) {
+    void *dma_area_ptr;
+
+    if(pvr_dma[PVR_DST] != 0) {
+        dbglog(DBG_ERROR, "pvr_sq_load: PVR DMA has not finished\n");
+        errno = EINPROGRESS;
+        return NULL;
+    }
+
+    dma_area_ptr = (void *)pvr_dest_addr((uintptr_t)dest, type);
+    sq_cpy(dma_area_ptr, src, n);
+
+    return dest;
+}
+
+/* Fills n bytes at PVR dest with 16-bit c, dest must be 32-byte aligned */
+void *pvr_sq_set16(void *dest, uint32_t c, size_t n, int type) {
+    void *dma_area_ptr;
+
+    if(pvr_dma[PVR_DST] != 0) {
+        dbglog(DBG_ERROR, "pvr_sq_set16: PVR DMA has not finished\n");
+        errno = EINPROGRESS;
+        return NULL;
+    }
+
+    dma_area_ptr = (void *)pvr_dest_addr((uintptr_t)dest, type);
+    sq_set16(dma_area_ptr, c, n);
+
+    return dest;
+}
+
+/* Fills n bytes at PVR dest with 32-bit c, dest must be 32-byte aligned */
+void *pvr_sq_set32(void *dest, uint32_t c, size_t n, int type) {
+    void *dma_area_ptr;
+
+    if(pvr_dma[PVR_DST] != 0) {
+        dbglog(DBG_ERROR, "pvr_sq_set32: PVR DMA has not finished\n");
+        errno = EINPROGRESS;
+        return NULL;
+    }
+
+    dma_area_ptr = (void *)pvr_dest_addr((uintptr_t)dest, type);
+    sq_set32(dma_area_ptr, c, n);
+
+    return dest;
 }

@@ -155,12 +155,12 @@ typedef struct ata_devdata {
 #define G1_DMA_TO_MEMORY            1
 
 /* Macros to access the ATA registers */
-#define OUT32(addr, data) *((volatile uint32_t *)addr) = data
-#define OUT16(addr, data) *((volatile uint16_t *)addr) = data
-#define OUT8(addr, data)  *((volatile uint8_t  *)addr) = data
-#define IN32(addr)        *((volatile uint32_t *)addr)
-#define IN16(addr)        *((volatile uint16_t *)addr)
-#define IN8(addr)         *((volatile uint8_t  *)addr)
+#define OUT32(addr, data) *((volatile uint32_t *)(addr)) = data
+#define OUT16(addr, data) *((volatile uint16_t *)(addr)) = data
+#define OUT8(addr, data)  *((volatile uint8_t  *)(addr)) = data
+#define IN32(addr)        *((volatile uint32_t *)(addr))
+#define IN16(addr)        *((volatile uint16_t *)(addr))
+#define IN8(addr)         *((volatile uint8_t  *)(addr))
 
 static int initted = 0;
 static int devices = 0;
@@ -206,12 +206,15 @@ inline int g1_ata_mutex_lock(void) {
 }
 
 inline int g1_ata_mutex_unlock(void) {
+    /* Make sure to select the GD-ROM drive back. */
+    g1_ata_select_device(G1_ATA_MASTER);
     return mutex_unlock(&_g1_ata_mutex);
 }
 
-static void g1_dma_irq_hnd(uint32 code) {
+static void g1_dma_irq_hnd(uint32 code, void *data) {
     /* XXXX: Probably should look at the code to make sure it isn't an error. */
     (void)code;
+    (void)data;
 
     if(dma_in_progress) {
         /* Signal the calling thread to continue, if it is blocking. */
@@ -222,6 +225,9 @@ static void g1_dma_irq_hnd(uint32 code) {
         }
 
         dma_in_progress = 0;
+
+        /* Make sure to select the GD-ROM drive back. */
+        g1_ata_select_device(G1_ATA_MASTER);
         mutex_unlock_as_thread(&_g1_ata_mutex, dma_thd);
     }
 }
@@ -654,7 +660,7 @@ int g1_ata_read_lba_dma(uint64_t sector, size_t count, void *buf,
         return -1;
     }
 
-    /* Set the settings for this transfer and reenable IRQs. */
+    /* Set the settings for this transfer and re-enable IRQs. */
     dma_blocking = block;
     dma_in_progress = 1;
     irq_restore(old);
@@ -866,7 +872,7 @@ int g1_ata_write_lba_dma(uint64_t sector, size_t count, const void *buf,
         return -1;
     }
 
-    /* Set the settings for this transfer and reenable IRQs. */
+    /* Set the settings for this transfer and re-enable IRQs. */
     dma_blocking = block;
     dma_in_progress = 1;
     irq_restore(old);
@@ -1383,11 +1389,11 @@ int g1_ata_init(void) {
     }
 
     /* Hook all the DMA related events. */
-    asic_evt_set_handler(ASIC_EVT_GD_DMA, g1_dma_irq_hnd);
+    asic_evt_set_handler(ASIC_EVT_GD_DMA, g1_dma_irq_hnd, NULL);
     asic_evt_enable(ASIC_EVT_GD_DMA, ASIC_IRQB);
-    asic_evt_set_handler(ASIC_EVT_GD_DMA_OVERRUN, g1_dma_irq_hnd);
+    asic_evt_set_handler(ASIC_EVT_GD_DMA_OVERRUN, g1_dma_irq_hnd, NULL);
     asic_evt_enable(ASIC_EVT_GD_DMA_OVERRUN, ASIC_IRQB);
-    asic_evt_set_handler(ASIC_EVT_GD_DMA_ILLADDR, g1_dma_irq_hnd);
+    asic_evt_set_handler(ASIC_EVT_GD_DMA_ILLADDR, g1_dma_irq_hnd, NULL);
     asic_evt_enable(ASIC_EVT_GD_DMA_ILLADDR, ASIC_IRQB);
 
     initted = 1;
@@ -1410,9 +1416,9 @@ void g1_ata_shutdown(void) {
 
     /* Unhook the events and disable the IRQs. */
     asic_evt_disable(ASIC_EVT_GD_DMA, ASIC_IRQB);
-    asic_evt_set_handler(ASIC_EVT_GD_DMA, NULL);
+    asic_evt_remove_handler(ASIC_EVT_GD_DMA);
     asic_evt_disable(ASIC_EVT_GD_DMA_OVERRUN, ASIC_IRQB);
-    asic_evt_set_handler(ASIC_EVT_GD_DMA_OVERRUN, NULL);
+    asic_evt_remove_handler(ASIC_EVT_GD_DMA_OVERRUN);
     asic_evt_disable(ASIC_EVT_GD_DMA_ILLADDR, ASIC_IRQB);
-    asic_evt_set_handler(ASIC_EVT_GD_DMA_ILLADDR, NULL);
+    asic_evt_remove_handler(ASIC_EVT_GD_DMA_ILLADDR);
 }

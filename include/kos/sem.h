@@ -6,11 +6,12 @@
 
 */
 
-/** \file   kos/sem.h
-    \brief  Semaphores.
+/** \file    kos/sem.h
+    \brief   Semaphores.
+    \ingroup kthreads
 
     This file defines semaphores. A semaphore is a synchronization primitive
-    that allows a spcified number of threads to be in its critical section at a
+    that allows a specified number of threads to be in its critical section at a
     single point of time. Another way to think of it is that you have a
     predetermined number of resources available, and the semaphore maintains the
     resources.
@@ -46,6 +47,7 @@ typedef struct semaphore {
 
     This function allocates and initializes a new semaphore for use.
 
+    \deprecated
     This function is formally deprecated. Please update your code to use
     sem_init() or static initialization with SEM_INITIALIZER instead.
 

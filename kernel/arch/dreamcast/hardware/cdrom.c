@@ -5,14 +5,22 @@
    Copyright (C) 2000 Megan Potter
    Copyright (C) 2014 Lawrence Sebald
    Copyright (C) 2014 Donald Haase
+   Copyright (C) 2023 Ruslan Rostovtsev
+   Copyright (C) 2024 Andy Barajas
 
  */
+#include <assert.h>
+
+#include <arch/timer.h>
+#include <arch/memory.h>
 
 #include <dc/cdrom.h>
 #include <dc/g1ata.h>
+#include <dc/syscalls.h>
 
 #include <kos/thread.h>
 #include <kos/mutex.h>
+#include <kos/dbglog.h>
 
 /*
 
@@ -34,67 +42,18 @@ normally the case with the default options. If in doubt, decompile the
 output and look to make sure.
 
 XXX: This could all be done in a non-blocking way by taking advantage of
-command queuing. Every call to gdc_req_cmd returns a 'request id' which
-just needs to eventually be checked by cmd_stat. A non-blocking version
-of all functions would simply require manual calls to check the status.
-Doing this would probably allow data reading while cdda is playing without
-hiccups (by severely reducing the number of gd commands being sent).
+command queuing. Every call to syscall_gdrom_send_command returns a 
+'request id' which just needs to eventually be checked by cmd_stat. A 
+non-blocking version of all functions would simply require manual calls 
+to check the status. Doing this would probably allow data reading while 
+cdda is playing without hiccups (by severely reducing the number of gd 
+commands being sent).
 */
 
-
-/* GD-Rom BIOS calls... named mostly after Marcus' code. None have more
-   than two parameters; R7 (fourth parameter) needs to describe
-   which syscall we want. */
-
-#define MAKE_SYSCALL(rs, p1, p2, idx) \
-    uint32 *syscall_bc = (uint32*)0x8c0000bc; \
-    int (*syscall)() = (int (*)())(*syscall_bc); \
-    rs syscall((p1), (p2), 0, (idx));
-
-/* Reset system functions */
-static void gdc_init_system(void) {
-    MAKE_SYSCALL(/**/, 0, 0, 3);
-}
-
-/* Submit a command to the system */
-static int gdc_req_cmd(int cmd, void *param) {
-    MAKE_SYSCALL(return, cmd, param, 0);
-}
-
-/* Check status on an executed command */
-static int gdc_get_cmd_stat(int f, void *status) {
-    MAKE_SYSCALL(return, f, status, 1);
-}
-
-/* Execute submitted commands */
-static void gdc_exec_server(void) {
-    MAKE_SYSCALL(/**/, 0, 0, 2);
-}
-
-/* Check drive status and get disc type */
-static int gdc_get_drv_stat(void *param) {
-    MAKE_SYSCALL(return, param, 0, 4);
-}
-
-/* Set disc access mode */
-static int gdc_change_data_type(void *param) {
-    MAKE_SYSCALL(return, param, 0, 10);
-}
-
-/* Reset the GD-ROM */
-/* Stop gcc from complaining that we don't use it */
-static void gdc_reset(void) __attribute__((unused));
-static void gdc_reset(void) {
-    MAKE_SYSCALL(/**/, 0, 0, 9);
-}
-
-/* Abort the current command */
-static void gdc_abort_cmd(int cmd) {
-    MAKE_SYSCALL(/**/, cmd, 0, 8);
-}
+typedef int gdc_cmd_hnd_t;
 
 /* The G1 ATA access mutex */
-mutex_t _g1_ata_mutex = RECURSIVE_MUTEX_INITIALIZER;
+mutex_t _g1_ata_mutex = MUTEX_INITIALIZER;
 
 /* Shortcut to cdrom_reinit_ex. Typically this is the only thing changed. */
 int cdrom_set_sector_size(int size) {
@@ -102,35 +61,68 @@ int cdrom_set_sector_size(int size) {
 }
 
 /* Command execution sequence */
-/* XXX: It might make sense to have a version of this that takes a timeout. */
 int cdrom_exec_cmd(int cmd, void *param) {
-    int status[4] = {0};
-    int f, n;
+    return cdrom_exec_cmd_timed(cmd, param, 0);
+}
 
+int cdrom_exec_cmd_timed(int cmd, void *param, int timeout) {
+    int32_t status[4] = {
+        0, /* Error code 1 */
+        0, /* Error code 2 */
+        0, /* Transferred size */
+        0  /* ATA status waiting */
+    };
+    gdc_cmd_hnd_t hnd;
+    int n, rv = ERR_OK;
+    uint64_t begin;
+
+    assert(cmd > 0 && cmd < CMD_MAX);
     mutex_lock(&_g1_ata_mutex);
 
-    /* Make sure to select the GD-ROM drive. */
-    g1_ata_select_device(G1_ATA_MASTER);
-
-    /* Submit the command and wait for it to finish */
-    f = gdc_req_cmd(cmd, param);
-
-    do {
-        gdc_exec_server();
-        n = gdc_get_cmd_stat(f, status);
-
-        if(n == PROCESSING)
-            thd_pass();
+    /* Submit the command */
+    for(n = 0; n < 10; ++n) {
+        hnd = syscall_gdrom_send_command(cmd, param);
+        if (hnd != 0) {
+            break;
+        }
+        syscall_gdrom_exec_server();
+        thd_pass();
     }
-    while(n == PROCESSING)
-        ;
+
+    if(hnd <= 0) {
+        mutex_unlock(&_g1_ata_mutex);
+        return ERR_SYS;
+    }
+
+    /* Wait command to finish */
+    if(timeout) {
+        begin = timer_ms_gettime64();
+    }
+    do {
+        syscall_gdrom_exec_server();
+        n = syscall_gdrom_check_command(hnd, status);
+
+        if(n != PROCESSING && n != BUSY) {
+            break;
+        }
+        if(timeout) {
+            if((timer_ms_gettime64() - begin) >= (unsigned)timeout) {
+                syscall_gdrom_abort_command(hnd);
+                syscall_gdrom_exec_server();
+                rv = ERR_TIMEOUT;
+                dbglog(DBG_ERROR, "cdrom_exec_cmd_timed: Timeout exceeded\n");
+                break;
+            }
+        }
+        thd_pass();
+    } while(1);
 
     mutex_unlock(&_g1_ata_mutex);
 
-    if(n == COMPLETED)
+    if(rv != ERR_OK)
+        return rv;
+    else if(n == COMPLETED || n == STREAMING)
         return ERR_OK;
-    else if(n == ABORTED)
-        return ERR_ABORTED;
     else if(n == NO_ACTIVE)
         return ERR_NO_ACTIVE;
     else {
@@ -142,13 +134,15 @@ int cdrom_exec_cmd(int cmd, void *param) {
             default:
                 return ERR_SYS;
         }
+        if(status[1] != 0)
+            return ERR_SYS;
     }
 }
 
 /* Return the status of the drive as two integers (see constants) */
 int cdrom_get_status(int *status, int *disc_type) {
-    int     rv = ERR_OK;
-    uint32  params[2];
+    int rv = ERR_OK;
+    uint32_t params[2];
 
     /* We might be called in an interrupt to check for ISO cache
        flushing, so make sure we're not interrupting something
@@ -162,10 +156,15 @@ int cdrom_get_status(int *status, int *disc_type) {
         mutex_lock(&_g1_ata_mutex);
     }
 
-    /* Make sure to select the GD-ROM drive. */
-    g1_ata_select_device(G1_ATA_MASTER);
+    do {
+        rv = syscall_gdrom_check_drive(params);
 
-    rv = gdc_get_drv_stat(params);
+        if(rv != BUSY) {
+            break;
+        }
+        thd_pass();
+    } while(1);
+
     mutex_unlock(&_g1_ata_mutex);
 
     if(rv >= 0) {
@@ -194,10 +193,9 @@ int cdrom_change_dataype(int sector_part, int cdxa, int sector_size) {
 /* Wrapper for the change datatype syscall */
 int cdrom_change_datatype(int sector_part, int cdxa, int sector_size) {
     int rv = ERR_OK;
-    uint32  params[4];
+    uint32_t params[4];
 
     mutex_lock(&_g1_ata_mutex);
-    g1_ata_select_device(G1_ATA_MASTER);
 
     /* Check if we are using default params */
     if(sector_size == 2352) {
@@ -211,7 +209,7 @@ int cdrom_change_datatype(int sector_part, int cdxa, int sector_size) {
         if(cdxa == -1) {
             /* If not overriding cdxa, check what the drive thinks we should 
                use */
-            gdc_get_drv_stat(params);
+            syscall_gdrom_check_drive(params);
             cdxa = (params[1] == 32 ? 2048 : 1024);
         }
 
@@ -226,7 +224,7 @@ int cdrom_change_datatype(int sector_part, int cdxa, int sector_size) {
     params[1] = sector_part;    /* Get Data or Full Sector */
     params[2] = cdxa;           /* CD-XA mode 1/2 */
     params[3] = sector_size;    /* sector size */
-    rv = gdc_change_data_type(params);
+    rv = syscall_gdrom_sector_mode(params);
     mutex_unlock(&_g1_ata_mutex);
     return rv;
 }
@@ -239,46 +237,17 @@ int cdrom_reinit(void) {
 
 /* Enhanced cdrom_reinit, takes the place of the old 'sector_size' function */
 int cdrom_reinit_ex(int sector_part, int cdxa, int sector_size) {
-    int r = -1;
-    int timeout;
+    int r;
 
-    mutex_lock(&_g1_ata_mutex);
+    do {
+        r = cdrom_exec_cmd_timed(CMD_INIT, NULL, 10000);
+    } while(r == ERR_DISC_CHG);
 
-    /* Try a few times; it might be busy. If it's still busy
-       after this loop then it's probably really dead. */
-    timeout = 10 * 1000 / 20; /* 10 second timeout */
-
-    /* Make sure to select the GD-ROM drive. */
-    g1_ata_select_device(G1_ATA_MASTER);
-
-    while(timeout > 0) {
-        r = cdrom_exec_cmd(CMD_INIT, NULL);
-
-        if(r == 0) break;
-
-        if(r == ERR_NO_DISC) {
-            mutex_unlock(&_g1_ata_mutex);
-            return r;
-        }
-        else if(r == ERR_SYS) {
-            mutex_unlock(&_g1_ata_mutex);
-            return r;
-        }
-
-        /* Still trying.. sleep a bit and check again */
-        thd_sleep(20);
-        timeout--;
-    }
-
-    if(timeout <= 0) {
-        /* Send an abort since we're giving up waiting for the init */
-        gdc_abort_cmd(CMD_INIT);
-        mutex_unlock(&_g1_ata_mutex);
+    if(r == ERR_NO_DISC || r == ERR_SYS || r == ERR_TIMEOUT) {
         return r;
     }
 
     r = cdrom_change_datatype(sector_part, cdxa, sector_size);
-    mutex_unlock(&_g1_ata_mutex);
 
     return r;
 }
@@ -287,17 +256,14 @@ int cdrom_reinit_ex(int sector_part, int cdxa, int sector_size) {
 int cdrom_read_toc(CDROM_TOC *toc_buffer, int session) {
     struct {
         int session;
-        void    *buffer;
+        void *buffer;
     } params;
     int rv;
 
     params.session = session;
     params.buffer = toc_buffer;
 
-    mutex_lock(&_g1_ata_mutex);
-
     rv = cdrom_exec_cmd(CMD_GETTOC2, &params);
-    mutex_unlock(&_g1_ata_mutex);
 
     return rv;
 }
@@ -306,17 +272,15 @@ int cdrom_read_toc(CDROM_TOC *toc_buffer, int session) {
 int cdrom_read_sectors_ex(void *buffer, int sector, int cnt, int mode) {
     struct {
         int sec, num;
-        void    *buffer;
-        int dunno;
+        void *buffer;
+        int is_test;
     } params;
     int rv = ERR_OK;
 
     params.sec = sector;    /* Starting sector */
     params.num = cnt;       /* Number of sectors */
     params.buffer = buffer; /* Output buffer */
-    params.dunno = 0;       /* ? */
-
-    mutex_lock(&_g1_ata_mutex);
+    params.is_test = 0;     /* Enable test mode */
 
     /* The DMA mode blocks the thread it is called in by the way we execute
        gd syscalls. It does however allow for other threads to run. */
@@ -328,7 +292,6 @@ int cdrom_read_sectors_ex(void *buffer, int sector, int cnt, int mode) {
     else if(mode == CDROM_READ_PIO)
         rv = cdrom_exec_cmd(CMD_PIOREAD, &params);
 
-    mutex_unlock(&_g1_ata_mutex);
     return rv;
 }
 
@@ -347,16 +310,14 @@ int cdrom_get_subcode(void *buffer, int buflen, int which) {
     struct {
         int which;
         int buflen;
-        void    *buffer;
+        void *buffer;
     } params;
     int rv;
 
     params.which = which;
     params.buflen = buflen;
     params.buffer = buffer;
-    mutex_lock(&_g1_ata_mutex);
     rv = cdrom_exec_cmd(CMD_GETSCD, &params);
-    mutex_unlock(&_g1_ata_mutex);
     return rv;
 }
 
@@ -401,14 +362,10 @@ int cdrom_cdda_play(uint32 start, uint32 end, uint32 repeat, int mode) {
     params.end = end;
     params.repeat = repeat;
 
-    mutex_lock(&_g1_ata_mutex);
-
     if(mode == CDDA_TRACKS)
         rv = cdrom_exec_cmd(CMD_PLAY, &params);
     else if(mode == CDDA_SECTORS)
         rv = cdrom_exec_cmd(CMD_PLAY2, &params);
-
-    mutex_unlock(&_g1_ata_mutex);
 
     return rv;
 }
@@ -416,41 +373,31 @@ int cdrom_cdda_play(uint32 start, uint32 end, uint32 repeat, int mode) {
 /* Pause CDDA audio playback */
 int cdrom_cdda_pause(void) {
     int rv;
-
-    mutex_lock(&_g1_ata_mutex);
     rv = cdrom_exec_cmd(CMD_PAUSE, NULL);
-    mutex_unlock(&_g1_ata_mutex);
-
     return rv;
 }
 
 /* Resume CDDA audio playback */
 int cdrom_cdda_resume(void) {
     int rv;
-
-    mutex_lock(&_g1_ata_mutex);
     rv = cdrom_exec_cmd(CMD_RELEASE, NULL);
-    mutex_unlock(&_g1_ata_mutex);
-
     return rv;
 }
 
 /* Spin down the CD */
 int cdrom_spin_down(void) {
     int rv;
-
-    mutex_lock(&_g1_ata_mutex);
     rv = cdrom_exec_cmd(CMD_STOP, NULL);
-    mutex_unlock(&_g1_ata_mutex);
-
     return rv;
 }
 
 /* Initialize: assume no threading issues */
-int cdrom_init(void) {
-    uint32 p;
-    volatile uint32 *react = (uint32 *)0xa05f74e4,
-                     *bios = (uint32 *)0xa0000000;
+void cdrom_init(void) {
+    uint32_t p;
+    volatile uint32_t *react = (uint32_t *)(0x005f74e4 | MEM_AREA_P2_BASE);
+    volatile uint32_t *bios = (uint32_t *)MEM_AREA_P2_BASE;
+
+    mutex_lock(&_g1_ata_mutex);
 
     /* Reactivate drive: send the BIOS size and then read each
        word across the bus so the controller can verify it.
@@ -458,7 +405,7 @@ int cdrom_init(void) {
        hardware is fitted with custom BIOS using magic bootstrap
        which can and must pass controller verification with only
        the first 1024 bytes */
-    if((*(uint16 *)0xa0000000) == 0xe6ff) {
+    if((*(uint16_t *)MEM_AREA_P2_BASE) == 0xe6ff) {
         *react = 0x3ff;
         for(p = 0; p < 0x400 / sizeof(bios[0]); p++) {
             (void)bios[p];
@@ -470,18 +417,12 @@ int cdrom_init(void) {
         }
     }
 
-    mutex_lock(&_g1_ata_mutex);
-    /* Make sure to select the GD-ROM drive. */
-    g1_ata_select_device(G1_ATA_MASTER);
-
     /* Reset system functions */
-    gdc_init_system();
+    syscall_gdrom_reset();
+    syscall_gdrom_init();
     mutex_unlock(&_g1_ata_mutex);
 
-    /* Do an initial initialization */
     cdrom_reinit();
-
-    return 0;
 }
 
 void cdrom_shutdown(void) {

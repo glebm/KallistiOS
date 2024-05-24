@@ -5,7 +5,10 @@
    Copyright (C) 2013 Lawrence Sebald
 */
 
+#include <stdbool.h>
 #include <arch/arch.h>
+#include <kos/init.h>
+#include <kos/platform.h>
 #include <dc/spu.h>
 #include <dc/video.h>
 #include <dc/cdrom.h>
@@ -40,45 +43,59 @@ int hardware_sys_init(void) {
     return 0;
 }
 
+
+void bba_la_init(void) {
+    /* Setup network (this won't do anything unless we enable netcore) */
+    bba_init();
+    la_init();
+}
+
+void bba_la_shutdown(void) {
+    la_shutdown();
+    bba_shutdown();
+}
+
+KOS_INIT_FLAG_WEAK(bba_la_init, false);
+KOS_INIT_FLAG_WEAK(bba_la_shutdown, false);
+KOS_INIT_FLAG_WEAK(maple_init, true);
+KOS_INIT_FLAG_WEAK(cdrom_init, true);
+KOS_INIT_FLAG_WEAK(cdrom_shutdown, true);
+
 int hardware_periph_init(void) {
     /* Init sound */
     spu_init();
-    spu_dma_init();
+    g2_dma_init();
 
-#ifndef _arch_sub_naomi
-    /* Init CD-ROM.. NOTE: NO GD-ROM SUPPORT. ONLY CDs/CDRs. */
-    cdrom_init();
-#endif
+    if (!KOS_PLATFORM_IS_NAOMI) {
+        /* Init CD-ROM.. NOTE: NO GD-ROM SUPPORT. ONLY CDs/CDRs. */
+        KOS_INIT_FLAG_CALL(cdrom_init);
+    }
 
     /* Setup maple bus */
-    maple_init();
+    KOS_INIT_FLAG_CALL(maple_init);
 
     /* Init video */
     vid_init(DEFAULT_VID_MODE, DEFAULT_PIXEL_MODE);
 
-#ifndef _arch_sub_naomi
-    /* Setup network (this won't do anything unless we enable netcore) */
-    bba_init();
-    la_init();
-#endif
+    if (!KOS_PLATFORM_IS_NAOMI)
+        KOS_INIT_FLAG_CALL(bba_la_init);
 
     initted = 2;
 
     return 0;
 }
 
+KOS_INIT_FLAG_WEAK(maple_shutdown, true);
+
 void hardware_shutdown(void) {
     switch(initted) {
         case 2:
-#ifndef _arch_sub_naomi
-            la_shutdown();
-            bba_shutdown();
-#endif
-            maple_shutdown();
-#if 0
-            cdrom_shutdown();
-#endif
-            spu_dma_shutdown();
+            if (!KOS_PLATFORM_IS_NAOMI)
+                KOS_INIT_FLAG_CALL(bba_la_shutdown);
+            KOS_INIT_FLAG_CALL(maple_shutdown);
+            if (!KOS_PLATFORM_IS_NAOMI)
+                KOS_INIT_FLAG_CALL(cdrom_shutdown);
+            g2_dma_shutdown();
             spu_shutdown();
             vid_shutdown();
             /* fallthru */

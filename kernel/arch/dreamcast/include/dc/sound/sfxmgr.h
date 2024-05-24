@@ -2,20 +2,25 @@
 
    dc/sound/sfxmgr.h
    Copyright (C) 2002 Megan Potter
+   Copyright (C) 2023 Ruslan Rostovtsev
+   Copyright (C) 2023 Andy Barajas
 
 */
 
-/** \file   dc/sound/sfxmgr.h
-    \brief  Basic sound effect support.
+/** \file    dc/sound/sfxmgr.h
+    \brief   Basic sound effect support.
+    \ingroup audio_sfx
 
     This file contains declarations for doing simple sound effects. This code is
-    only usable for simple WAV files containing either 16-bit samples (stereo or
-    mono) or Yamaha ADPCM (4-bits, stereo or mono). Also, all sounds played in
+    only usable for simple WAV files containing either 8-bit or 16-bit samples (stereo
+    or mono) or Yamaha ADPCM (4-bits, stereo or mono). Also, all sounds played in
     this manner must be at most 65534 samples in length, as this does not handle
     buffer chaining or anything else complex. For more interesting stuff, you
     should probably look at the sound stream stuff instead.
 
     \author Megan Potter
+    \author Ruslan Rostovtsev
+    \author Andy Barajas
 */
 
 #ifndef __DC_SOUND_SFXMGR_H
@@ -25,13 +30,21 @@
 __BEGIN_DECLS
 
 #include <arch/types.h>
+#include <stdint.h>
+
+/** \defgroup audio_sfx     Sound Effects
+    \brief                  Sound Effect Playback and Management
+    \ingroup                audio
+
+    @{
+*/
 
 /** \brief  Sound effect handle type.
 
     Each loaded sound effect will be assigned one of these, which is to be used
     for operations related to the effect, including playing it or unloading it.
 */
-typedef uint32 sfxhnd_t;
+typedef uint32_t sfxhnd_t;
 
 /** \brief  Invalid sound effect handle value.
 
@@ -43,8 +56,11 @@ typedef uint32 sfxhnd_t;
 /** \brief  Load a sound effect.
 
     This function loads a sound effect from a WAV file and returns a handle to
-    it. The sound effect can be either stereo or mono, and must either be 16-bit
-    uncompressed PCM samples or 4-bit Yamaha ADPCM.
+    it. The sound effect can be either stereo or mono, and must either be 8-bit
+    or 16-bit uncompressed PCM samples, or 4-bit Yamaha ADPCM.
+
+    \warning The sound effect you are loading must be at most 65534 samples 
+    in length.
 
     \param  fn              The file to load.
     \return                 A handle to the sound effect on success. On error,
@@ -140,6 +156,8 @@ int snd_sfx_chn_alloc(void);
     \param  chn             The channel to free.
 */
 void snd_sfx_chn_free(int chn);
+
+/** @} */
 
 __END_DECLS
 

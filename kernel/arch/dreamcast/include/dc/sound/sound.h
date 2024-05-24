@@ -2,11 +2,13 @@
 
    dc/sound/sound.h
    Copyright (C) 2002 Megan Potter
+   Copyright (C) 2023 Ruslan Rostovtsev
 
 */
 
-/** \file   dc/sound/sound.h
-    \brief  Low-level sound support and memory management.
+/** \file    dc/sound/sound.h
+    \brief   Low-level sound support and memory management.
+    \ingroup audio_driver
 
     This file contains declarations for low-level sound operations and for SPU
     RAM pool memory management. Most of the time you'll be better off using the
@@ -14,6 +16,7 @@
     but this stuff can be very useful for some things.
 
     \author Megan Potter
+    \author Ruslan Rostovtsev
 */
 
 #ifndef __DC_SOUND_SOUND_H
@@ -23,6 +26,14 @@
 __BEGIN_DECLS
 
 #include <arch/types.h>
+#include <stdint.h>
+
+/** \defgroup audio_driver  Driver
+    \brief                  Low-level driver for SPU and audio management
+    \ingroup                audio
+
+    @{
+*/
 
 /** \brief  Allocate memory in the SPU RAM pool
 
@@ -31,6 +42,7 @@ __BEGIN_DECLS
     return a pointer directly, but rather an offset in SPU RAM.
 
     \param  size            The amount of memory to allocate, in bytes.
+    
     \return                 The location of the start of the block on success,
                             or 0 on failure.
 */
@@ -137,6 +149,72 @@ int snd_aica_to_sh4(void *packetout);
     This function is not safe to call in an IRQ, as it does implicitly wait.
 */
 void snd_poll_resp(void);
+
+/** \brief  Separates stereo PCM samples into 2 mono channels.
+
+    Splits a buffer containing 2 interleaved channels of 16-bit PCM samples
+    into 2 separate buffers of 16-bit PCM samples.
+
+    \warning 
+    All arguments must be 32-byte aligned.
+
+    \param data   Source buffer of interleaved stereo samples
+    \param left   Destination buffer for left mono samples
+    \param right  Destination buffer for right mono samples
+    \param size   Size of the source buffer in bytes (must be divisible by 32)
+
+    \sa snd_pcm16_split_sq()
+*/
+void snd_pcm16_split(uint32_t *data, uint32_t *left, uint32_t *right, size_t size);
+
+/** \brief  Separates stereo PCM samples into 2 mono channels with SQ transfer.
+
+    Splits a buffer containing 2 interleaved channels of 16-bit PCM samples
+    into 2 separate buffers of 16-bit PCM samples by using the store queues
+    for data transfer.
+
+    \warning 
+    All arguments must be 32-byte aligned.
+
+    \param data   Source buffer of interleaved stereo samples
+    \param left   Destination buffer address for left mono samples
+    \param right  Destination buffer address for right mono samples
+    \param size   Size of the source buffer in bytes (must be divisible by 32)
+
+    \sa snd_pcm16_split()
+    Store queues must be prepared before.
+*/
+void snd_pcm16_split_sq(uint32_t *data, uintptr_t left, uintptr_t right, size_t size);
+
+/** \brief  Separates stereo PCM samples into 2 mono channels.
+
+    Splits a buffer containing 2 interleaved channels of 8-bit PCM samples
+    into 2 separate buffers of 8-bit PCM samples.
+
+    \param data   Source buffer of interleaved stereo samples
+    \param left   Destination buffer for left mono samples
+    \param right  Destination buffer for right mono samples
+    \param size   Size of the source buffer in bytes
+
+    \sa snd_adpcm_split()
+*/
+void snd_pcm8_split(uint32_t *data, uint32_t *left, uint32_t *right, size_t size);
+
+/** \brief  Separates stereo ADPCM samples into 2 mono channels.
+
+    Splits a buffer containing 2 interleaved channels of 4-bit ADPCM samples
+    into 2 separate buffers of 4-bit ADPCM samples.
+
+    \param data   Source buffer of interleaved stereo samples
+    \param left   Destination buffer for left mono samples
+    \param right  Destination buffer for right mono samples
+    \param size   Size of the source buffer in bytes
+
+    \sa snd_pcm16_split()
+*/
+void snd_adpcm_split(uint32_t *data, uint32_t *left, uint32_t *right, size_t size);
+
+/** @} */
 
 __END_DECLS
 

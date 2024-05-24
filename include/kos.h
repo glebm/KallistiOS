@@ -63,6 +63,7 @@ __BEGIN_DECLS
 #include <arch/irq.h>
 #include <arch/spinlock.h>
 #include <arch/timer.h>
+#include <arch/wdt.h>
 #include <arch/types.h>
 #include <arch/exec.h>
 #include <arch/stack.h>
@@ -99,6 +100,7 @@ __BEGIN_DECLS
 #   include <dc/modem/modem.h>
 #   include <dc/net/broadband_adapter.h>
 #   include <dc/net/lan_adapter.h>
+#   include <dc/perfctr.h>
 #   include <dc/pvr.h>
 #   include <dc/scif.h>
 #   include <dc/sd.h>
@@ -110,6 +112,7 @@ __BEGIN_DECLS
 #   include <dc/vblank.h>
 #   include <dc/vec3f.h>
 #   include <dc/video.h>
+#   include <dc/vmu_fb.h>
 #   include <dc/vmu_pkg.h>
 #   include <dc/vmufs.h>
 #else   /* _arch_dreamcast */

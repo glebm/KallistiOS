@@ -44,9 +44,7 @@ even the main loop and user input eventually.
 
 #include <memory>
 
-extern uint8 romdisk[];
 KOS_INIT_FLAGS(INIT_DEFAULT | INIT_MALLOCSTATS);
-KOS_INIT_ROMDISK(romdisk);
 
 // Simple animation class which rotates in a circle. This shows how
 // you can create your own animations very simply.
@@ -62,8 +60,8 @@ public:
         Vector v;
 
         // Proscribe a circular path around the center point
-        v.x = m_cx + m_mag * m_size * fsin(m_frame * 2 * M_PI / m_spd);
-        v.y = m_cy + m_mag * m_size * fcos(m_frame * 2 * M_PI / m_spd);
+        v.x = m_cx + m_mag * m_size * fsin(m_frame * 2 * F_PI / m_spd);
+        v.y = m_cy + m_mag * m_size * fcos(m_frame * 2 * F_PI / m_spd);
         v.z = m_cz;
         t->setTranslate(v);
 

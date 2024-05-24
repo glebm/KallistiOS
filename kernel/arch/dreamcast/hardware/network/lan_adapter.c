@@ -47,7 +47,7 @@
    to do that while trying to process 3D graphics and such...
 
    This driver is really simplistic, but this should form the basis with
-   which a better one can be written if neccessary. It was developed using
+   which a better one can be written if necessary. It was developed using
    KOS CVS (1.1.5+).
 
    If anyone has a DC Lan Adapter which this doesn't work with, please let
@@ -220,7 +220,7 @@ static int la_started = LA_NOT_STARTED;
 static uint8 la_mac[6];
 
 /* Forward declaration */
-static void la_irq_hnd(uint32 code);
+static void la_irq_hnd(uint32 code, void *data);
 
 /* Set the current bank */
 static void la_set_bank(int bank) {
@@ -330,7 +330,6 @@ static int la_detect(void) {
     type = DLCR7_IDENT(la_read(DLCR7));
 
     if(type != DLCR7_ID_MB86967) {
-        dbglog(DBG_KDEBUG, "lan_adapter: no device detected (wrong type = %d)\n", type);
         return -1;
     }
 
@@ -391,7 +390,7 @@ static int la_hw_init(void) {
     la_write(DLCR5, (la_read(DLCR5) & ~DLCR5_AM_MASK) | DLCR5_AM_OTHER);
 
     /* Setup interrupt handler */
-    asic_evt_set_handler(ASIC_EVT_EXP_8BIT, la_irq_hnd);
+    asic_evt_set_handler(ASIC_EVT_EXP_8BIT, la_irq_hnd, NULL);
     asic_evt_enable(ASIC_EVT_EXP_8BIT, ASIC_IRQB);
 
     /* Enable receive interrupt */
@@ -437,7 +436,7 @@ static void la_hw_shutdown(void) {
 
     /* Unhook interrupts */
     asic_evt_disable(ASIC_EVT_EXP_8BIT, ASIC_IRQB);
-    asic_evt_set_handler(ASIC_EVT_EXP_8BIT, NULL);
+    asic_evt_remove_handler(ASIC_EVT_EXP_8BIT);
 }
 
 /* We don't really need these stats right now but we might want 'em later */
@@ -529,10 +528,11 @@ static int la_rx(void) {
     }
 }
 
-static void la_irq_hnd(uint32 code) {
+static void la_irq_hnd(uint32 code, void *data) {
     int intr_rx, intr_tx, hnd = 0;
 
     (void)code;
+    (void)data;
 
     /* Acknowledge Lan Adapter interrupt(s) */
     intr_tx = la_read(DLCR0);
@@ -701,7 +701,7 @@ static int la_if_set_mc(netif_t *self, const uint8 *list, int count) {
     return 0;
 }
 
-/* Set ISP configuration from the flashrom, as long as we're configured staticly */
+/* Set ISP configuration from the flashrom, as long as we're configured statically */
 static void la_set_ispcfg(void) {
     flashrom_ispcfg_t isp;
 
@@ -746,6 +746,14 @@ int la_init(void) {
     la_if.index = 0;
     la_if.dev_id = 0;
     la_if.flags = NETIF_NO_FLAGS;
+    la_if.if_detect = la_if_detect;
+
+    /* Short circuit if no lan is detected */
+    if(la_if.if_detect(&la_if) < 0) {
+        dbglog(DBG_KDEBUG, "lan: no device detected\n");
+        return -1;
+    }
+
     memset(la_if.ip_addr, 0, sizeof(la_if.ip_addr));
     memset(la_if.netmask, 0, sizeof(la_if.netmask));
     memset(la_if.gateway, 0, sizeof(la_if.gateway));
@@ -758,7 +766,7 @@ int la_init(void) {
     memset(&la_if.ip6_gateway, 0, sizeof(la_if.ip6_gateway));
     la_if.mtu6 = 0;
     la_if.hop_limit = 0;
-    la_if.if_detect = la_if_detect;
+
     la_if.if_init = la_if_init;
     la_if.if_shutdown = la_if_shutdown;
     la_if.if_start = la_if_start;

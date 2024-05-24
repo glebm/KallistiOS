@@ -18,7 +18,7 @@
    The implementations of getaddrinfo() and freeaddrinfo() are new to this
    version of the code though.
 
-   Eventually, I'd like to add some sort of cacheing of results to this file so
+   Eventually, I'd like to add some sort of caching of results to this file so
    that if you look something up more than once, it doesn't have to go back out
    to the server to do so. But, for now, there is no local database of cached
    addresses...
@@ -704,6 +704,28 @@ int getaddrinfo(const char *nodename, const char *servname,
         }
 
         return 0;
+    }
+
+    /* Try to handle input as an IPv4 address */
+    if(ihints.ai_family == AF_INET || ihints.ai_family == AF_UNSPEC) {
+        uint32_t ip4_addr;
+
+        if(inet_pton(AF_INET, nodename, &ip4_addr) > 0) {
+            ihints.ai_family = AF_INET;
+            *res = add_ipv4_ai(ip4_addr, port, &ihints, NULL);
+            return 0;
+        }
+    }
+
+    /* Try to handle input as an IPv6 address */
+    if(ihints.ai_family == AF_INET6 || ihints.ai_family == AF_UNSPEC) {
+        struct in6_addr addr;
+
+        if(inet_pton(AF_INET6, nodename, &addr.s6_addr) > 0) {
+            ihints.ai_family = AF_INET6;
+            *res = add_ipv6_ai(&addr, port, &ihints, NULL);
+            return 0;
+        }
     }
 
     /* If we've gotten this far, do the lookup. */
