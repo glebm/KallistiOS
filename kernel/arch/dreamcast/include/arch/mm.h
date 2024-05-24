@@ -1,6 +1,6 @@
 /* KallistiOS ##version##
 
-   arch/dreamcast/include/mm.h
+   arch/dreamcast/include/arch/mm.h
    Copyright (C) 2024 Falco Girgis
 
 */
@@ -118,7 +118,6 @@ size_t mm_ram_used(void);
     \sa mm_ram_end()
 */
 size_t mm_ram_free(void);
-
 
 /** @} */
 
