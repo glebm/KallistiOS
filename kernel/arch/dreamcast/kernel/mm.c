@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MM_ALIGNMENT 4
+
 /* End of program, exported from the linker script. */
 extern unsigned long end;
 
@@ -37,7 +39,7 @@ int mm_init(void) {
     /* Start right after the .data segment ends. */
     int base = (int)(&end);
     /* Longword align. */
-    base = (base + 3) & -4;
+    base = (base + (MM_ALIGNMENT - 1)) & -MM_ALIGNMENT;
     /* Set current position and start to base. */  
     brk_current = brk_start = (void *)base;
     /* Set end position and max to stack_end - 1. */
@@ -95,11 +97,11 @@ size_t mm_unused_capacity(void) {
 }
 
 void *mm_unused_start(void) {
-    return mm_unused_size()? (char *)mm_brk_end() + 1 : NULL;
+    return mm_unused_capacity()? (char *)mm_brk_end() + 1 : NULL;
 }
 
 void *mm_unused_end(void) {
-    return mm_unused_size()? brk_max : NULL;
+    return mm_unused_capacity()? brk_max : NULL;
 }
 
 int mm_brk(void *new_end) {
@@ -111,23 +113,23 @@ void *mm_sbrk(intptr_t increment) {
     if(!increment)
         return brk_current;
 
-    if(increment & 3)
-        increment = (increment + 4) & ~3;
+    if(increment & (MM_ALIGNMENT - 1))
+        increment = (increment + MM_ALIGNMENT) & ~(MM_ALIGNMENT - 1);
 
     const int irqs = irq_disable();
 
     void *current = brk_current;
     brk_current = (void *)((uintptr_t)brk_current + increment);
 
-    if(brk_current > brk_end || brk_current < brk_base) {
-        dbglog(DBG_WARNING, 
-               "Out of memory! [Requested: %d, Free: %u, Used: %u]\n",
-               increment, mm_sbrk_free(), mm_sbrk_size());
-        
+    if(brk_current > brk_end || brk_current < brk_start) {
         errno = ENOMEM;
 
         brk_current = current;
         current = (void *)-1;
+        
+        dbglog(DBG_WARNING, 
+               "Out of memory! [Requested: %d, Free: %u, Used: %u]\n",
+               increment, mm_brk_free(), mm_brk_size());
     } 
 
     irq_restore(irqs);
