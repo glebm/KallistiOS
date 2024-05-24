@@ -73,10 +73,12 @@ int mm_brk_set_size(size_t bytes) {
 }
 
 int mm_brk_set_capacity(size_t bytes) {
-    if(bytes < mm_brk_size() || 
-       bytes > mm_brk_max_capacity())
+    if(bytes > mm_brk_max_capacity())
         return -1;
     
+    if(bytes < mm_brk_size())
+        return -2;
+
     const int irqs = irq_disable();
     brk_end = (void*)((size_t)brk_start + bytes);
     irq_restore(irqs);
@@ -129,4 +131,31 @@ void *mm_sbrk(intptr_t increment) {
     return current;
 }
 
+void *mm_ram_start(void) {
+    return (void *)_arch_mem_bottom;
+}
+
+void *mm_ram_end(void) {
+    return (void *)_arch_mem_top;
+}
+
+size_t mm_ram_used(void) {
+
+}
+
+size_t mm_ram_free(void) {
+
+}
+
+void *mm_stack_start(void) {
+
+}
+
+void *mm_stack_current(void) {
+
+}
+
+void *mm_stack_free(void) {
+
+}
 
