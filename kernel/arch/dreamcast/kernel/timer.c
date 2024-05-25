@@ -349,19 +349,19 @@ uint64_t timer_ns_gettime64(void) {
 void timer_spin_sleep_ms(uint32_t ms) {
     const uint64_t target = timer_ms_gettime64() + ms;
 
-    while(timer_ms_gettime64() < target);
+    while(__likely(timer_ms_gettime64() < target));
 }
 
 void timer_spin_sleep_us(uint32_t us) {
     const uint64_t target = timer_us_gettime64() + us;
 
-    while(timer_us_gettime64() < target);
+    while(__likely(timer_us_gettime64() < target));
 }
 
 void timer_spin_sleep_ns(uint32_t ns) {
     const uint64_t target = timer_ns_gettime64() + ns;
 
-    while(timer_ns_gettime64() < target);
+    while(__likely(timer_ns_gettime64() < target));
 }
 
 /* Primary kernel timer. What we'll do here is handle actual timer IRQs
