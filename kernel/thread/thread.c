@@ -814,7 +814,7 @@ void thd_sleep_ns(uint32_t ns) {
     if(thd_mode == THD_MODE_NONE) {
         dbglog(DBG_WARNING, "thd_sleep called when threading not "
                "initialized.\n");
-        timer_spin_sleep_ns(ns);
+        timer_spin_delay_ns(ns);
         return;
     }
 
