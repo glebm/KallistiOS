@@ -3,7 +3,7 @@
    timer.c
    Copyright (C) 2000, 2001, 2002 Megan Potter
    Copyright (C) 2023, 2024 Falco Girgis
-   Copyright (C) 2023 Paul Cercueil <paul@crapouillou.net>
+   Copyright (C) 2023, 2024 Paul Cercueil <paul@crapouillou.net>
 */
 
 #include <assert.h>
@@ -151,6 +151,32 @@ int timer_clear(timer_channel_t which) {
 
     TIMER16(tcrs[which]) &= ~UNF;
     return !!(value & UNF);
+}
+
+/* Spin-loop kernel sleep func: uses the secondary timer in the
+   SH-4 to very accurately delay even when interrupts are disabled */
+void timer_spin_delay_ms(unsigned short ms) {
+    const uint64_t timeout = timer_ms_gettime64() + ms;
+
+    /* Note that we don't actually care about the counter overflowing.
+       Nobody will run their Dreamcast straight for 584942417 years. */
+    while(timer_ms_gettime64() < timeout);
+}
+
+void timer_spin_delay_us(unsigned short us) {
+    const uint64_t timeout = timer_us_gettime64() + us;
+
+    /* Note that we don't actually care about the counter overflowing.
+       Nobody will run their Dreamcast straight for 584942 years. */
+    while(timer_us_gettime64() < timeout);
+}
+
+void timer_spin_delay_ns(unsigned short ns) {
+    const uint64_t timeout = timer_ns_gettime64() + ns;
+
+    /* Note that we don't actually care about the counter overflowing.
+       Nobody will run their Dreamcast straight for 585 years. */
+    while(timer_ns_gettime64() < timeout);
 }
 
 /* Enable timer interrupts; needs to move to irq.c sometime. */

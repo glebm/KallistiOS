@@ -3,7 +3,8 @@
    arch/dreamcast/include/timer.h
    Copyright (c) 2000, 2001 Megan Potter
    Copyright (c) 2023, 2024 Falco Girgis
-   
+   Copyright (c) 2024 Paul Cercueil
+
 */
 
 /** \file    arch/timer.h
@@ -20,7 +21,7 @@
     \sa arch/wdt.h
 
     \todo
-    - Remove spin_loop_sleep() legacy compatibility macro.
+    - Remove timer_spin_sleep() legacy compatibility macro.
 
     \author Megan Potter
     \author Falco Girgis
@@ -357,47 +358,67 @@ uint64_t timer_ns_gettime64(void);
     @{
 */
 
-/** \brief      Spin-loop millisecond sleep function.
-    \deprecated Use timer_spin_sleep_ms().
+/** \brief      Spin-loop millisecond delay function.
+    \deprecated Use timer_spin_delay_ms().
 
     Compatibility macro for legacy millisecond spin sleep API.
 
-    \param ms 	The number of milliseconds to sleep.
+    \param ms 	The number of milliseconds to delay.
 */
-#define timer_spin_sleep timer_spin_sleep_ms
+#define timer_spin_sleep timer_spin_delay_ms
 
-/** \brief  Spin-loop millisecond sleep function.
+/** \brief  Spin-loop delay function with millisecond granularity
 
     This function is meant as a very accurate delay function, even if threading
     and interrupts are disabled.
+
+    \remark
+    It is a delay and not a sleep, which means that the CPU will be
+    busy-looping during that time frame. 
+
+    \warning
+    Even a single millisecond is a long time to be busy-waiting. Consider
+    using thd_sleep() to allow other threads to be serviced.
 
     \param  ms              The number of milliseconds to sleep.
 
-    \sa timer_spin_sleep_us(), timer_spin_sleep_ns()
+    \sa timer_spin_delay_us(), timer_spin_delay_ns()
 */
-void timer_spin_sleep_ms(uint32_t ms);
+void timer_spin_delay_ms(unsigned short ms);
 
-/** \brief 	Spin-loop microsecond sleep function.
+/** \brief  Spin-loop delay function with microsecond granularity
 
     This function is meant as a very accurate delay function, even if threading
-    and interrupts are disabled.
+    and interrupts are disabled. 
+    
+    \remark
+    It is a delay and not a sleep, which means that the CPU will be
+    busy-looping during that time frame. 
+    
+    \note
+    For any time frame bigger than a few hundred microseconds, it is
+    recommended to sleep instead.
 
-    \param us 	            The number of microseconds to sleep.
+    \param  us              The number of microseconds to wait for.
 
-    \sa timer_spin_sleep_ms(), timer_spin_sleep_ns()
+    \sa timer_spin_delay_ns(), thd_sleep()
 */
-void timer_spin_sleep_us(uint32_t us);
+void timer_spin_delay_us(unsigned short us);
 
-/** \brief      Spin-loop nanosecond sleep function.
+/** \brief  Spin-loop delay function with nanosecond granularity
 
     This function is meant as a very accurate delay function, even if threading
-    and interrupts are disabled.
+    and interrupts are disabled. 
+    
+    \remark
+    It is a delay and not a sleep, which means that the CPU will be
+    busy-looping during that time frame.
 
-    \param ns               The number of nanoseconds to sleep.
-
-    \sa timer_spin_sleep_ms(), timer_spin_sleep_us()
+    \param  ns              The number of nanoseconds to wait for.
+    
+    \sa timer_spin_delay_us(), thd_sleep()
 */
-void timer_spin_sleep_ns(uint32_t ns);
+void timer_spin_delay_ns(unsigned short ns);
 
 /** @} */
 
@@ -455,7 +476,7 @@ void timer_primary_wakeup(uint32_t millis);
 
 /** @} */
 
-/** \cond */
+/** \cond INTERNAL */
 /* Init function */
 int timer_init(void);
 /* Shutdown */
