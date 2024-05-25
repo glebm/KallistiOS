@@ -799,7 +799,6 @@ static void thd_timer_hnd(irq_context_t *context) {
 /* Thread blocking based sleeping; this is the preferred way to
    sleep because it eases the load on the system for the other
    threads. */
-<<<<<<< HEAD
 void thd_sleep_ms(uint32_t ms) {
     assert((uint64_t)ms * 1000000 <= UINT32_MAX);
     thd_sleep_ns(ms * 1000000);
@@ -811,9 +810,6 @@ void thd_sleep_us(uint32_t us) {
 }
 
 void thd_sleep_ns(uint32_t ns) {
-=======
-void thd_sleep(unsigned int ms) {
->>>>>>> master
     /* This should never happen. This should, perhaps, assert. */
     if(thd_mode == THD_MODE_NONE) {
         dbglog(DBG_WARNING, "thd_sleep called when threading not "
