@@ -14,7 +14,9 @@
 /* Be warned, not all purus are created equal, in fact, most of
    them act different for just about everything you feed to them. */
 
-static void purupuru_rumble_cb(maple_frame_t *frame) {
+static void purupuru_rumble_cb(maple_state_t *st, maple_frame_t *frame) {
+    (void)st;
+
     /* Unlock the frame */
     maple_frame_unlock(frame);
 
@@ -91,10 +93,9 @@ static maple_driver_t purupuru_drv = {
 };
 
 /* Add the purupuru to the driver chain */
-int purupuru_init(void) {
+void purupuru_init(void) {
     if(!purupuru_drv.drv_list.le_prev)
-        return maple_driver_reg(&purupuru_drv);
-    return -1;
+        maple_driver_reg(&purupuru_drv);
 }
 
 void purupuru_shutdown(void) {

@@ -4,9 +4,9 @@
 
 #
 
-KOS_ROMDISK_DIR = romdisk
 TARGET = rumble.elf
 OBJS = rumble.o romdisk.o
+KOS_ROMDISK_DIR = romdisk
 
 all: rm-elf $(TARGET)
 
@@ -19,7 +19,7 @@ rm-elf:
 	-rm -f $(TARGET) romdisk.*
 
 $(TARGET): $(OBJS)
-	kos-cc -o $(TARGET) $(OBJS) -lparallax -lz -lm
+	kos-cc -o $(TARGET) $(OBJS) -lparallax -lz
 
 run: $(TARGET)
 	$(KOS_LOADER) $(TARGET)

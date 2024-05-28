@@ -5,8 +5,9 @@
 
 */
 
-/** \file   kos/rwsem.h
-    \brief  Definition for a reader/writer semaphore.
+/** \file    kos/rwsem.h
+    \brief   Definition for a reader/writer semaphore.
+    \ingroup kthreads
 
     This file defines a concept of reader/writer semaphores. Basically, this
     type of lock allows an unlimited number of "readers" to acquire the lock at
@@ -40,8 +41,8 @@ __BEGIN_DECLS
     \headerfile kos/rwsem.h
 */
 typedef struct rw_semaphore {
-    /** \brief  Are we initialized? */
-    int initialized;
+    /** \brief  Was this structure created with rwsem_create()? */
+    int dynamic;
 
     /** \brief  The number of readers that are currently holding the lock. */
     int read_count;
@@ -54,13 +55,14 @@ typedef struct rw_semaphore {
 } rw_semaphore_t;
 
 /** \brief  Initializer for a transient reader/writer semaphore */
-#define RWSEM_INITIALIZER   { 1, 0, NULL, NULL }
+#define RWSEM_INITIALIZER   { 0, 0, NULL, NULL }
 
 /** \brief  Allocate a reader/writer semaphore.
 
     This function allocates a new reader/writer lock that is initially not
     locked either for reading or writing.
 
+    \deprecated
     This function is formally deprecated, and should not be used in newly
     written code. Instead, please use rwsem_init().
 
@@ -315,7 +317,7 @@ int rwsem_read_upgrade(rw_semaphore_t *s);
     \par    Error Conditions:
     \em     EWOULDBLOCK - a call to rwsem_read_upgrade would block \n
     \em     EBUSY - another reader has already requested an upgrade \n
-    \em     EINVAL - the sempahore is not initialized
+    \em     EINVAL - the semaphore is not initialized
 */
 int rwsem_read_tryupgrade(rw_semaphore_t *s);
 

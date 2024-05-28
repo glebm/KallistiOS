@@ -3,6 +3,7 @@
    dc/cdrom.h
    Copyright (C) 2000-2001 Megan Potter
    Copyright (C) 2014 Donald Haase
+   Copyright (C) 2023 Ruslan Rostovtsev
 */
 
 #ifndef __DC_CDROM_H
@@ -13,8 +14,9 @@ __BEGIN_DECLS
 
 #include <arch/types.h>
 
-/** \file   dc/cdrom.h
-    \brief  CD access to the GD-ROM drive.
+/** \file    dc/cdrom.h
+    \brief   CD access to the GD-ROM drive.
+    \ingroup gdrom
 
     This file contains the interface to the Dreamcast's GD-ROM drive. It is
     simply called cdrom.h and cdrom.c because, by design, you cannot directly
@@ -29,34 +31,58 @@ __BEGIN_DECLS
     normal file reading, consult with the stuff for the fs and for fs_iso9660.
 
     \author Megan Potter
+    \author Ruslan Rostovtsev
     \see    kos/fs.h
     \see    dc/fs_iso9660.h
 */
 
-/** \defgroup cd_cmd_codes          CD-ROM syscall command codes
+/** \defgroup gdrom     GD-ROM 
+    \brief              Driver for the Dreamcast's GD-ROM drive
+    \ingroup            vfs
+*/
+
+/** \defgroup cd_cmd_codes          Syscall Command Codes
+    \brief                          Command codes for GD-ROM syscalsl
+    \ingroup  gdrom
 
     These are the syscall command codes used to actually do stuff with the
     GD-ROM drive. These were originally provided by maiwe.
 
     @{
 */
-#define CMD_PIOREAD 16  /**< \brief Read via PIO */
-#define CMD_DMAREAD 17  /**< \brief Read via DMA */
-#define CMD_GETTOC  18  /**< \brief Read TOC */
-#define CMD_GETTOC2 19  /**< \brief Read TOC */
-#define CMD_PLAY    20  /**< \brief Play track */
-#define CMD_PLAY2   21  /**< \brief Play sectors */
-#define CMD_PAUSE   22  /**< \brief Pause playback */
-#define CMD_RELEASE 23  /**< \brief Resume from pause */
-#define CMD_INIT    24  /**< \brief Initialize the drive */
-#define CMD_SEEK    27  /**< \brief Seek to a new position */
-#define CMD_READ    28  /**< \brief Read raw sectors */
-#define CMD_STOP    33  /**< \brief Stop the disc from spinning */
-#define CMD_GETSCD  34  /**< \brief Get subcode data */
-#define CMD_GETSES  35  /**< \brief Get session */
+#define CMD_CHECK_LICENSE       2  /**< \brief Check license */
+#define CMD_REQ_SPI_CMD         4  /**< \brief Request to Sega Packet Interface */
+#define CMD_PIOREAD            16  /**< \brief Read via PIO */
+#define CMD_DMAREAD            17  /**< \brief Read via DMA */
+#define CMD_GETTOC             18  /**< \brief Read TOC */
+#define CMD_GETTOC2            19  /**< \brief Read TOC */
+#define CMD_PLAY               20  /**< \brief Play track */
+#define CMD_PLAY2              21  /**< \brief Play sectors */
+#define CMD_PAUSE              22  /**< \brief Pause playback */
+#define CMD_RELEASE            23  /**< \brief Resume from pause */
+#define CMD_INIT               24  /**< \brief Initialize the drive */
+#define CMD_DMA_ABORT          25  /**< \brief Abort DMA transfer */
+#define CMD_OPEN_TRAY          26  /**< \brief Open CD tray (on DevBox?) */
+#define CMD_SEEK               27  /**< \brief Seek to a new position */
+#define CMD_DMAREAD_STREAM     28  /**< \brief Stream DMA until end/abort */
+#define CMD_NOP                29  /**< \brief No operation */
+#define CMD_REQ_MODE           30  /**< \brief Request mode */
+#define CMD_SET_MODE           31  /**< \brief Setup mode */
+#define CMD_SCAN_CD            32  /**< \brief Scan CD */
+#define CMD_STOP               33  /**< \brief Stop the disc from spinning */
+#define CMD_GETSCD             34  /**< \brief Get subcode data */
+#define CMD_GETSES             35  /**< \brief Get session */
+#define CMD_REQ_STAT           36  /**< \brief Request stat */
+#define CMD_PIOREAD_STREAM     37  /**< \brief Stream PIO until end/abort */
+#define CMD_DMAREAD_STREAM_EX  38  /**< \brief Stream DMA transfer */
+#define CMD_PIOREAD_STREAM_EX  39  /**< \brief Stream PIO transfer */
+#define CMD_GET_VERS           40  /**< \brief Get syscall driver version */
+#define CMD_MAX                47  /**< \brief Max of GD syscall commands */
 /** @} */
 
-/** \defgroup cd_cmd_response       CD-ROM command responses
+/** \defgroup cd_cmd_response       Command Responses
+    \brief                          Responses from GD-ROM syscalls
+    \ingroup  gdrom
 
     These are the values that the various functions can return as error codes.
     @{
@@ -67,9 +93,12 @@ __BEGIN_DECLS
 #define ERR_SYS         3   /**< \brief System error */
 #define ERR_ABORTED     4   /**< \brief Command aborted */
 #define ERR_NO_ACTIVE   5   /**< \brief System inactive? */
+#define ERR_TIMEOUT     6   /**< \brief Aborted due to timeout */
 /** @} */
 
-/** \defgroup cd_cmd_status         CD-ROM Command Status responses
+/** \defgroup cd_cmd_status         Command Status Responses
+    \brief                          GD-ROM status responses
+    \ingroup  gdrom
 
     These are the raw values the status syscall returns.
     @{
@@ -78,10 +107,26 @@ __BEGIN_DECLS
 #define NO_ACTIVE   0   /**< \brief System inactive? */
 #define PROCESSING  1   /**< \brief Processing command */
 #define COMPLETED   2   /**< \brief Command completed successfully */
-#define ABORTED     3   /**< \brief Command aborted before completion */
+#define STREAMING   3   /**< \brief Stream type command is in progress */
+#define BUSY        4   /**< \brief GD syscalls is busy */
 /** @} */
 
-/** \defgroup cdda_read_modes       CDDA read modes
+/** \defgroup cd_cmd_ata_status       ATA Statuses
+    \brief                            ATA statuses for GD-ROM driver
+    \ingroup  gdrom 
+
+    @{
+*/
+#define ATA_STAT_INTERNAL   0x00
+#define ATA_STAT_IRQ        0x01
+#define ATA_STAT_DRQ_0      0x02
+#define ATA_STAT_DRQ_1      0x03
+#define ATA_STAT_BUSY       0x04
+/** @} */
+
+/** \defgroup cdda_read_modes       CDDA Read Modes
+    \brief                          Read modes for CDDA
+    \ingroup  gdrom
 
     Valid values to pass to the cdrom_cdda_play() function for the mode
     parameter.
@@ -91,7 +136,9 @@ __BEGIN_DECLS
 #define CDDA_SECTORS    2   /**< \brief Play by sector number */
 /** @} */
 
-/** \defgroup cd_read_sector_part    CD-ROM Read Sector Part
+/** \defgroup cd_read_sector_part    Read Sector Part
+    \brief                           Whether to read data or whole sector
+    \ingroup  gdrom
 
     Parts of the a CD-ROM sector to read. These are possible values for the
     third parameter word sent with the change data type syscall. 
@@ -101,21 +148,40 @@ __BEGIN_DECLS
 #define CDROM_READ_DATA_AREA    0x2000    /**< \brief Read the data area */
 /** @} */
 
-/** \defgroup cd_read_subcode_type    CD-ROM Read Subcode Type
+/** \defgroup cd_read_subcode_type    Read Subcode Type
+    \brief                            Types of data to read from sector subcode
+    \ingroup  gdrom
 
     Types of data available to read from the sector subcode. These are 
     possible values for the first parameter sent to the GETSCD syscall.
     @{
 */
-#define CD_SUB_Q_CHANNEL        0    /**< \brief Read Q Channel Subcode Data */
-#define CD_SUB_CURRENT_POSITION 1    /**< \brief Read all Subcode Data for 
-                                                 most recent sector */
+#define CD_SUB_Q_ALL            0    /**< \brief Read all Subcode Data */
+#define CD_SUB_Q_CHANNEL        1    /**< \brief Read Q Channel Subcode Data */
 #define CD_SUB_MEDIA_CATALOG    2    /**< \brief Read the Media Catalog 
                                                  Subcode Data */
 #define CD_SUB_TRACK_ISRC       3    /**< \brief Read the ISRC Subcode Data */
+#define CD_SUB_RESERVED         4    /**< \brief Reserved */
 /** @} */
 
-/** \defgroup cd_read_sector_mode    CD-ROM Read Sector Mode
+/** \defgroup cd_subcode_audio    Subcode Audio Status
+    \brief                        GETSCD syscall response codes
+    \ingroup  gdrom
+
+    Information about CDDA playback from GETSCD syscall.
+    @{
+*/
+#define CD_SUB_AUDIO_STATUS_INVALID    0x00
+#define CD_SUB_AUDIO_STATUS_PLAYING    0x11
+#define CD_SUB_AUDIO_STATUS_PAUSED     0x12
+#define CD_SUB_AUDIO_STATUS_ENDED      0x13
+#define CD_SUB_AUDIO_STATUS_ERROR      0x14
+#define CD_SUB_AUDIO_STATUS_NO_INFO    0x15
+/** @} */
+
+/** \defgroup cd_read_sector_mode    Read Sector Mode
+    \brief                           Mode to use when reading sectors
+    \ingroup  gdrom
 
     How to read the sectors of a CD, via PIO or DMA. 4th parameter of 
     cdrom_read_sectors_ex.
@@ -125,12 +191,15 @@ __BEGIN_DECLS
 #define CDROM_READ_DMA 1    /**< \brief Read sector(s) in DMA mode */
 /** @} */
 
-/** \defgroup cd_status_values      CD-ROM status values
+/** \defgroup cd_status_values      Status Values
+    \brief                          Status values for GD-ROM drive
+    \ingroup  gdrom
 
     These are the values that can be returned as the status parameter from the
     cdrom_get_status() function.
     @{
 */
+#define CD_STATUS_READ_FAIL -1  /**< \brief Can't read status */
 #define CD_STATUS_BUSY      0   /**< \brief Drive is busy */
 #define CD_STATUS_PAUSED    1   /**< \brief Disc is paused */
 #define CD_STATUS_STANDBY   2   /**< \brief Drive is in standby */
@@ -139,22 +208,29 @@ __BEGIN_DECLS
 #define CD_STATUS_SCANNING  5   /**< \brief Drive is scanning */
 #define CD_STATUS_OPEN      6   /**< \brief Disc tray is open */
 #define CD_STATUS_NO_DISC   7   /**< \brief No disc inserted */
+#define CD_STATUS_RETRY     8   /**< \brief Retry is needed */
+#define CD_STATUS_ERROR     9   /**< \brief System error */
+#define CD_STATUS_FATAL     12  /**< \brief Need reset syscalls */
 /** @} */
 
-/** \defgroup cd_disc_types         CD-ROM drive disc types
+/** \defgroup cd_disc_types         Drive Disc Types
+    \brief                          Disc types within GD-ROM drive
+    \ingroup  gdrom
 
     These are the values that can be returned as the disc_type parameter from
     the cdrom_get_status() function.
     @{
 */
-#define CD_CDDA     0       /**< \brief Audio CD (Red book) */
+#define CD_CDDA     0x00    /**< \brief Audio CD (Red book) or no disc */
 #define CD_CDROM    0x10    /**< \brief CD-ROM or CD-R (Yellow book) */
 #define CD_CDROM_XA 0x20    /**< \brief CD-ROM XA (Yellow book extension) */
 #define CD_CDI      0x30    /**< \brief CD-i (Green book) */
 #define CD_GDROM    0x80    /**< \brief GD-ROM */
+#define CD_FAIL     0xf0    /**< \brief Need reset syscalls */
 /** @} */
 
 /** \brief  TOC structure returned by the BIOS.
+    \ingroup gdrom
 
     This is the structure that the CMD_GETTOC2 syscall command will return for
     the TOC. Note the data is in FAD, not LBA/LSN.
@@ -168,7 +244,10 @@ typedef struct {
     uint32  leadout_sector;     /**< \brief Point A2 information (leadout) */
 } CDROM_TOC;
 
-/** \defgroup cd_toc_access         CD-ROM TOC access macros
+/** \defgroup cd_toc_access         TOC Access Macros
+    \brief                          Macros used to access the TOC
+    \ingroup  gdrom
+
     @{
 */
 /** \brief  Get the FAD address of a TOC entry.
@@ -196,7 +275,8 @@ typedef struct {
 #define TOC_TRACK(n) ( ((n) & 0x00ff0000) >> 16 )
 /** @} */
 
-/** \brief  Set the sector size for read sectors.
+/** \brief    Set the sector size for read sectors.
+    \ingroup  gdrom
 
     This function sets the sector size that the cdrom_read_sectors() function
     will return. Be sure to set this to the correct value for the type of
@@ -209,10 +289,11 @@ typedef struct {
 */
 int cdrom_set_sector_size(int size);
 
-/** \brief  Execute a CD-ROM command.
+/** \brief    Execute a CD-ROM command.
+    \ingroup  gdrom
 
     This function executes the specified command using the BIOS syscall for
-    executing GD-ROM commands. This is now thread-safe to be called by users.
+    executing GD-ROM commands.
 
     \param  cmd             The command number to execute.
     \param  param           Data to pass to the syscall.
@@ -221,7 +302,22 @@ int cdrom_set_sector_size(int size);
 */
 int cdrom_exec_cmd(int cmd, void *param);
 
-/** \brief  Get the status of the GD-ROM drive.
+/** \brief    Execute a CD-ROM command with timeout.
+    \ingroup  gdrom
+
+    This function executes the specified command using the BIOS syscall for
+    executing GD-ROM commands with timeout.
+
+    \param  cmd             The command number to execute.
+    \param  param           Data to pass to the syscall.
+    \param  timeout         Timeout in milliseconds.
+
+    \return                 \ref cd_cmd_response
+*/
+int cdrom_exec_cmd_timed(int cmd, void *param, int timeout);
+
+/** \brief    Get the status of the GD-ROM drive.
+    \ingroup  gdrom
 
     \param  status          Space to return the drive's status.
     \param  disc_type       Space to return the type of disc in the drive.
@@ -233,6 +329,7 @@ int cdrom_exec_cmd(int cmd, void *param);
 int cdrom_get_status(int *status, int *disc_type);
 
 /** \brief    Change the datatype of disc.
+    \ingroup  gdrom
 
     \note                   This function is formally deprecated. It should not
                             be used in any future code, and may be removed in
@@ -243,6 +340,7 @@ int cdrom_change_dataype(int sector_part, int cdxa, int sector_size)
                         __depr("Use cdrom_change_datatype instead.");
 
 /** \brief    Change the datatype of disc.
+    \ingroup  gdrom
 
     This function will take in all parameters to pass to the change_datatype 
     syscall. This allows these parameters to be modified without a reinit. 
@@ -258,7 +356,8 @@ int cdrom_change_dataype(int sector_part, int cdxa, int sector_size)
 */
 int cdrom_change_datatype(int sector_part, int cdxa, int sector_size);
 
-/** \brief  Re-initialize the GD-ROM drive.
+/** \brief    Re-initialize the GD-ROM drive.
+    \ingroup  gdrom
 
     This function is for reinitializing the GD-ROM drive after a disc change to
     its default settings. Calls cdrom_reinit(-1,-1,-1)
@@ -269,6 +368,7 @@ int cdrom_change_datatype(int sector_part, int cdxa, int sector_size);
 int cdrom_reinit(void);
 
 /** \brief    Re-initialize the GD-ROM drive with custom parameters.
+    \ingroup  gdrom
 
     At the end of each cdrom_reinit(), cdrom_change_datatype is called. 
     This passes in the requested values to that function after 
@@ -284,7 +384,8 @@ int cdrom_reinit(void);
 */
 int cdrom_reinit_ex(int sector_part, int cdxa, int sector_size);
 
-/** \brief  Read the table of contents from the disc.
+/** \brief    Read the table of contents from the disc.
+    \ingroup  gdrom
 
     This function reads the TOC from the specified session of the disc.
 
@@ -294,7 +395,8 @@ int cdrom_reinit_ex(int sector_part, int cdxa, int sector_size);
 */
 int cdrom_read_toc(CDROM_TOC *toc_buffer, int session);
 
-/** \brief  Read one or more sector from a CD-ROM.
+/** \brief    Read one or more sector from a CD-ROM.
+    \ingroup  gdrom
 
     This function reads the specified number of sectors from the disc, starting
     where requested. This will respect the size of the sectors set with
@@ -310,7 +412,8 @@ int cdrom_read_toc(CDROM_TOC *toc_buffer, int session);
 */
 int cdrom_read_sectors_ex(void *buffer, int sector, int cnt, int mode);
 
-/** \brief  Read one or more sector from a CD-ROM in PIO mode.
+/** \brief    Read one or more sector from a CD-ROM in PIO mode.
+    \ingroup  gdrom
 
     Default version of cdrom_read_sectors_ex, which forces PIO mode.
 
@@ -323,6 +426,7 @@ int cdrom_read_sectors_ex(void *buffer, int sector, int cnt, int mode);
 int cdrom_read_sectors(void *buffer, int sector, int cnt);
 
 /** \brief    Read subcode data from the most recently read sectors.
+    \ingroup  gdrom
 
     After reading sectors, this can pull subcode data regarding the sectors 
     read. If reading all subcode data with CD_SUB_CURRENT_POSITION, this needs 
@@ -337,7 +441,8 @@ int cdrom_read_sectors(void *buffer, int sector, int cnt);
 */
 int cdrom_get_subcode(void *buffer, int buflen, int which);
 
-/** \brief  Locate the sector of the data track.
+/** \brief    Locate the sector of the data track.
+    \ingroup  gdrom
 
     This function will search the toc for the last entry that has a CTRL value
     of 4, and return its FAD address.
@@ -347,7 +452,8 @@ int cdrom_get_subcode(void *buffer, int buflen, int which);
 */
 uint32 cdrom_locate_data_track(CDROM_TOC *toc);
 
-/** \brief  Play CDDA audio tracks or sectors.
+/** \brief    Play CDDA audio tracks or sectors.
+    \ingroup  gdrom
 
     This function starts playback of CDDA audio.
 
@@ -359,19 +465,22 @@ uint32 cdrom_locate_data_track(CDROM_TOC *toc);
 */
 int cdrom_cdda_play(uint32 start, uint32 end, uint32 loops, int mode);
 
-/** \brief  Pause CDDA audio playback.
+/** \brief    Pause CDDA audio playback.
+    \ingroup  gdrom
 
     \return                 \ref cd_cmd_response
 */
 int cdrom_cdda_pause(void);
 
-/** \brief  Resume CDDA audio playback after a pause.
+/** \brief    Resume CDDA audio playback after a pause.
+    \ingroup  gdrom
 
     \return                 \ref cd_cmd_response
 */
 int cdrom_cdda_resume(void);
 
-/** \brief  Spin down the CD.
+/** \brief    Spin down the CD.
+    \ingroup  gdrom
 
     This stops the disc in the drive from spinning until it is accessed again.
 
@@ -379,17 +488,17 @@ int cdrom_cdda_resume(void);
 */
 int cdrom_spin_down(void);
 
-/** \brief  Initialize the GD-ROM for reading CDs.
+/** \brief    Initialize the GD-ROM for reading CDs.
+    \ingroup  gdrom
 
     This initializes the CD-ROM reading system, reactivating the drive and
     handling initial setup of the disc.
-
-    \retval 0               On success.
-    \retval -1              Already initted, shutdown before initting again.
 */
-int cdrom_init(void);
+void cdrom_init(void);
 
-/** \brief  Shutdown the CD reading system. */
+/** \brief    Shutdown the CD reading system.
+    \ingroup  gdrom
+ */
 void cdrom_shutdown(void);
 
 __END_DECLS

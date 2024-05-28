@@ -17,6 +17,7 @@ printf goes to the dc-tool console
 
 */
 
+#include <dc/fifo.h>
 #include <dc/fs_dcload.h>
 #include <kos/thread.h>
 #include <arch/spinlock.h>
@@ -38,7 +39,7 @@ static spinlock_t mutex = SPINLOCK_INITIALIZER;
         if(!irq_inside_int()) { \
             old = irq_disable(); \
         } \
-        while((*(vuint32 *)0xa05f688c) & 0x20) \
+        while(FIFO_STATUS & FIFO_SH4) \
             ; \
         rv = dcloadsyscall(__VA_ARGS__); \
         if(!irq_inside_int()) \
@@ -528,15 +529,15 @@ void fs_dcload_init_console(void) {
 }
 
 /* Call fs_dcload_init_console() before calling fs_dcload_init() */
-int fs_dcload_init(void) {
+void fs_dcload_init(void) {
     // This was already done in init_console.
     if(dcload_type == DCLOAD_TYPE_NONE)
-        return -1;
+        return;
 
     /* Check for combination of KOS networking and dcload-ip */
     if((dcload_type == DCLOAD_TYPE_IP) && (__kos_init_flags & INIT_NET)) {
         dbglog(DBG_INFO, "dc-load console+kosnet, will switch to internal ethernet\n");
-        return -1;
+        return;
         /* if(old_printk) {
             dbgio_set_printk(old_printk);
             old_printk = 0;
@@ -545,13 +546,13 @@ int fs_dcload_init(void) {
     }
 
     /* Register with VFS */
-    return nmmgr_handler_add(&vh.nmmgr);
+    nmmgr_handler_add(&vh.nmmgr);
 }
 
-int fs_dcload_shutdown(void) {
+void fs_dcload_shutdown(void) {
     /* Check for dcload */
     if(*DCLOADMAGICADDR != DCLOADMAGICVALUE)
-        return -1;
+        return;
 
     /* Free dcload wrkram */
     if(dcload_wrkmem) {
@@ -565,7 +566,7 @@ int fs_dcload_shutdown(void) {
         dbgio_dev_select("scif");
     }
 
-    return nmmgr_handler_remove(&vh.nmmgr);
+    nmmgr_handler_remove(&vh.nmmgr);
 }
 
 /* used for dcload-ip + lwIP

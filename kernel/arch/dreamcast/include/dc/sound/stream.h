@@ -3,11 +3,13 @@
    dc/sound/stream.h
    Copyright (C) 2002, 2004 Megan Potter
    Copyright (C) 2020 Lawrence Sebald
+   Copyright (C) 2023 Ruslan Rostovtsev
 
 */
 
-/** \file   dc/sound/stream.h
-    \brief  Sound streaming support.
+/** \file    dc/sound/stream.h
+    \brief   Sound streaming support.
+    \ingroup audio_streaming
 
     This file contains declarations for doing streams of sound. This underlies
     pretty much any decoded sounds you might use, including the Ogg Vorbis
@@ -17,6 +19,7 @@
     \author Megan Potter
     \author Florian Schulze
     \author Lawrence Sebald
+    \author Ruslan Rostovtsev
 */
 
 #ifndef __DC_SOUND_STREAM_H
@@ -26,6 +29,12 @@
 __BEGIN_DECLS
 
 #include <arch/types.h>
+
+/** \defgroup audio_streaming   Streaming
+    \brief                      Streaming audio playback and management
+    \ingroup                    audio
+    @{
+*/
 
 /** \brief  The maximum number of streams that can be allocated at once. */
 #define SND_STREAM_MAX 4
@@ -56,7 +65,8 @@ typedef int snd_stream_hnd_t;
     \param  smp_req         The number of samples requested.
     \param  smp_recv        Used to return the number of samples available.
     \return                 A pointer to the buffer of samples. If stereo, the
-                            samples should be interleaved.
+                            samples should be interleaved. For best performance
+                            use 32-byte aligned pointer.
 */
 typedef void *(*snd_stream_callback_t)(snd_stream_hnd_t hnd, int smp_req,
                                        int *smp_recv);
@@ -94,13 +104,6 @@ void snd_stream_set_userdata(snd_stream_hnd_t hnd, void *d);
 */
 void *snd_stream_get_userdata(snd_stream_hnd_t hnd);
 
-/* Add an effect filter to the sound stream chain. When the stream
-   buffer filler needs more data, it starts out by calling the initial
-   callback (set above). It then calls each function in the effect
-   filter chain, which can modify the buffer and the amount of data
-   available as well. Filters persist across multiple calls to _init()
-   but will be emptied by _shutdown(). */
-
 /** \brief  Stream filter callback type.
 
     Functions providing filters over the stream data will be of this type, and
@@ -124,6 +127,12 @@ typedef void (*snd_stream_filter_t)(snd_stream_hnd_t hnd, void *obj, int hz,
 
     This function adds a filter to the specified stream. The filter will be
     called on each block of data input to the stream from then forward.
+
+    When the stream buffer filler needs more data, it starts out by calling
+    the initial callback (set above). It then calls each function in the
+    effect filter chain, which can modify the buffer and the amount of data
+    available as well. Filters persist across multiple calls to _init()
+    but will be emptied by _shutdown().
 
     \param  hnd             The stream to add the filter to.
     \param  filtfunc        A pointer to the filter function.
@@ -235,7 +244,7 @@ void snd_stream_queue_disable(snd_stream_hnd_t hnd);
 */
 void snd_stream_queue_go(snd_stream_hnd_t hnd);
 
-/** \brief  Start a stream.
+/** \brief  Start a 16-bit PCM stream.
 
     This function starts processing the given stream, prefilling the buffers as
     necessary. In queueing mode, this will not start playback.
@@ -245,6 +254,28 @@ void snd_stream_queue_go(snd_stream_hnd_t hnd);
     \param  st              1 if the sound is stereo, 0 if mono.
 */
 void snd_stream_start(snd_stream_hnd_t hnd, uint32 freq, int st);
+
+/** \brief  Start a 8-bit PCM stream.
+
+    This function starts processing the given stream, prefilling the buffers as
+    necessary. In queueing mode, this will not start playback.
+
+    \param  hnd             The stream to start.
+    \param  freq            The frequency of the sound.
+    \param  st              1 if the sound is stereo, 0 if mono.
+*/
+void snd_stream_start_pcm8(snd_stream_hnd_t hnd, uint32 freq, int st);
+
+/** \brief  Start a 4-bit ADPCM stream.
+
+    This function starts processing the given stream, prefilling the buffers as
+    necessary. In queueing mode, this will not start playback.
+
+    \param  hnd             The stream to start.
+    \param  freq            The frequency of the sound.
+    \param  st              1 if the sound is stereo, 0 if mono.
+*/
+void snd_stream_start_adpcm(snd_stream_hnd_t hnd, uint32 freq, int st);
 
 /** \brief  Stop a stream.
 
@@ -277,6 +308,8 @@ int snd_stream_poll(snd_stream_hnd_t hnd);
     \param  vol             The volume to set. Valid values are 0-255.
 */
 void snd_stream_volume(snd_stream_hnd_t hnd, int vol);
+
+/** @} */
 
 __END_DECLS
 

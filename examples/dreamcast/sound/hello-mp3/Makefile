@@ -14,11 +14,10 @@ rm-elf:
 	-rm -f $(TARGET) romdisk.*
 
 $(TARGET): $(OBJS) 
-	kos-cc -o $(TARGET) $(OBJS) -lmp3 -lm
+	kos-cc -o $(TARGET) $(OBJS) -lmp3
 
 run: $(TARGET)
 	$(KOS_LOADER) $(TARGET)
-#	dc-tool -p -b 115200 -x $(TARGET)
 
 dist: $(TARGET)
 	-rm -f $(OBJS) romdisk.img
