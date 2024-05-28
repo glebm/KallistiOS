@@ -7,7 +7,7 @@
 
 /*
 
-This module manages "names". A name is a generic identifer that corresponds
+This module manages "names". A name is a generic identifier that corresponds
 to a handler for that name. These names can correspond to services exported
 by a module or the kernel, they can be VFS handlers, they can be just about
 anything. The only requirement is that they implement the nmmgr_handler_t
@@ -46,8 +46,13 @@ nmmgr_handler_t * nmmgr_lookup(const char *fn) {
         /* Couldn't find a handler */
         return NULL;
     }
-    else
+    else {
+        /* If we found an alias, return its referent */
+        if(cur->flags & NMMGR_FLAGS_ALIAS)
+            return ((alias_handler_t*)cur)->alias;
+
         return cur;
+    }
 }
 
 nmmgr_list_t * nmmgr_get_list(void) {
