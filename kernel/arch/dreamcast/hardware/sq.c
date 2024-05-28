@@ -60,15 +60,14 @@ __attribute__((noinline)) void *sq_cpy(void *dest, const void *src, size_t n) {
     uint32_t *d = SQ_MASK_DEST(dest);
     const uint32_t *s = src;
 
-    _Complex float ds;
-    _Complex float ds2;
-    _Complex float ds3;
-    _Complex float ds4;
-
-    sq_lock(dest);
-
     /* Fill/write queues as many times necessary */
     n >>= 5;
+
+    /* Exit early if we dont have enough data to copy */
+    if(n == 0)
+        return dest;
+
+    sq_lock(dest);
 
     /* If src is not 8-byte aligned, slow path */
     if ((uintptr_t)src & 7) {
@@ -86,35 +85,7 @@ __attribute__((noinline)) void *sq_cpy(void *dest, const void *src, size_t n) {
             d += 8;
         }
     } else { /* If src is 8-byte aligned, fast path */
-        /* Moop algorithm; Using the fpu we can fill the queue faster before
-           firing it out off */
-        __asm__ __volatile__ (
-            "fschg\n\t"
-            "clrs\n" 
-            ".align 2\n"
-            "1:\n\t"
-            /* *d++ = *s++ */
-            "fmov.d @%[in]+, %[scratch]\n\t"
-            "fmov.d @%[in]+, %[scratch2]\n\t"
-            "fmov.d @%[in]+, %[scratch3]\n\t"
-            "fmov.d @%[in]+, %[scratch4]\n\t"
-            "add #32, %[out]\n\t"
-            "pref @%[in]\n\t"  /* Prefetch 32 bytes for next loop */
-            "dt %[size]\n\t"   /* while(n--) */
-            "fmov.d %[scratch4], @-%[out]\n\t"
-            "fmov.d %[scratch3], @-%[out]\n\t"
-            "fmov.d %[scratch2], @-%[out]\n\t"
-            "fmov.d %[scratch], @-%[out]\n\t"
-            "pref @%[out]\n\t" /* Fire off store queue */
-            "bf.s 1b\n\t"
-            "add #32, %[out]\n\t"
-            "fschg\n"
-            : [in] "+&r" ((uint32_t)s), [out] "+&r" ((uint32_t)d), 
-              [size] "+&r" (n), [scratch] "=&d" (ds), [scratch2] "=&d" (ds2), 
-              [scratch3] "=&d" (ds3), [scratch4] "=&d" (ds4) /* outputs */
-            : /* inputs */
-            : "t", "memory" /* clobbers */
-        );
+        sq_fast_cpy(d, s, n);
     }
 
     sq_unlock();
@@ -122,7 +93,7 @@ __attribute__((noinline)) void *sq_cpy(void *dest, const void *src, size_t n) {
 }
 
 /* Fills n bytes at dest with byte c, dest must be 32-byte aligned */
-void * sq_set(void *dest, uint32_t c, size_t n) {
+void *sq_set(void *dest, uint32_t c, size_t n) {
     /* Duplicate low 8-bits of c into high 24-bits */
     c = c & 0xff;
     c = (c << 24) | (c << 16) | (c << 8) | c;
@@ -131,7 +102,7 @@ void * sq_set(void *dest, uint32_t c, size_t n) {
 }
 
 /* Fills n bytes at dest with short c, dest must be 32-byte aligned */
-void * sq_set16(void *dest, uint32_t c, size_t n) {
+void *sq_set16(void *dest, uint32_t c, size_t n) {
     /* Duplicate low 16-bits of c into high 16-bits */
     c = c & 0xffff;
     c = (c << 16) | c;
@@ -140,7 +111,7 @@ void * sq_set16(void *dest, uint32_t c, size_t n) {
 }
 
 /* Fills n bytes at dest with int c, dest must be 32-byte aligned */
-void * sq_set32(void *dest, uint32_t c, size_t n) {
+void *sq_set32(void *dest, uint32_t c, size_t n) {
     uint32_t *d = SQ_MASK_DEST(dest);
 
     sq_lock(dest);

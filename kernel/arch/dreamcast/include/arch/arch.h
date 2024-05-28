@@ -52,7 +52,16 @@ extern uint32 _arch_mem_top;
 /** \brief  Base address of available physical pages. */
 #define page_phys_base  0x8c010000
 
-/** \brief  Number of timer ticks per second. */
+/** \brief Scheduler interrupt frequency
+
+    Timer interrupt frequency for the KOS thread scheduler.
+
+    \note
+    This value is what KOS uses initially upon startup, but it can be
+    reconfigured at run-time.
+
+    \sa thd_get_hz(), thd_set_hz()
+*/
 #define HZ              100
 
 /** \brief  Default thread stack size. */
@@ -370,7 +379,7 @@ const char *kos_get_authors(void);
     \param  fptr            The frame pointer to look at.
     \return                 The return address of the pointer.
 */
-#define arch_fptr_ret_addr(fptr) (*((uint32*)fptr))
+#define arch_fptr_ret_addr(fptr) (*((uint32*)(fptr)))
 
 /** \brief   Pass in a frame pointer value to get the previous frame pointer for
              the given frame.
@@ -379,7 +388,7 @@ const char *kos_get_authors(void);
     \param  fptr            The frame pointer to look at.
     \return                 The previous frame pointer.
 */
-#define arch_fptr_next(fptr) (*((uint32*)(fptr+4)))
+#define arch_fptr_next(fptr) (*((uint32*)((fptr)+4)))
 
 /** \brief   Returns true if the passed address is likely to be valid. Doesn't
              have to be exact, just a sort of general idea.

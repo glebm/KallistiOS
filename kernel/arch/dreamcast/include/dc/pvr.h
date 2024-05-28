@@ -1483,16 +1483,16 @@ int pvr_get_vbl_count(void);
     \headerfile dc/pvr.h
 */
 typedef struct pvr_stats {
-    uint32_t enabled_list_mask;  /**< \brief Which lists are enabled? */
-    uint32_t vbl_count;          /**< \brief VBlank count */
-    int     frame_last_time;     /**< \brief Ready-to-Ready length for the last frame in milliseconds */
-    float   frame_rate;          /**< \brief Current frame rate (per second) */
-    int     reg_last_time;       /**< \brief Registration time for the last frame in milliseconds */
-    int     rnd_last_time;       /**< \brief Rendering time for the last frame in milliseconds */
-    int     vtx_buffer_used;     /**< \brief Number of bytes used in the vertex buffer for the last frame */
-    int     vtx_buffer_used_max; /**< \brief Number of bytes used in the vertex buffer for the largest frame */
-    int     buf_last_time;       /**< \brief DMA buffer file time for the last frame in milliseconds */
-    uint32_t frame_count;        /**< \brief Total number of rendered/viewed frames */
+    uint64_t frame_last_time;     /**< \brief Ready-to-Ready length for the last frame in nanoseconds */
+    uint64_t reg_last_time;       /**< \brief Registration time for the last frame in nanoseconds */
+    uint64_t rnd_last_time;       /**< \brief Rendering time for the last frame in nanoseconds */
+    uint64_t buf_last_time;       /**< \brief DMA buffer file time for the last frame in nanoseconds */
+    size_t   frame_count;         /**< \brief Total number of rendered/viewed frames */
+    size_t   vbl_count;           /**< \brief VBlank count */
+    size_t   vtx_buffer_used;     /**< \brief Number of bytes used in the vertex buffer for the last frame */
+    size_t   vtx_buffer_used_max; /**< \brief Number of bytes used in the vertex buffer for the largest frame */
+    float    frame_rate;          /**< \brief Current frame rate (per second) */
+    uint32_t enabled_list_mask;   /**< \brief Which lists are enabled? */
     /* ... more later as it's implemented ... */
 } pvr_stats_t;
 
@@ -2395,7 +2395,7 @@ int pvr_dma_transfer(void *src, uintptr_t dest, size_t count, int type,
 #define PVR_DMA_TA        2   /**< \brief Transfer to the tile accelerator */
 #define PVR_DMA_YUV       3   /**< \brief Transfer to the YUV converter (TA) */
 #define PVR_DMA_VRAM32_SB 4   /**< \brief Transfer to/from VRAM using PVR i/f */
-#define PVR_DMA_VRAM64_SB 4   /**< \brief Transfer to/from VRAM using PVR i/f */
+#define PVR_DMA_VRAM64_SB 5   /**< \brief Transfer to/from VRAM using PVR i/f */
 /** @} */
 
 /** \brief   Load a texture using TA DMA.
