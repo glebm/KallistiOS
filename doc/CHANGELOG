@@ -224,6 +224,10 @@ KallistiOS version 2.1.0 -----------------------------------------------
 - *** Added support for modifying scheduler frequency at runtime [FG]
 - *** Add support for worker threads [PC]
 - DC  Added new System Calls module [AB]
+- DC  Add timer_spin_delay_{us,ns} and use them in scif-spi [PC]
+- *** Added thread support for tracking CPU time + updated clock_gettime() [FG]
+- *** Added support for one-shot timers [PC]
+- DC  Use one-shot timers for timeout and a proper polling mechanism in modem [PC]
 - *** Added implementation of thread barriers [LS]
 - *** Removed old pthreads implementation from kernel/libc [LS]
 - *** Added new (more complete/compliant) pthreads implementation in
