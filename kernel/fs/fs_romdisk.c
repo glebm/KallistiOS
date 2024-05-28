@@ -115,7 +115,7 @@ static mutex_t fh_mutex;
 /* Given a filename and a starting romdisk directory listing (byte offset),
    search for the entry in the directory and return the byte offset to its
    entry. */
-static uint32 romdisk_find_object(rd_image_t * mnt, const char *fn, size_t fnlen, bool dir, uint32 offset) {
+static uint32_t romdisk_find_object(rd_image_t *mnt, const char *fn, size_t fnlen, bool dir, uint32_t offset) {
     uint32          i, ni, type;
     const romdisk_file_t    *fhdr;
 
@@ -172,7 +172,7 @@ static uint32 romdisk_find_object(rd_image_t * mnt, const char *fn, size_t fnlen
    dir:     false if looking for a file, true if looking for a dir
 
    It will return an offset in the romdisk image for the object. */
-static uint32 romdisk_find(rd_image_t * mnt, const char *fn, bool dir) {
+static uint32_t romdisk_find(rd_image_t *mnt, const char *fn, bool dir) {
     const char      *cur;
     uint32          i;
     const romdisk_file_t    *fhdr;
@@ -293,7 +293,7 @@ static ssize_t romdisk_read(void * h, void *buf, size_t bytes) {
 }
 
 /* Just to get the errno that might be better recognized upstream. */
-static ssize_t romdisk_write(void * h, const void *buf, size_t bytes) {
+static ssize_t romdisk_write(void *h, const void *buf, size_t bytes) {
     (void)h;
     (void)buf;
     (void)bytes;
@@ -422,7 +422,7 @@ static dirent_t *romdisk_readdir(void * h) {
 }
 
 /* Just to get the errno that might be better recognized upstream. */
-static int romdisk_unlink(vfs_handler_t * vfs, const char *fn) {
+static int romdisk_unlink(vfs_handler_t *vfs, const char *fn) {
     (void)vfs;
     (void)fn;
 
