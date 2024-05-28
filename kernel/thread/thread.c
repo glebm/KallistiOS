@@ -3,6 +3,8 @@
    kernel/thread/thread.c
    Copyright (C) 2000, 2001, 2002, 2003 Megan Potter
    Copyright (C) 2010, 2016 Lawrence Sebald
+   Copyright (C) 2023 Colton Pawielski
+   Copyright (C) 2023, 2024 Falco Girgis
 */
 
 #include <stdlib.h>
@@ -11,6 +13,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <reent.h>
 #include <errno.h>
 #include <kos/thread.h>
@@ -21,8 +24,8 @@
 #include <kos/genwait.h>
 #include <arch/irq.h>
 #include <arch/timer.h>
+#include <dc/perfctr.h>
 #include <arch/arch.h>
-#include <assert.h>
 
 /*
 
@@ -50,6 +53,9 @@ static inline size_t align_to(size_t address, size_t alignment) {
 /*****************************************************************************/
 /* Thread scheduler data */
 
+/* Scheduler timer interrupt frequency (Hertz) */
+static unsigned int thd_sched_ms = 1000 / HZ;
+
 /* Thread list. This includes all threads except dead ones. */
 static struct ktlist thd_list;
 
@@ -66,13 +72,13 @@ static struct ktqueue run_queue;
 kthread_t *thd_current = NULL;
 
 /* Thread mode: uninitialized or pre-emptive. */
-static int thd_mode = THD_MODE_NONE;
+static kthread_mode_t thd_mode = THD_MODE_NONE;
 
 /* Reaper semaphore. Counts the number of threads waiting to be reaped. */
 static semaphore_t thd_reap_sem;
 
 /* Number of threads active in the system. */
-static uint32_t thd_count = 0;
+static size_t thd_count = 0;
 
 /* The idle task */
 static kthread_t *thd_idle_thd = NULL;
@@ -115,13 +121,14 @@ int thd_each(int (*cb)(kthread_t *thd, void *user_data), void *data) {
 }
 
 int thd_pslist(int (*pf)(const char *fmt, ...)) {
+    uint64_t cpu_time, ns_time;
     kthread_t *cur;
 
     pf("All threads (may not be deterministic):\n");
-    pf("addr\t\ttid\tprio\tflags\twait_timeout\tstate     name\n");
+    pf("addr\t  tid\tprio\tflags\t  wait_timeout\tcpu_time\t      state\t  name\n");
 
     LIST_FOREACH(cur, &thd_list, t_list) {
-        pf("%08lx\t", CONTEXT_PC(cur->context));
+        pf("%08lx  ", CONTEXT_PC(cur->context));
         pf("%d\t", cur->tid);
 
         if(cur->prio == PRIO_MAX)
@@ -129,10 +136,17 @@ int thd_pslist(int (*pf)(const char *fmt, ...)) {
         else
             pf("%d\t", cur->prio);
 
-        pf("%08lx\t", cur->flags);
-        pf("%ld\t\t", (uint32_t)cur->wait_timeout);
-        pf("%10s", thd_state_to_str(cur));
-        pf("%s\n", cur->label);
+        pf("%08lx  ", cur->flags);
+        pf("%12lu", (uint32_t)cur->wait_timeout);
+
+        ns_time = perf_cntr_timer_ns();
+        cpu_time = thd_get_cpu_time(cur);
+
+        pf("%12llu (%6.3lf%%)  ",
+            cpu_time, (double)cpu_time / (double)ns_time * 100.0);
+
+        pf("%-10s  ", thd_state_to_str(cur));
+        pf("%-10s\n", cur->label);
     }
     pf("--end of list--\n");
 
@@ -289,7 +303,7 @@ void thd_exit(void *rv) {
    process group of the same priority (front_of_line==0) or
    right before the process group of the same priority (front_of_line!=0).
    See thd_schedule for why this is helpful. */
-void thd_add_to_runnable(kthread_t *t, int front_of_line) {
+void thd_add_to_runnable(kthread_t *t, bool front_of_line) {
     kthread_t *i;
     int done;
 
@@ -533,7 +547,7 @@ kthread_t *thd_create_ex(const kthread_attr_t *restrict attr,
     return nt;
 }
 
-kthread_t *thd_create(int detach, void *(*routine)(void *), void *param) {
+kthread_t *thd_create(bool detach, void *(*routine)(void *), void *param) {
     kthread_attr_t attrs = { detach, 0, 0, 0, 0 };
     return thd_create_ex(&attrs, routine, param);
 }
@@ -608,6 +622,15 @@ int thd_set_prio(kthread_t *thd, prio_t prio) {
 /*****************************************************************************/
 /* Scheduling routines */
 
+static void thd_update_cpu_time(kthread_t *thd) {
+    const uint64_t ns = perf_cntr_timer_ns();
+
+    thd_current->cpu_time.total +=
+            ns - thd_current->cpu_time.scheduled;
+
+    thd->cpu_time.scheduled = ns;
+}
+
 /* Thread scheduler; this function will find a new thread to run when a
    context switch is requested. No work is done in here except to change
    out the thd_current variable contents. Assumed that we are in an
@@ -624,7 +647,7 @@ int thd_set_prio(kthread_t *thd, prio_t prio) {
    to make sure the priorities are all straight before returning, but you
    don't want a full context switch inside the same priority group.
 */
-void thd_schedule(int front_of_line, uint64_t now) {
+void thd_schedule(bool front_of_line, uint64_t now) {
     int dontenq;
     kthread_t *thd;
 
@@ -683,6 +706,8 @@ void thd_schedule(int front_of_line, uint64_t now) {
        run queue and switch to it. */
     thd_remove_from_runnable(thd);
 
+    thd_update_cpu_time(thd);
+
     thd_current = thd;
     _impure_ptr = &thd->thd_reent;
     thd->state = STATE_RUNNING;
@@ -726,6 +751,9 @@ void thd_schedule_next(kthread_t *thd) {
     }
 
     thd_remove_from_runnable(thd);
+
+    thd_update_cpu_time(thd);
+
     thd_current = thd;
     _impure_ptr = &thd->thd_reent;
     thd_current->state = STATE_RUNNING;
@@ -760,7 +788,7 @@ static void thd_timer_hnd(irq_context_t *context) {
     //printf("timer woke at %d\n", (uint32_t)now);
 
     thd_schedule(0, now);
-    timer_primary_wakeup(1000 / HZ);
+    timer_primary_wakeup(thd_sched_ms);
 }
 
 /*****************************************************************************/
@@ -768,7 +796,7 @@ static void thd_timer_hnd(irq_context_t *context) {
 /* Thread blocking based sleeping; this is the preferred way to
    sleep because it eases the load on the system for the other
    threads. */
-void thd_sleep(int ms) {
+void thd_sleep(unsigned int ms) {
     /* This should never happen. This should, perhaps, assert. */
     if(thd_mode == THD_MODE_NONE) {
         dbglog(DBG_WARNING, "thd_sleep called when threading not "
@@ -926,18 +954,39 @@ struct _reent *thd_get_reent(kthread_t *thd) {
     return &thd->thd_reent;
 }
 
+uint64_t thd_get_cpu_time(kthread_t *thd) {
+    /* Check whether we should force an update immediately for accuracy. */
+    if(thd == thd_get_current())
+        thd_update_cpu_time(thd);
+
+    return thd->cpu_time.total;
+}
+
 /*****************************************************************************/
 
 /* Change threading modes */
-int thd_set_mode(int mode) {
+int thd_set_mode(kthread_mode_t mode) {
     dbglog(DBG_WARNING, "thd_set_mode() has no effect. Cooperative threading "
            "mode is deprecated. Threading is always in preemptive mode.\n");
 
     return mode;
 }
 
-int thd_get_mode(void) {
+kthread_mode_t thd_get_mode(void) {
     return thd_mode;
+}
+
+unsigned thd_get_hz(void) {
+    return 1000 / thd_sched_ms;
+}
+
+int thd_set_hz(unsigned int hertz) {
+    if(!hertz || hertz > 1000)
+        return -1;
+
+    thd_sched_ms = 1000 / hertz;
+
+    return 0;
 }
 
 /* Delete a TLS key. Note that currently this doesn't prevent you from reusing
@@ -1041,6 +1090,8 @@ int thd_init(void) {
     thd_current = kern;
     irq_set_context(&kern->context);
 
+    thd_update_cpu_time(thd_current);
+
     /* Initialize thread sync primitives */
     genwait_init();
 
@@ -1048,9 +1099,9 @@ int thd_init(void) {
     timer_primary_set_callback(thd_timer_hnd);
 
     /* Schedule our first wakeup */
-    timer_primary_wakeup(1000 / HZ);
+    timer_primary_wakeup(thd_sched_ms);
 
-    dbglog(DBG_INFO, "thd: pre-emption enabled, HZ=%d\n", HZ);
+    dbglog(DBG_DEBUG, "thd: pre-emption enabled, HZ=%u\n", thd_get_hz());
 
     return 0;
 }
