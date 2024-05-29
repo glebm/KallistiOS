@@ -31,7 +31,7 @@ static int push_back(struct dirent ***list, int *size, int *capacity,
                       const struct dirent *dir) {
     struct dirent *new_dir;
     int entry_size;
-    struct dirent ***list_tmp = list;
+    struct dirent **list_tmp = *list;
 
     /* Check if the "vector" needs to resize */
     if(*size == *capacity) {
@@ -41,17 +41,14 @@ static int push_back(struct dirent ***list, int *size, int *capacity,
         else
             *capacity = 1;
 
-        /* Save the previous list pointer in case realloc() fails. */
-        list_tmp = list;
-
         /* Resize our list */
         *list = realloc(*list, *capacity * sizeof(struct dirent*));
 
         /* Handle out-of-memory in case realloc() failed. */
-        if(!list)
+        if(!*list)
             goto out_of_memory;
         else
-            list_tmp = list;
+            list_tmp = *list;
     }
 
     /* Allocate space for the new directory entry on the heap.
@@ -78,10 +75,10 @@ static int push_back(struct dirent ***list, int *size, int *capacity,
 out_of_memory:
     /* Free each individual directory entry. */
     for(int e = 0; e < *size; ++e)
-        free((*list_tmp)[e]);
+        free((list_tmp)[e]);
 
     /* Free the overall directory entry list */
-    free(*list_tmp);
+    free(list_tmp);
 
     /* Reset our list variables */
     *list = NULL;
