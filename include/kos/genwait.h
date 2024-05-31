@@ -48,7 +48,7 @@ __BEGIN_DECLS
     \par    Error Conditions:
     \em     EAGAIN - on timeout
 */
-int genwait_wait_ms(void *obj, const char *mesg, uint32_t timeout, void (*callback)(void *));
+int genwait_wait_ms(void *obj, const char *mesg, uint64_t timeout, void (*callback)(void *));
 
 /** \brief  Sleep on an object.
 
@@ -68,7 +68,7 @@ int genwait_wait_ms(void *obj, const char *mesg, uint32_t timeout, void (*callba
     \par    Error Conditions:
     \em     EAGAIN - on timeout
 */
-int genwait_wait_us(void *obj, const char *mesg, uint32_t timeout, void (*callback)(void *));
+int genwait_wait_us(void *obj, const char *mesg, uint64_t timeout, void (*callback)(void *));
 
 /** \brief  Sleep on an object.
 
@@ -88,7 +88,7 @@ int genwait_wait_us(void *obj, const char *mesg, uint32_t timeout, void (*callba
     \par    Error Conditions:
     \em     EAGAIN - on timeout
 */
-int genwait_wait_ns(void *obj, const char *mesg, uint32_t timeout, void (*callback)(void *));
+int genwait_wait_ns(void *obj, const char *mesg, uint64_t timeout, void (*callback)(void *));
 
 /* Wake up N threads waiting on the given object. If cnt is <=0, then we
    wake all threads. Returns the number of threads actually woken. */

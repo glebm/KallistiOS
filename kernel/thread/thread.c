@@ -686,7 +686,7 @@ void thd_schedule(bool front_of_line, uint64_t now) {
         if(thd->state == STATE_READY)
             break;
     }
-
+#if 1
     /* If we didn't already re-enqueue the thread and we are supposed to do so,
        do it now. */
     if(!front_of_line && !dontenq && thd_current->state == STATE_RUNNING) {
@@ -698,7 +698,7 @@ void thd_schedule(bool front_of_line, uint64_t now) {
         if(thd == NULL || thd == thd_idle_thd)
             thd = thd_current;
     }
-
+#endif
     /* Didn't find one? Big problem here... */
     if(thd == NULL) {
         thd_pslist(printf);
@@ -776,57 +776,45 @@ irq_context_t *thd_choose_new(void) {
     return &thd_current->context;
 }
 
-static uint64_t thd_wakeup_sched = 0;
-static uint64_t thd_wakeup_timeout = 0;
+static volatile uint64_t thd_wakeup_sched = 0;
+static volatile uint64_t thd_wakeup_timeout = 0;
+static volatile bool updated = false;
 
-static void thd_update_timer(uint64_t now, bool updating) {
+    static volatile long unsigned counter = 0;
+
+static uint64_t thd_sched_rem(uint64_t now) {
     if(!now)
         now = timer_ns_gettime64();
 
-    uint64_t next_timeout = genwait_next_timeout();
-    uint64_t next;
-    uint64_t rem = UINT64_MAX;
-    uint64_t tick;
-
-    if(now > thd_wakeup_timeout)
-        rem = now - thd_wakeup_timeout;
+    if(thd_wakeup_timeout <= now)
+        return 0;
     else
-        rem = 0;
+        return thd_wakeup_timeout - now;
+}
 
-    if(updating)
-        tick = rem;
-    else
-        tick = thd_sched_ns;
+void thd_update_timer(uint64_t now, uint64_t max_ns) {
+    #if 0
+    const int irqs = irq_disable();
 
-    /* Nothing to wait for, go with next kernel tick. */
-    if(!next_timeout) { 
-        next = tick;
-    /* We do have something to wait on. */
-    } else {
-        if(next_timeout <= now)
-            next_timeout = 0;
-        else
-            next_timeout -= now;
+    if(!now)
+        now = timer_ns_gettime64();
 
-        if(next_timeout < tick)
-            next = next_timeout;
-        else
-            next = tick;
+    const uint64_t rem = thd_sched_rem(now);
+    
+    if(max_ns < rem) {
+        timer_primary_wakeup(max_ns);
+        updated = true;
+
+        //printf("[%lu]: ADJ %llu => %llu\n", counter, rem, max_ns);
+        //fflush(stdout);
+
+        thd_wakeup_sched = now;
+        thd_wakeup_timeout = max_ns + now;
     }
 
-        static unsigned counter = 0;
-   // if(next != rem) {
-        timer_primary_wakeup(next);
-        printf("SCHED[%u]: %llu\n", counter++, next);
-        fflush(stdout);
-   // } else {
-     //   printf("REM[%u]: %llu\n", counter++, next);
-    //    fflush(stdout);
-    //}
+    irq_restore(irqs);
+    #endif
 
-
-    thd_wakeup_sched = now;
-    thd_wakeup_timeout = now + next;
 }
 
 /*****************************************************************************/
@@ -838,14 +826,39 @@ static void thd_update_timer(uint64_t now, bool updating) {
 static void thd_timer_hnd(irq_context_t *context) {
     (void)context;
     
+    updated = false;
+
     /* Get the system time */
     uint64_t now = timer_ns_gettime64();
 
     //printf("timer woke at %d\n", (uint32_t)now);
 
     thd_schedule(0, now);
+#if 0
+    //if(updated) return;
 
-    thd_update_timer(now, false);
+    now = timer_ns_gettime64();
+
+    uint64_t next_timeout = genwait_next_timeout();
+    if(next_timeout < now)
+        next_timeout = 0;
+    else next_timeout -= now;
+
+    uint64_t next = thd_sched_ns;
+    if(next_timeout < thd_sched_ns) {
+        next = next_timeout;
+    }
+
+    timer_primary_wakeup(next);
+
+    thd_wakeup_sched = now;
+    thd_wakeup_timeout = now + next;
+#else
+    timer_primary_wakeup(thd_sched_ns);
+#endif
+    //printf("[%lu]: <%s, %llu>\n", counter++, thd_get_label(thd_get_current()), next);
+    //fflush(stdout);
+
 }
 
 /*****************************************************************************/
@@ -853,17 +866,17 @@ static void thd_timer_hnd(irq_context_t *context) {
 /* Thread blocking based sleeping; this is the preferred way to
    sleep because it eases the load on the system for the other
    threads. */
-void thd_sleep_ms(uint32_t ms) {
+void thd_sleep_ms(uint64_t ms) {
     assert((uint64_t)ms * 1000000 <= UINT32_MAX);
     thd_sleep_ns(ms * 1000000);
 }
 
-void thd_sleep_us(uint32_t us) {
+void thd_sleep_us(uint64_t us) {
     assert((uint64_t)us * 1000 <= UINT32_MAX);
     thd_sleep_ns(us * 1000);
 }
 
-void thd_sleep_ns(uint32_t ns) {
+void thd_sleep_ns(uint64_t ns) {
     /* This should never happen. This should, perhaps, assert. */
     if(thd_mode == THD_MODE_NONE) {
         dbglog(DBG_WARNING, "thd_sleep called when threading not "
@@ -885,7 +898,7 @@ void thd_sleep_ns(uint32_t ns) {
        purposes. 0xffffffff definitely doesn't exist as an object, so we'll
        use that for straight up timeouts. */
     genwait_wait_ns(THREAD_SLEEP_GENWAIT_OBJECT, "thd_sleep", ns, NULL);
-    thd_update_timer(0, true);
+  //  thd_update_timer(0, true);
 }
 
 /* Manually cause a re-schedule */

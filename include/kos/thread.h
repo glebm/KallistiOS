@@ -507,7 +507,7 @@ void thd_pass(void);
 
     \sa thd_sleep_us(), thd_sleep_ns()
 */
-void thd_sleep_ms(uint32_t ms);
+void thd_sleep_ms(uint64_t ms);
 
 /** \brief   Sleep for a given number of microseconds
 
@@ -521,7 +521,7 @@ void thd_sleep_ms(uint32_t ms);
 
     \sa thd_sleep_ms(), thd_sleep_ns()
 */
-void thd_sleep_us(uint32_t us);
+void thd_sleep_us(uint64_t us);
 
 /** \brief   Sleep for a given number of nanoseconds
 
@@ -535,7 +535,7 @@ void thd_sleep_us(uint32_t us);
 
     \sa thd_sleep_ms(), thd_sleep_us()
 */
-void thd_sleep_ns(uint32_t ns);
+void thd_sleep_ns(uint64_t ns);
 
 /** \brief       Set a thread's priority value.
     \relatesalso kthread_t

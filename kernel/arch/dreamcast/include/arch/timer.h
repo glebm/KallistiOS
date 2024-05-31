@@ -476,7 +476,7 @@ timer_primary_set_callback(timer_primary_callback_t callback);
 
     \param  ns              The number of nanoseconds to schedule for.
 */
-void timer_primary_wakeup(uint32_t ns);
+void timer_primary_wakeup(uint64_t ns);
 
 /** @} */
 

@@ -74,6 +74,7 @@ static const unsigned tcrs[] = { TCR0, TCR1, TCR2 };
 
 /* Apply timer configuration to registers. */
 static int timer_prime_apply(timer_channel_t which, uint32_t count, bool interrupts) { 
+    assert(count);
     assert(which <= TMU2);
 
     TIMER32(tcnts[which]) = count;
@@ -93,6 +94,7 @@ static int timer_prime_apply(timer_channel_t which, uint32_t count, bool interru
 /* Pre-initialize a timer; set values but don't start it.
    "speed" is the number of desired ticks per second. */
 int timer_prime(timer_channel_t which, uint32_t speed, bool interrupts) {
+    assert(speed);
     /* Initialize counters; formula is P0/(tps*div) */
     const uint32_t cd = TIMER_PCK / (speed * TDIV(TIMER_TPSC));
     assert(cd);
@@ -104,10 +106,12 @@ int timer_prime(timer_channel_t which, uint32_t speed, bool interrupts) {
 static int timer_prime_wait(timer_channel_t which, uint64_t ns, bool interrupts) {
     /* Calculate the countdown, formula is P0 * ns/div*1000000000. We
        rearrange the math a bit here to avoid integer overflows. */
-    const uint64_t cd = (TIMER_PCK / TDIV(TIMER_TPSC)) * ns / 1000000000;
-    assert(cd && cd <= UINT32_MAX);
+    const uint64_t cd = ((TIMER_PCK / TDIV(TIMER_TPSC)) * ns) / 1000000000ull;
     //printf("TIME_WAIT: %llu, %llu\n", ns, cd);
     //fflush(stdout);
+    
+    assert(cd);
+    assert(cd <= UINT32_MAX);
     return timer_prime_apply(which, cd, interrupts);
 }
 
@@ -277,7 +281,7 @@ static timer_val_t timer_getticks(const uint32_t *tns, uint32_t shift) {
         counter2 = TIMER32(tcnts[TMU2]);
         tmu2 = TIMER16(tcrs[TMU2]);
         unf2 = !!(tmu2 & UNF);
-    } while (__unlikely(unf1 != unf2 || counter1 < counter2));
+    } while (unf1 != unf2 || counter1 < counter2);
 
     delta = timer_ms_countdown - counter2;
 
@@ -426,11 +430,11 @@ timer_primary_callback_t timer_primary_set_callback(timer_primary_callback_t cb)
     return cbold;
 }
 
-void timer_primary_wakeup(uint32_t ns) {
+void timer_primary_wakeup(uint64_t ns) {
     /* Don't allow zero */
-    if(!ns) {
+    if(ns < 80) {
        // assert_msg(ns != 0, "Received invalid wakeup delay");
-        ns += 80;
+        ns = 80;
     }
 
     /* Make sure we stop any previous wakeup */
@@ -451,10 +455,6 @@ void timer_primary_wakeup(uint32_t ns) {
         timer_start(TIMER_ID);
         tp_ns_remaining = 0;
     }
-}
-
-uint32_t timer_primary_elapsed(void) {
-
 }
 
 /* Init */

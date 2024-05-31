@@ -20,6 +20,7 @@
 #include <stdalign.h>
 #include <stdatomic.h>
 
+
 static inline double percent_diff(double v1, double v2) {
     return fabs(v1 - v2) / ((v1 + v2) / 2.0) * 100.0;
 }
@@ -43,14 +44,14 @@ static inline double percent_diff(double v1, double v2) {
                    (unsigned)t, actual, percent_diff(t, actual));   \
             fflush(stdout);                                         \
         }                                                           \
-                                                                    \
+                                                                \
         printf("\n");                                               \
                                                                     \
         return true;                                                \
     }
 
 GENERATE_TESTER(test_spin_delay, unsigned short, perf_cntr_timer_ns)
-GENERATE_TESTER(test_sleep, uint32_t, timer_ns_gettime64)
+GENERATE_TESTER(test_sleep, uint64_t, timer_ns_gettime64)
 
 #define test_spin_delay(func, ...) (test_spin_delay)(#func, func, __VA_ARGS__)
 #define test_sleep(func, ...)      (test_sleep)(#func, func, __VA_ARGS__)

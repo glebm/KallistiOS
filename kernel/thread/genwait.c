@@ -67,19 +67,22 @@ static kthread_t * tq_next(void) {
     return TAILQ_FIRST(&timer_queue);
 }
 
-int genwait_wait_ms(void *obj, const char *mesg, uint32_t timeout, void (*callback)(void *)) {
+int genwait_wait_ms(void *obj, const char *mesg, uint64_t timeout, void (*callback)(void *)) {
     assert((uint64_t)timeout * 1000000 <= UINT32_MAX);
     return genwait_wait_ns(obj, mesg, timeout * 1000000, callback);
 }
 
-int genwait_wait_us(void *obj, const char *mesg, uint32_t timeout, void (*callback)(void *)) {
+int genwait_wait_us(void *obj, const char *mesg, uint64_t timeout, void (*callback)(void *)) {
     assert((uint64_t)timeout * 1000 <= UINT32_MAX);
     return genwait_wait_ns(obj, mesg, timeout * 1000, callback);
 }
 
-int genwait_wait_ns(void * obj, const char * mesg, uint32_t timeout, void (*callback)(void *)) {
+void thd_update_timer(uint64_t now, uint64_t max);
+
+int genwait_wait_ns(void * obj, const char * mesg, uint64_t timeout, void (*callback)(void *)) {
     int     old, rv;
     kthread_t   * me;
+    uint64_t now = 0;
 
     /* Twiddle interrupt state */
     if(irq_inside_int()) {
@@ -98,7 +101,7 @@ int genwait_wait_ns(void * obj, const char * mesg, uint32_t timeout, void (*call
 
     if(timeout > 0) {
         /* If we have a timeout, insert us on the timer queue. */
-        me->wait_timeout = timer_ns_gettime64() + timeout;
+        me->wait_timeout = (now = timer_ns_gettime64()) + timeout;
         tq_insert(me);
     }
     else
@@ -113,6 +116,8 @@ int genwait_wait_ns(void * obj, const char * mesg, uint32_t timeout, void (*call
     rv = thd_block_now(&me->context);
 
     irq_restore(old);
+
+    thd_update_timer(0, timeout);
 
     return rv;
 }
