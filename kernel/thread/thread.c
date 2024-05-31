@@ -57,7 +57,7 @@ static inline size_t align_to(size_t address, size_t alignment) {
 /* Thread scheduler data */
 
 /* Scheduler timer interrupt frequency (Hertz) */
-static unsigned int thd_sched_ms = 1000 / HZ;
+static unsigned int thd_sched_ns = 1000000000 / HZ;
 
 /* Thread list. This includes all threads except dead ones. */
 static struct ktlist thd_list;
@@ -551,7 +551,7 @@ kthread_t *thd_create_ex(const kthread_attr_t *restrict attr,
 }
 
 kthread_t *thd_create(bool detach, void *(*routine)(void *), void *param) {
-    kthread_attr_t attrs = { detach, 0, 0, 0, 0 };
+    const kthread_attr_t attrs = { detach, 0, 0, 0, 0 };
     return thd_create_ex(&attrs, routine, param);
 }
 
@@ -776,6 +776,59 @@ irq_context_t *thd_choose_new(void) {
     return &thd_current->context;
 }
 
+static uint64_t thd_wakeup_sched = 0;
+static uint64_t thd_wakeup_timeout = 0;
+
+static void thd_update_timer(uint64_t now, bool updating) {
+    if(!now)
+        now = timer_ns_gettime64();
+
+    uint64_t next_timeout = genwait_next_timeout();
+    uint64_t next;
+    uint64_t rem = UINT64_MAX;
+    uint64_t tick;
+
+    if(now > thd_wakeup_timeout)
+        rem = now - thd_wakeup_timeout;
+    else
+        rem = 0;
+
+    if(updating)
+        tick = rem;
+    else
+        tick = thd_sched_ns;
+
+    /* Nothing to wait for, go with next kernel tick. */
+    if(!next_timeout) { 
+        next = tick;
+    /* We do have something to wait on. */
+    } else {
+        if(next_timeout <= now)
+            next_timeout = 0;
+        else
+            next_timeout -= now;
+
+        if(next_timeout < tick)
+            next = next_timeout;
+        else
+            next = tick;
+    }
+
+        static unsigned counter = 0;
+   // if(next != rem) {
+        timer_primary_wakeup(next);
+        printf("SCHED[%u]: %llu\n", counter++, next);
+        fflush(stdout);
+   // } else {
+     //   printf("REM[%u]: %llu\n", counter++, next);
+    //    fflush(stdout);
+    //}
+
+
+    thd_wakeup_sched = now;
+    thd_wakeup_timeout = now + next;
+}
+
 /*****************************************************************************/
 
 /* Timer function. Check to see if we were woken because of a timeout event
@@ -783,15 +836,16 @@ irq_context_t *thd_choose_new(void) {
    again until our next context switch (if any). For pre-empts, re-schedule
    threads, swap out contexts, and sleep. */
 static void thd_timer_hnd(irq_context_t *context) {
+    (void)context;
+    
     /* Get the system time */
     uint64_t now = timer_ns_gettime64();
-
-    (void)context;
 
     //printf("timer woke at %d\n", (uint32_t)now);
 
     thd_schedule(0, now);
-    timer_primary_wakeup(thd_sched_ms);
+
+    thd_update_timer(now, false);
 }
 
 /*****************************************************************************/
@@ -831,6 +885,7 @@ void thd_sleep_ns(uint32_t ns) {
        purposes. 0xffffffff definitely doesn't exist as an object, so we'll
        use that for straight up timeouts. */
     genwait_wait_ns(THREAD_SLEEP_GENWAIT_OBJECT, "thd_sleep", ns, NULL);
+    thd_update_timer(0, true);
 }
 
 /* Manually cause a re-schedule */
@@ -990,14 +1045,14 @@ kthread_mode_t thd_get_mode(void) {
 }
 
 unsigned thd_get_hz(void) {
-    return 1000 / thd_sched_ms;
+    return 1000000000 / thd_sched_ns;
 }
 
 int thd_set_hz(unsigned int hertz) {
-    if(!hertz || hertz > 1000)
+    if(!hertz || hertz > 1000000000)
         return -1;
 
-    thd_sched_ms = 1000 / hertz;
+    thd_sched_ns = 1000000000 / hertz;
 
     return 0;
 }
@@ -1112,7 +1167,7 @@ int thd_init(void) {
     timer_primary_set_callback(thd_timer_hnd);
 
     /* Schedule our first wakeup */
-    timer_primary_wakeup(thd_sched_ms);
+    timer_primary_wakeup(thd_sched_ns);
 
     dbglog(DBG_DEBUG, "thd: pre-emption enabled, HZ=%u\n", thd_get_hz());
 

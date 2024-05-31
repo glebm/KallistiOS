@@ -22,6 +22,8 @@
 
     \todo
     - Remove timer_spin_sleep() legacy compatibility macro.
+    - timer_primary_set_callback() should take a userdata
+    - timer_primary_get_callback() with userdata return
 
     \author Megan Potter
     \author Falco Girgis
@@ -466,13 +468,15 @@ timer_primary_set_callback(timer_primary_callback_t callback);
 /** \brief   Request a primary timer wakeup.
 
     This function will wake the caller (by calling the primary timer callback)
-    in approximately the number of milliseconds specified. You can only have one
-    timer wakeup scheduled at a time. Any subsequently scheduled wakeups will
-    replace any existing one.
+    in approximately the number of nanoseconds specified. 
+    
+    \note
+    You can only have one timer wakeup scheduled at a time. Any subsequently
+    scheduled wakeups will replace any existing one.
 
-    \param  millis          The number of milliseconds to schedule for.
+    \param  ns              The number of nanoseconds to schedule for.
 */
-void timer_primary_wakeup(uint32_t millis);
+void timer_primary_wakeup(uint32_t ns);
 
 /** @} */
 

@@ -95,17 +95,19 @@ static int timer_prime_apply(timer_channel_t which, uint32_t count, bool interru
 int timer_prime(timer_channel_t which, uint32_t speed, bool interrupts) {
     /* Initialize counters; formula is P0/(tps*div) */
     const uint32_t cd = TIMER_PCK / (speed * TDIV(TIMER_TPSC));
-
+    assert(cd);
     return timer_prime_apply(which, cd, interrupts);
 }
 
-/* Works like timer_prime, but takes an interval in milliseconds
+/* Works like timer_prime, but takes an interval in nanoseconds
    instead of a rate. Used by the primary timer stuff. */
-static int timer_prime_wait(timer_channel_t which, uint32_t millis, bool interrupts) {
-    /* Calculate the countdown, formula is P0 * millis/div*1000. We
+static int timer_prime_wait(timer_channel_t which, uint64_t ns, bool interrupts) {
+    /* Calculate the countdown, formula is P0 * ns/div*1000000000. We
        rearrange the math a bit here to avoid integer overflows. */
-    const uint32_t cd = (TIMER_PCK / TDIV(TIMER_TPSC)) * millis / 1000;
-
+    const uint64_t cd = (TIMER_PCK / TDIV(TIMER_TPSC)) * ns / 1000000000;
+    assert(cd && cd <= UINT32_MAX);
+    //printf("TIME_WAIT: %llu, %llu\n", ns, cd);
+    //fflush(stdout);
     return timer_prime_apply(which, cd, interrupts);
 }
 
@@ -275,7 +277,7 @@ static timer_val_t timer_getticks(const uint32_t *tns, uint32_t shift) {
         counter2 = TIMER32(tcnts[TMU2]);
         tmu2 = TIMER16(tcrs[TMU2]);
         unf2 = !!(tmu2 & UNF);
-    } while (unf1 != unf2 || counter1 < counter2);
+    } while (__unlikely(unf1 != unf2 || counter1 < counter2));
 
     delta = timer_ms_countdown - counter2;
 
@@ -369,7 +371,7 @@ void timer_spin_sleep_ns(uint32_t ns) {
    millis has passed. For the DC you can't have timers spaced out more
    than about one second, so we emulate longer waits with a counter. */
 static timer_primary_callback_t tp_callback;
-static uint32_t tp_ms_remaining;
+static uint64_t tp_ns_remaining;
 
 /* IRQ handler for the primary timer interrupt. */
 static void tp_handler(irq_t src, irq_context_t *cxt, void *data) {
@@ -377,28 +379,28 @@ static void tp_handler(irq_t src, irq_context_t *cxt, void *data) {
     (void)data;
 
     /* Are we at zero? */
-    if(tp_ms_remaining == 0) {
+    if(!tp_ns_remaining) {
         /* Disable any further timer events. The callback may
            re-enable them of course. */
-        timer_stop(TMU0);
-        timer_disable_ints(TMU0);
+        timer_stop(TIMER_ID);
+        timer_disable_ints(TIMER_ID);
 
         /* Call the callback, if any */
         if(tp_callback)
             tp_callback(cxt);
     } 
     /* Do we have less than a second remaining? */
-    else if(tp_ms_remaining < 1000) {
+    else if(tp_ns_remaining < 1000000000) {
         /* Schedule a "last leg" timer. */
-        timer_stop(TMU0);
-        timer_prime_wait(TMU0, tp_ms_remaining, 1);
-        timer_clear(TMU0);
-        timer_start(TMU0);
-        tp_ms_remaining = 0;
+        timer_stop(TIMER_ID);
+        timer_prime_wait(TIMER_ID, tp_ns_remaining, 1);
+        timer_clear(TIMER_ID);
+        timer_start(TIMER_ID);
+        tp_ns_remaining = 0;
     } 
     /* Otherwise, we're just counting down. */
     else {
-        tp_ms_remaining -= 1000;
+        tp_ns_remaining -= 1000000000;
     }
 }
 
@@ -413,42 +415,46 @@ static void timer_primary_init(void) {
 }
 
 static void timer_primary_shutdown(void) {
-    timer_stop(TMU0);
-    timer_disable_ints(TMU0);
-    irq_set_handler(EXC_TMU0_TUNI0, NULL, NULL);
+    timer_stop(TIMER_ID);
+    timer_disable_ints(TIMER_ID);
+    irq_set_handler(EXC_TMU0_TUNI0 + TIMER_ID, NULL, NULL);
 }
 
 timer_primary_callback_t timer_primary_set_callback(timer_primary_callback_t cb) {
-    timer_primary_callback_t cbold = tp_callback;
+    const timer_primary_callback_t cbold = tp_callback;
     tp_callback = cb;
     return cbold;
 }
 
-void timer_primary_wakeup(uint32_t millis) {
+void timer_primary_wakeup(uint32_t ns) {
     /* Don't allow zero */
-    if(millis == 0) {
-        assert_msg(millis != 0, "Received invalid wakeup delay");
-        millis++;
+    if(!ns) {
+       // assert_msg(ns != 0, "Received invalid wakeup delay");
+        ns += 80;
     }
 
     /* Make sure we stop any previous wakeup */
-    timer_stop(TMU0);
+    timer_stop(TIMER_ID);
 
     /* If we have less than a second to wait, then just schedule the
        timeout event directly. Otherwise schedule a periodic second
        timer. We'll replace this on the last leg in the IRQ. */
-    if(millis >= 1000) {
-        timer_prime_wait(TMU0, 1000, 1);
-        timer_clear(TMU0);
-        timer_start(TMU0);
-        tp_ms_remaining = millis - 1000;
+    if(ns >= 1000000000) {
+        timer_prime_wait(TIMER_ID, 1000000000, 1);
+        timer_clear(TIMER_ID);
+        timer_start(TIMER_ID);
+        tp_ns_remaining = ns - 1000000000;
     }
     else {
-        timer_prime_wait(TMU0, millis, 1);
-        timer_clear(TMU0);
-        timer_start(TMU0);
-        tp_ms_remaining = 0;
+        timer_prime_wait(TIMER_ID, ns, 1);
+        timer_clear(TIMER_ID);
+        timer_start(TIMER_ID);
+        tp_ns_remaining = 0;
     }
+}
+
+uint32_t timer_primary_elapsed(void) {
+
 }
 
 /* Init */

@@ -243,7 +243,7 @@ int genwait_wake_thd(void *obj, kthread_t *thd, int err) {
     return rv;
 }
 
-void genwait_check_timeouts(uint64 tm) {
+void genwait_check_timeouts(uint64_t tm) {
     kthread_t   *t;
 
     t = tq_next();
@@ -276,7 +276,7 @@ uint64 genwait_next_timeout(void) {
     t = tq_next();
 
     if(t == NULL)
-        return 0;
+        return UINT64_MAX;
     else
         return t->wait_timeout;
 }

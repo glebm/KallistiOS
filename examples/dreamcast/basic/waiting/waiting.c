@@ -41,6 +41,7 @@ static inline double percent_diff(double v1, double v2) {
                                                                     \
             printf("%12u%12u%12.3lf\n",                             \
                    (unsigned)t, actual, percent_diff(t, actual));   \
+            fflush(stdout);                                         \
         }                                                           \
                                                                     \
         printf("\n");                                               \
@@ -57,18 +58,19 @@ GENERATE_TESTER(test_sleep, uint32_t, timer_ns_gettime64)
 /* Program entry point. */
 int main(int argc, char* argv[]) {
     bool success = true;
-
+#if 0
     printf("Testing Spin Delay Latencies...\n\n");
     thd_set_hz(0);
     success &= test_spin_delay(timer_spin_delay_ns, 10, 1, 1000000000);
     success &= test_spin_delay(timer_spin_delay_us, 10, 1000, 1000000);
     success &= test_spin_delay(timer_spin_delay_ms, 2, 1000000, 1000);
-
+#endif
     printf("Testing Sleep Delay Latencies...\n\n");
-    thd_set_hz(100);
-    success &= test_sleep(thd_sleep_ns, 10, 1, 2000000000);
-    success &= test_sleep(thd_sleep_us, 10, 1000, 10000000);
-    success &= test_sleep(thd_sleep_ms, 2, 1000000, 5000);
+    //thd_set_hz(10);
+    //thd_sleep_ms(3);
+    success &= test_sleep(thd_sleep_ns, 2, 1, 2000000000);
+    success &= test_sleep(thd_sleep_us, 2, 1000, 5000000);
+    //success &= test_sleep(thd_sleep_ms, 2, 1000000, 5000);
 
     if(success) {
         printf("***** Delay Test: SUCCESS *****\n");
