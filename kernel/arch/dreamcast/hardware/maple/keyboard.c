@@ -58,7 +58,7 @@ typedef struct kbd_state_private {
     uint32_t key_queue[KBD_QUEUE_SIZE];
     size_t queue_tail;          /* Key queue tail. */
     size_t queue_head;          /* Key queue head. */
-    atomic_size_t queue_len;    /* Current length of queue. */
+    volatile size_t queue_len;  /* Current length of queue. */
 } kbd_state_private_t;
 
 static struct {
@@ -435,7 +435,6 @@ static const kbd_keymap_t keymaps[] = {
     }
 };
 
-
 /* The keyboard queue (global for now) */
 static volatile int kbd_queue_active = 1;
 static volatile int kbd_queue_tail = 0, kbd_queue_head = 0;
@@ -487,10 +486,10 @@ static int kbd_enqueue(kbd_state_t *state, uint8_t keycode, uint32_t mods) {
         return 0;
 
     /* Queue the key up on the device-specific queue. */
-    if(atomic_load(&state_private->queue_len) < KBD_QUEUE_SIZE) {
+    if(state_private->queue_len < KBD_QUEUE_SIZE) {
         state_private->key_queue[state_private->queue_head] = keycode | (mods << 8);
         state_private->queue_head = (state_private->queue_head + 1) & (KBD_QUEUE_SIZE - 1);
-        atomic_fetch_add(&state_private->queue_len, 1);
+        ++state_private->queue_len;
     }
 
     /* If queueing is turned off, don't bother with the global queue. */
@@ -568,12 +567,18 @@ int kbd_queue_pop(maple_device_t *dev, bool to_ascii) {
     kbd_leds_t leds;
     char ascii;
 
-    if(!atomic_load(&state_private->queue_len))
+    const int irqs = irq_disable();
+
+    if(!state_private->queue_len) {
+        irq_restore(irqs);
         return -1;
+    }
 
     rv = state_private->key_queue[state_private->queue_tail];
     state_private->queue_tail = (state_private->queue_tail + 1) & (KBD_QUEUE_SIZE - 1);
-    atomic_fetch_sub(&state_private->queue_len, 1);
+    --state_private->queue_len;
+
+    irq_restore(irqs);
 
     if(!to_ascii)
         return (int)rv;
@@ -679,7 +684,9 @@ static void kbd_check_poll(maple_frame_t *frm, kbd_cond_t *cond) {
     }
 }
 
-static void kbd_reply(maple_state_t *, maple_frame_t *frm) {
+static void kbd_reply(maple_state_t *st, maple_frame_t *frm) {
+    (void)st;
+
     maple_response_t *resp;
     uint32 *respbuf;
 
