@@ -703,19 +703,18 @@ int fs_romdisk_mount(const char * mountpoint, const uint8 *img, int own_buffer) 
 /* Unmount a romdisk image */
 int fs_romdisk_unmount(const char * mountpoint) {
     rd_image_t  * n;
-    int     found = 0;
     int     rv = 0;
 
     mutex_lock(&fh_mutex);
 
     LIST_FOREACH(n, &romdisks, list_ent) {
         if(!strcmp(mountpoint, n->vfsh->nmmgr.pathname)) {
-            found = 1;
             break;
         }
     }
 
-    if(found) {
+    /* If the LIST_FOREACH goes to the end n will be NULL */
+    if(n != NULL) {
         /* Remove it from the mount list */
         LIST_REMOVE(n, list_ent);
 
