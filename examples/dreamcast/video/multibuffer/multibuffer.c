@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        bfont_draw_str(vram_s + (640 * BFONT_HEIGHT) + (BFONT_THIN_WIDTH * 2), 640, 1, 
+        bfont_draw_str_fmt(vram_s + (640 * BFONT_HEIGHT) + (BFONT_THIN_WIDTH * 2), 640, 1,
                        "This is FB %u", (mb + 1) % vid_mode->fb_count);
 
         /* This tells the pvr to move to the framebuffer we've been drawing to, 

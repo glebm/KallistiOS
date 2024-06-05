@@ -22,11 +22,11 @@ int main(int argc, char **argv) {
         }
 
     for(y = 0; y < H; y += 24) {
-        bfont_draw_str(vram_s + y * W + 10, W, 0, "%d", y);
+        bfont_draw_str_fmt(vram_s + y * W + 10, W, 0, "%d", y);
     }
 
     for(x = 0; x < W; x += 100) {
-        bfont_draw_str(vram_s + 10 * W + x, W, 0, "%d", x / 10);
+        bfont_draw_str_fmt(vram_s + 10 * W + x, W, 0, "%d", x / 10);
     }
 
     printf("\n\nPress all buttons simultaneously to exit.\n");

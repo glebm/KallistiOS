@@ -454,9 +454,9 @@ size_t bfont_draw_wide(void *buffer, uint32_t bufwidth, bool opaque,
     @{
 */
 
-/** \brief   Draw a full formatted string to any sort of buffer.
+/** \brief   Draw a full decorated string to any sort of buffer.
 
-    This function draws a NUL-terminated string in the set encoding to the given
+    This function draws a NULL-terminated string in the set encoding to the given
     buffer. This will automatically handle mixed half and full-width characters
     if the encoding is set to one of the Japanese encodings. Colors and bitdepth
     can be set.
@@ -468,18 +468,17 @@ size_t bfont_draw_wide(void *buffer, uint32_t bufwidth, bool opaque,
     \param bpp              The number of bits per pixel in the buffer.
     \param opaque           If non-zero, overwrite background areas with black,
                             otherwise do not change them from what they are.
-    \param fmt              The printf-style format string to draw.
-    \param ...              Additional printf-style variadic arguments
+    \param str              The string to draw.
 
-    \sa bfont_draw_str_ex_va()
+    \sa bfont_draw_str_ex_fmt(), bfont_draw_str_ex_va()
 */
-void bfont_draw_str_ex(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp,
-                       bool opaque, const char *fmt, ...) __printflike(7, 8);
+void bfont_draw_str_ex(void *b, uint32_t width, uint32_t fg, uint32_t bg,
+                       uint8_t bpp, bool opaque, const char *str);
 
-/** \brief   Draw a full formatted string to any sort of buffer (with va_args).
+/** \brief   Draw a full decorated and formatted string to any sort of buffer.
 
-    This function is equivalnet to bfont_draw_str_ex(), except that the variadic
-    argument list is passed via a pointer to a va_list.
+    This function is equivalent to bfont_draw_str_ex(), except that the string
+    is formatted as with the `printf()` function.
 
     \param b                The buffer to draw to.
     \param width            The width of the buffer in pixels.
@@ -491,14 +490,36 @@ void bfont_draw_str_ex(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_
     \param fmt              The printf-style format string to draw.
     \param ...              Additional printf-style variadic arguments
 
-    \sa bfont_draw_str_ex()
+    \sa bfont_draw_str_ex_vfmt()
 */
-void bfont_draw_str_ex_va(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp, 
-                          bool opaque, const char *fmt, va_list *var_args);
+void bfont_draw_str_ex_fmt(void *b, uint32_t width, uint32_t fg, uint32_t bg,
+                           uint8_t bpp, bool opaque, const char *fmt, ...)
+                           __printflike(7, 8);
+
+/** \brief   Draw decorated and formatted string to buffer (with va_args).
+
+    This function is equivalent to bfont_draw_str_ex_fmt(), except that the
+    variadic argument list is passed via a pointer to a va_list.
+
+    \param b                The buffer to draw to.
+    \param width            The width of the buffer in pixels.
+    \param fg               The foreground color to use.
+    \param bg               The background color to use.
+    \param bpp              The number of bits per pixel in the buffer.
+    \param opaque           If non-zero, overwrite background areas with black,
+                            otherwise do not change them from what they are.
+    \param fmt              The printf-style format string to draw.
+    \param var_args         Additional printf-style variadic arguments
+
+    \sa bfont_draw_str_ex_fmt()
+*/
+void bfont_draw_str_ex_vfmt(void *b, uint32_t width, uint32_t fg, uint32_t bg,
+                            uint8_t bpp, bool opaque, const char *fmt,
+                            va_list *var_args);
 
 /** \brief   Draw a full string to a buffer.
 
-    This function draws a NUL-terminated string in the set encoding to the given
+    This function draws a NULL-terminated string in the set encoding to the given
     buffer. This will automatically handle mixed half and full-width characters
     if the encoding is set to one of the Japanese encodings. Draws pre-set
     16-bit colors.
@@ -507,11 +528,26 @@ void bfont_draw_str_ex_va(void *b, uint32_t width, uint32_t fg, uint32_t bg, uin
     \param  width           The width of the buffer in pixels.
     \param  opaque          If one, overwrite blank areas with bfont_bgcolor,
                             otherwise do not change them from what they are.
+    \param  str             The string to draw.
+*/
+void bfont_draw_str(void *b, uint32_t width, bool opaque, const char *str);
+
+/** \brief   Draw a full formatted string to a buffer.
+
+    This function is equvalent to bfont_draw_str(), except that the string is
+    formatted as with the `printf()` function.
+
+    \param  b               The buffer to draw to.
+    \param  width           The width of the buffer in pixels.
+    \param  opaque          If one, overwrite blank areas with bfont_bgcolor,
+                            otherwise do not change them from what they are.
     \param  fmt             The printf-style format string to draw.
     \param  ...             Additional printf-style variadic arguments.
 */
-void bfont_draw_str(void *b, uint32_t width, bool opaque, const char *fmt, ...)
-    __printflike(4, 5);
+void bfont_draw_str_fmt(void *b, uint32_t width, bool opaque, const char *fmt,
+                        ...) __printflike(4, 5);
+
+
 
 /** @} */
 

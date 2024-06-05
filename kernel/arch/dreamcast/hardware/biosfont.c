@@ -316,14 +316,10 @@ size_t bfont_draw_wide(void *b, uint32_t bufwidth, bool opaque, uint32_t c) {
                          (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, opaque, c, 1, 0);
 }
 
-void bfont_draw_str_ex_va(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp, bool opaque, 
-                          const char *fmt, va_list *var_args) {
-    char string[1088]; /* Maximum of 1060 thin characters onscreen, plus padding for multiple of 32. */
+void bfont_draw_str_ex(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp, bool opaque,
+                       const char *str) {
     uint16_t nChr, nMask, nFlag;
     uint8_t *buffer = (uint8_t *)b;
-    char *str = string;
-
-    vsnprintf(string, sizeof(string), fmt, *var_args);
 
     while(*str) {
         nFlag = 0;
@@ -370,29 +366,46 @@ void bfont_draw_str_ex_va(void *b, uint32_t width, uint32_t fg, uint32_t bg, uin
     }
 }
 
+void bfont_draw_str_ex_vfmt(void *b, uint32_t width, uint32_t fg, uint32_t bg,
+                            uint8_t bpp, bool opaque, const char *fmt,
+                            va_list *var_args) {
+    /* Maximum of 1060 thin characters onscreen, plus padding for multiple of 32. */
+    char string[1088];
+
+    vsnprintf(string, sizeof(string), fmt, *var_args);
+    bfont_draw_str_ex(b, width, fg, bg, bpp, opaque, string);
+}
+
 /* Draw string of full-width (wide) and half-width (thin) characters
    Note that this handles the case of mixed encodings unless Japanese
    support is disabled (BFONT_CODE_ISO8859_1).
    XXX: Seems like this can be shrunk to use uint8_t for nChr/Mask/Flag and
     getting rid of nMask.
    */
-void bfont_draw_str_ex(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp, 
+void bfont_draw_str_ex_fmt(void *b, uint32_t width, uint32_t fg, uint32_t bg, uint8_t bpp,
                        bool opaque, const char *fmt, ...) {
     va_list var_args;
     va_start(var_args, fmt);
 
-    bfont_draw_str_ex_va(b, width, fg, bg, bpp, opaque, fmt, &var_args);
+    bfont_draw_str_ex_vfmt(b, width, fg, bg, bpp, opaque, fmt, &var_args);
 
     va_end(var_args);
 }
 
-void bfont_draw_str(void *b, uint32_t width, bool opaque, const char *fmt, ...) {
+void bfont_draw_str(void *b, uint32_t width, bool opaque, const char *str) {
+    bfont_draw_str_ex(b, width, bfont_fgcolor, bfont_bgcolor,
+                     (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3,
+                     opaque, str);
+}
+
+void bfont_draw_str_fmt(void *b, uint32_t width, bool opaque, const char *fmt,
+                        ...) {
     va_list var_args;
     va_start(var_args, fmt);
-    
-    bfont_draw_str_ex_va(b, width, bfont_fgcolor, bfont_bgcolor, 
-                        (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3, 
-                        opaque, fmt, &var_args);
+
+    bfont_draw_str_ex_vfmt(b, width, bfont_fgcolor, bfont_bgcolor,
+                           (bfont_32bit ? (sizeof (uint32_t)) : (sizeof (uint16_t))) << 3,
+                           opaque, fmt, &var_args);
 
     va_end(var_args);
 }

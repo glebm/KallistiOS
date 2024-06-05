@@ -109,7 +109,7 @@ static void draw_instructions(int faucet_vol, int brushing_vol) {
     y += 24;
     bfont_draw_str(vram_s + y*640+x, 640, color, "Press L-Trigger to increase faucet volume");
     y += 24;
-    bfont_draw_str(vram_s + y*640+x, 640, color, "Faucet Volume: %3i", faucet_vol);
+    bfont_draw_str_fmt(vram_s + y*640+x, 640, color, "Faucet Volume: %3i", faucet_vol);
 
     y += 48;
     bfont_draw_str(vram_s + y*640+x, 640, color, "Press Y to play brushing sound");
@@ -118,7 +118,7 @@ static void draw_instructions(int faucet_vol, int brushing_vol) {
     y += 24;
     bfont_draw_str(vram_s + y*640+x, 640, color, "Press R-Trigger to increase brushing volume");
     y += 24;
-    bfont_draw_str(vram_s + y*640+x, 640, color, "Brushing Volume: %3i", brushing_vol);
+    bfont_draw_str_fmt(vram_s + y*640+x, 640, color, "Brushing Volume: %3i", brushing_vol);
 
     y += 48;
     bfont_draw_str(vram_s + y*640+x, 640, color, "Press Start to exit program");
