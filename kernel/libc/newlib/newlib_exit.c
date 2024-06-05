@@ -13,7 +13,7 @@ extern void arch_exit_handler(int ret_code) __noreturn;
 
 static int ret_code;
 
-static void kos_shutdown(void) {
+void kos_shutdown(void) {
     arch_exit_handler(ret_code);
 
     __builtin_unreachable();
@@ -21,7 +21,7 @@ static void kos_shutdown(void) {
 
 KOS_INIT_FLAG_WEAK(kos_shutdown, true);
 
-void _exit(int code) {
+__used void _exit(int code) {
     ret_code = code;
 
     KOS_INIT_FLAG_CALL(kos_shutdown);
