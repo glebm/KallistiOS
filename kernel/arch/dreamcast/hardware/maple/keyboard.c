@@ -73,6 +73,11 @@ void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data) {
     event_handler.ud = user_data;
 }
 
+void kbd_get_event_handler(kbd_event_handler_t *callback, void **user_data) {
+    *callback = event_handler.cb;
+    *user_data = event_handler.ud;
+}
+
 /* These are global timings for key repeat. It would be possible to put
     them in the state, but I don't see a reason to.
     It seems unreasonable that one might want different repeat

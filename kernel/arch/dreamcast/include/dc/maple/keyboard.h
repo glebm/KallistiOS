@@ -576,9 +576,26 @@ typedef void (*kbd_event_handler_t)(maple_device_t *dev, kbd_key_t key,
     \param  user_data   Generic pointer which is stored internally and gets
                         passed back to \p callback upon an event firing.
 
-    \sa kbd_event_handler_t
+    \sa kbd_get_event_handler(), kbd_event_handler_t
 */
 void kbd_set_event_handler(kbd_event_handler_t callback, void *user_data);
+
+/** \brief Returns the Registered Event Handler
+
+    This function returns the handler that has currently been registered to be
+    notified upon keyboard events. The handler is returned in the form of its
+    callback function and associated userdata.
+
+    \param  callback    Pointer-to-pointer which will be modifed to point to
+                        the address of the currently installed callback.
+    \param  user_data   Pointer-to-pointer which will be modified to point to
+                        the address of the userdata associated with the
+                        currently installed callback.
+
+    \sa kbd_set_event_handler(), kbd_event_handler_t
+
+*/
+void kbd_get_event_handler(kbd_event_handler_t *callback, void **user_data);
 
 /** @} */
 
