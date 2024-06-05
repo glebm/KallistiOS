@@ -3,7 +3,7 @@
    timer.c
    Copyright (C) 2000, 2001, 2002 Megan Potter
    Copyright (C) 2023 Falco Girgis
-   Copyright (C) 2023 Paul Cercueil <paul@crapouillou.net>
+   Copyright (C) 2023, 2024 Paul Cercueil <paul@crapouillou.net>
 */
 
 #include <assert.h>
@@ -171,6 +171,22 @@ void timer_spin_sleep(int ms) {
     timer_stop(TMU1);
 }
 
+void timer_spin_delay_ns(unsigned short ns) {
+    uint64_t timeout = timer_ns_gettime64() + ns;
+
+    /* Note that we don't actually care about the counter overflowing.
+       Nobody will run their Dreamcast straight for 585 years. */
+    while(timer_ns_gettime64() < timeout);
+}
+
+void timer_spin_delay_us(unsigned short us) {
+    uint64_t timeout = timer_us_gettime64() + us;
+
+    /* Note that we don't actually care about the counter overflowing.
+       Nobody will run their Dreamcast straight for 584942 years. */
+    while(timer_us_gettime64() < timeout);
+}
+
 /* Enable timer interrupts; needs to move to irq.c sometime. */
 void timer_enable_ints(int which) {
     volatile uint16_t *ipra = (uint16_t *)0xffd00004;
@@ -196,9 +212,10 @@ static          uint32_t timer_ms_countdown;
 
 /* TMU2 interrupt handler, called every second. Simply updates our
    running second counter and clears the underflow flag. */
-static void timer_ms_handler(irq_t source, irq_context_t *context) {
+static void timer_ms_handler(irq_t source, irq_context_t *context, void *data) {
     (void)source;
     (void)context;
+    (void)data;
 
     timer_ms_counter++;
 
@@ -207,7 +224,7 @@ static void timer_ms_handler(irq_t source, irq_context_t *context) {
 }
 
 void timer_ms_enable(void) {
-    irq_set_handler(EXC_TMU2_TUNI2, timer_ms_handler);
+    irq_set_handler(EXC_TMU2_TUNI2, timer_ms_handler, NULL);
     timer_prime(TMU2, 1, 1);
     timer_ms_countdown = timer_count(TMU2);
     timer_clear(TMU2);
@@ -339,8 +356,9 @@ static timer_primary_callback_t tp_callback;
 static uint32_t tp_ms_remaining;
 
 /* IRQ handler for the primary timer interrupt. */
-static void tp_handler(irq_t src, irq_context_t *cxt) {
+static void tp_handler(irq_t src, irq_context_t *cxt, void *data) {
     (void)src;
+    (void)data;
 
     /* Are we at zero? */
     if(tp_ms_remaining == 0) {
@@ -374,14 +392,14 @@ static void timer_primary_init(void) {
     tp_callback = NULL;
 
     /* Clear out TMU0 and get ready for wakeups */
-    irq_set_handler(EXC_TMU0_TUNI0, tp_handler);
+    irq_set_handler(EXC_TMU0_TUNI0, tp_handler, NULL);
     timer_clear(TMU0);
 }
 
 static void timer_primary_shutdown(void) {
     timer_stop(TMU0);
     timer_disable_ints(TMU0);
-    irq_set_handler(EXC_TMU0_TUNI0, NULL);
+    irq_set_handler(EXC_TMU0_TUNI0, NULL, NULL);
 }
 
 timer_primary_callback_t timer_primary_set_callback(timer_primary_callback_t cb) {
