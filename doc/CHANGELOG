@@ -208,7 +208,8 @@ KallistiOS version 2.1.0 -----------------------------------------------
 - *** Added <netinet/udp.h> and <netinet/udplite.h> headers and move the related
       content from <netinet/in.h> [LS]
 - *** Added __weak, __used, likely() and unlikely() [FG]
-- DC  Added Maple-specific KOS_INIT_FLAGS() which allow for GC-ing unused drivers [FG]
+- DC  Added Maple-specific KOS_INIT_FLAGS() which allow for GC-ing unused
+      drivers [FG]
 - DC  Added basic example for micropython KOS port [Aaron Glazer == AG]
 - DC  Improved performance of IRQ context save / restore [PC]
 - DC  Increased resolution of TMU timers + date/time functions [FG && PC]
@@ -220,7 +221,8 @@ KallistiOS version 2.1.0 -----------------------------------------------
 - *** Removed old pthreads implementation from kernel/libc [LS]
 - *** Added new (more complete/compliant) pthreads implementation in
       addons/libpthread [LS]
-- *** Implemented _POSIX_CPUTIME in clock_gettime() using perf counter timer [FG]
+- *** Implemented _POSIX_CPUTIME in clock_gettime() using perf counter
+      timer [FG]
 - *** Implemented scandir() and alphasort() POSIX functions from dirent.h [FG]
 - DC  Added new driver for the SH4's UBC + high-level breakpoint API [FG]
 - DC  Add support for French AZERTY keyboards [PC]
@@ -231,8 +233,10 @@ KallistiOS version 2.1.0 -----------------------------------------------
 - DC  Add timer_spin_delay_{us,ns} and use them in scif-spi [PC]
 - *** Added thread support for tracking CPU time + updated clock_gettime() [FG]
 - *** Added support for one-shot timers [PC]
-- DC  Use one-shot timers for timeout and a proper polling mechanism in modem [PC]
+- DC  Use one-shot timers for timeout and a proper polling mechanism in
+      modem driver [PC]
 - *** Added support for pthread_condattr_setclock() [FG]
+- *** Added full support for <time.h> additions from C23 standard. [FG]
 
 KallistiOS version 2.0.0 -----------------------------------------------
 - DC  Broadband Adapter driver fixes [Megan Potter == MP]
@@ -678,7 +682,8 @@ KallistiOS version 1.1.8 ------------------------------------------------
 - DC  Added FASTSOUNDLIB to libmodplug flags [JU]
 - DC  Enable OCRAM on init with INIT_OCRAM init flags [JKF]
 - DC  Allow exceptions during G2 operations to catch bugs [MP]
-- DC  Added arch_get_ret_addr to allow getting the return address from a func [MP]
+- DC  Added arch_get_ret_addr to allow getting the return address from a
+      function [MP]
 - DC  Added channel inits on init for SPU, to fix CDDA [MP]
 - DC  Changed spu_cdda_* functions to be a bit more sane [MP]
 - DC  Added CDDA example [MP]
@@ -764,7 +769,8 @@ KallistiOS version 1.1.7 ------------------------------------------------
 - DC  Added glKosMatrixIdent() and glKosMatrixApply() to allow for optimized
       direct-rendering access, along with mat_trans_single() [MP]
 - DC  added tunnel demo [PB]
-- *** Newlib libm now included with main distro (though still a bit DC specific) [MP]
+- *** Newlib libm now included with main distro (though still a bit DC
+      specific) [MP]
 - DC  Created KGL programming reference in LyX [PB]
 - *** Implement fputc and O_TRUNC [JU]
 - DC  Fix for modesize.y % 32 != 0 [MP]
