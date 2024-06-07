@@ -195,7 +195,7 @@ void irq_create_context(irq_context_t *context, uint32_t stack_pointer,
 
     List of exception codes:
 */
-typedef enum irq {
+typedef enum irq_exception {
     EXC_RESET_POWERON      = 0x0000, /**< `[RESET ]` Power-on reset */
     EXC_RESET_MANUAL       = 0x0020, /**< `[RESET ]` Manual reset */
     EXC_RESET_UDI          = 0x0000, /**< `[RESET ]` Hitachi UDI reset */
@@ -273,26 +273,42 @@ typedef enum irq {
     @{
 */
 
+/** Returns current interrupt depth.
+
+    Checks how deeply neested the caller is within interrupt handlers.
+
+    \retval 0                   There is no interrupt active.
+    \retval >0                  Caller is N interrupts deep.
+    
+    \sa irq_inside_int(), irq_active_int()
+*/
+size_t irq_int_depth(void);
+
 /** Returns whether inside of an interrupt context.
 
     \retval true               If interrupt handling is in progress.
     \retval false              If normal processing is in progress.
 
-    \sa iq_active_int()
+    \sa irq_int_depth(), irq_active_int()
 */
 bool irq_inside_int(void);
 
-/** Returns the active IRQ source.
+/** Returns the active IRQ source N levels deep.
 
-    \retval >0               Exception code (\ref irq_exception codes) for
-                             active IRQ context.
-    \retval 0                No IRQ context is active.
+    \param  level           0-based index for depth of the active IRQ
+                            (0 is the current IRQ, depth-1 is first IRQ).
 
-    \sa irq_inside_int()
+    \retval >0              Exception code for Nth IRQ context.
+    \retval 0               No IRQ context is active.
+
+    \sa irq_inside_int(), irq_int_depth()
 */
-irq_t irq_active_int(void);
+irq_t irq_active_int(size_t level);
 
-/** Returns whether the current IRQ has been handled. 
+/** Returns whether the current IRQ has been handled.
+
+    \param  level           0-based index for depth of the active IRQ
+                            (0 is the current IRQ, depth-1 is first IRQ).
 
     Used to determine whether the active interrupt has been accepted by a
     handler callback or whether the next handler in the chain should be
@@ -304,7 +320,7 @@ irq_t irq_active_int(void);
 
     \sa irq_handle_int()                            
 */
-bool irq_handled_int(void);
+bool irq_handled_int(size_t level);
 
 /** @} */
 

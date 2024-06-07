@@ -10,6 +10,8 @@
 /* This module contains low-level handling for IRQs and related exceptions. */
 
 #include <string.h>
+#include <strings.h>
+#include <assert.h>
 #include <stdio.h>
 #include <arch/arch.h>
 #include <arch/types.h>
@@ -25,54 +27,93 @@
 #define EXPEVT ( *((volatile uint32_t*)(0xff000024)) ) /* Exception Event Register */
 #define INTEVT ( *((volatile uint32_t*)(0xff000028)) ) /* Interrupt Event Register */
 
+/* IRQ handler closure */
 struct irq_cb {
     irq_handler hdl;
     void       *data;
 };
 
+/* TRAPA handler closure */
 struct trapa_cb {
     trapa_handler hdl;
     void         *data;
 };
 
-/* Exception table -- this table matches (EXPEVT>>4) to a function pointer.
-   If the pointer is null, then nothing happens. Otherwise, the function will
-   handle the exception. */
-static struct irq_cb   irq_handlers[0x100];
-static struct trapa_cb trapa_handlers[0x100];
+/* Linked list of IRQ states, one is pushed onto the stack
+   every time the top-level ISR is entered. */
+struct irq_state {               // SIZE
+    bool              handled;   // 1 byte  /* mov.b only has 15-byte displacement */
+    uint8_t           code;      // 1 byte  
+    uint16_t          evt;       // 2 bytes       
+    struct irq_state *previous;  // 4 bytes
+};                               // 8 BYTES TOTAL
 
-/* Global exception handler -- hook this if you want to get each and every
-   exception; you might get more than you bargained for, but it can be useful. */
-static irq_handler irq_hnd_global;
-static void *irq_hnd_global_data;
-
+/* Individual exception handlers */
+static struct irq_cb     irq_handlers[0x100];
+/* TRAPA exception handlers. */
+static struct trapa_cb   trapa_handlers[0x100];
+/* Global exception handler */
+static struct irq_cb     global_irq_handler;
 /* Default IRQ context location */
-static irq_context_t irq_context_default;
+static irq_context_t     irq_context_default;
+/* Current IRQ state linked list pointer */
+static struct irq_state *irq_state_current;
 
-/* Current IRQ state: ((code & 0xf) << 16) | (evt & 0xffff) */
-static int inside_int;
+inline static void irq_state_push(struct irq_state *current) {
+    current->previous = irq_state_current;
+    irq_state_current = current;
+}
 
-/* Whether the active interrupt has been handled or not. */
-static bool irq_handled;
+inline static void irq_state_pop(void) {
+    assert(irq_state_current);
+    irq_state_current = irq_state_current->previous;
+}
+
+inline static struct irq_state *irq_state_n(size_t level) {
+    struct irq_state *state = irq_state_current;
+    
+    for(size_t depth = 0; depth < level; ++depth) {
+        if(!state) break;
+        state = state->previous;
+    }
+
+    return state;
+}
+
+size_t irq_int_depth(void) {
+    struct irq_state *state = irq_state_current;
+    size_t depth = 0;
+    
+    while(state) {
+        ++depth;
+        state = state->previous;
+    }
+
+    return depth;
+}
 
 /* Are we inside an interrupt? */
 bool irq_inside_int(void) {
-    return !!inside_int;
+    return !!irq_state_current;
 }
 
 /* What's the active IRQ? */
-irq_t irq_active_int(void) {
-    return (inside_int & 0xffff);
+irq_t irq_active_int(size_t level) {
+    struct irq_state *state = irq_state_n(level);
+    return state? state->evt : 0;
 }
 
 /* Have we handled the active interrupt? */
-bool irq_handled_int(void) {
-    return irq_handled;
+bool irq_handled_int(size_t level) {
+    struct irq_state *state = irq_state_n(level);
+    assert(state);
+    return state->handled;
 }
 
 /* Set whether we've handled the active interrupt or not. */
 void irq_handle_int(bool handled) {
-    irq_handled = handled;
+    assert(irq_state_current);
+    irq_state_current->handled = handled;
 }
 
 /* Set a handler, or remove a handler */
@@ -103,18 +144,17 @@ irq_handler irq_get_handler(irq_t code, void **data) {
 
 /* Set a global handler */
 int irq_set_global_handler(irq_handler hnd, void *data) {
-    irq_hnd_global = hnd;
-    irq_hnd_global_data = data;
-
+    global_irq_handler.hdl = hnd;
+    global_irq_handler.data = data;
     return 0;
 }
 
 /* Get the global exception handler */
 irq_handler irq_get_global_handler(void **data) {
     if(data)
-        *data = irq_hnd_global_data;
+        *data = global_irq_handler.data;
 
-    return irq_hnd_global;
+    return global_irq_handler.hdl;
 }
 
 /* Set or remove a trapa handler */
@@ -213,11 +253,13 @@ static void irq_dump_regs(int code, int evt) {
    types of interrupts. NOTE: We are running on the stack of the process
    that was interrupted! */
 void irq_handle_exception(int code) {
+    struct irq_state irq_state = {
+        .code = code
+    };
     const struct irq_cb *hnd;
-    irq_t evt = 0;
 
-    irq_handled = false;
-
+    irq_state_push(&irq_state);
+    
     switch(code) {
         /* If it's a code 0 (or anything else), well, we shouldn't be here. */
         case 0:
@@ -228,65 +270,61 @@ void irq_handle_exception(int code) {
         /* If it's a code 1 or 2, grab the event from expevt. */
         case 1:
         case 2:
-            evt = EXPEVT;
+            irq_state.evt = EXPEVT;
             break;
 
         /* If it's a code 3, grab the event from intevt. */
         case 3:
-            evt = INTEVT;
+            irq_state.evt = INTEVT;
     }
 
     /* Check for double exception fault. */
-    if(__unlikely(inside_int)) {
+    if(__unlikely(irq_state.previous)) {
         hnd = &irq_handlers[EXC_DOUBLE_FAULT >> 4];
 
         if(hnd->hdl)
             hnd->hdl(EXC_DOUBLE_FAULT, irq_srt_addr, hnd->data);
         
         /* Panic if it went unhandled. */
-        if(!irq_handled) {
-            irq_dump_regs(code, evt);
+        if(!irq_state.handled) {
+            irq_dump_regs(code, irq_state.evt);
             arch_panic("double fault");
         }
     }
 
-    /* Update the active IRQ information.  */
-    inside_int = ((code & 0xf) << 16) | (evt & 0xffff);
-
     /* If there's a global handler, it goes first */
-    if(__unlikely(irq_hnd_global))
-        irq_hnd_global(evt, irq_srt_addr, irq_hnd_global_data);
+    if(__unlikely(global_irq_handler.hdl))
+        global_irq_handler.hdl(irq_state.evt, irq_srt_addr, global_irq_handler.data);
 
     /* If the global handler didn't handle the exception, pass
        it on to the individual handlers */
-    if(__likely(!irq_handled)) {
-        hnd = &irq_handlers[evt >> 4];
+    if(__likely(!irq_state.handled)) {
+        hnd = &irq_handlers[irq_state.evt >> 4];
         
         if(__likely(hnd->hdl)) {
             /* Individual handlers accept by default. */
-            irq_handled = true;
-            hnd->hdl(evt, irq_srt_addr, hnd->data);
+            irq_state.handled = true;
+            hnd->hdl(irq_state.evt, irq_srt_addr, hnd->data);
         }
     }
 
     /* If an individual handler didn't handle the exception,
        pass it on to the unhandled exception handler. */
-    if(__unlikely(!irq_handled)) {
+    if(__unlikely(!irq_state.handled)) {
         hnd = &irq_handlers[EXC_UNHANDLED_EXC >> 4];
 
         if(hnd->hdl)
-            hnd->hdl(evt, irq_srt_addr, hnd->data);
+            hnd->hdl(irq_state.evt, irq_srt_addr, hnd->data);
         
         /* Panic if nothing handled it. */
-        if(!irq_handled) {
-            irq_dump_regs(code, evt);
+        if(!irq_state.handled) {
+            irq_dump_regs(code, irq_state.evt);
             arch_panic("unhandled IRQ/Exception");
         }
     }
 
     irq_disable();
-    inside_int = 0;
-    irq_handled = false;
+    irq_state_pop();
 }
 
 void irq_handle_trapa(irq_t code, irq_context_t *context, void *data) {
@@ -337,7 +375,7 @@ void irq_create_context(irq_context_t *context, uint32_t stkpntr,
     /* Set misc system regs */
     context->gbr = context->mach = context->macl = 0;
     context->vbr = 0;   /* This is not relevant because the
-                   context switcher doesn't touch it */
+                           context switcher doesn't touch it */
 
     /* Set default floating point control regs */
     context->fpscr = 0;
@@ -396,13 +434,12 @@ int irq_init(void) {
     irq_disable();
 
     /* Blank the exception handler tables */
-    memset(irq_handlers, 0, sizeof(irq_handlers));
-    memset(trapa_handlers, 0, sizeof(trapa_handlers));
-    irq_hnd_global = NULL;
-    irq_hnd_global_data = NULL;
+    bzero(irq_handlers,        sizeof(irq_handlers));
+    bzero(trapa_handlers,      sizeof(trapa_handlers));
+    bzero(&global_irq_handler, sizeof(global_irq_handler));
 
     /* Default to not in an interrupt */
-    inside_int = 0;
+    irq_state_current = NULL;
 
     /* Set default timer handlers */
     irq_set_handler(EXC_TMU0_TUNI0, irq_def_timer, (void *)0);
