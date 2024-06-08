@@ -29,27 +29,27 @@
 
 #include <kos.h>
 
+// Provide a custom formatter so we can pass irq_t to println(), inheriting
+// from a const char* formatter so we can use reuse its implementation.
+template <>
+struct std::formatter<irq_t>: formatter<const char *> {
+    auto format(irq_t &code, format_context &ctx) const {
+        // Call into the base class to format the enum values like a const char*.
+        switch(code) {
+            case EXC_FPU:
+                return formatter<const char *>::format("EXC_FPU",         ctx);
+            case EXC_GENERAL_FPU:
+                return formatter<const char *>::format("EXC_GENERAL_FPU", ctx);
+            case EXC_SLOT_FPU:
+                return formatter<const char *>::format("EXC_SLOT_FPU",    ctx);
+            default:
+                return formatter<const char *>::format("UNKNOWN",         ctx);
+        }
+    }
+};
+
 // Utility namespace for our generic, reusable IRQ-related C++ utility API.
 namespace irq {
-
-    // Provide a custom formatter so we can pass irq_t to println(), inheriting
-    // from a const char* formatter so we can use reuse its implementation.
-    template <>
-    struct std::formatter<irq_t>: formatter<const char *> {
-        auto format(irq_t &code, format_context &ctx) const {
-            // Call into the base class to format the enum values like a const char*.
-            switch(code) {
-                case EXC_FPU:
-                    return formatter<const char *>::format("EXC_FPU",         ctx);
-                case EXC_GENERAL_FPU:
-                    return formatter<const char *>::format("EXC_GENERAL_FPU", ctx);
-                case EXC_SLOT_FPU:
-                    return formatter<const char *>::format("EXC_SLOT_FPU",    ctx);
-                default:
-                    return formatter<const char *>::format("UNKNOWN",         ctx);
-            }
-        }
-    };
 
     // We have to inherit from the C handler so C++ doesn't whine about
     // ignoring its attributes in a template argument. This is fine as long as
@@ -145,7 +145,8 @@ static void divide_by_zero_exception() {
     // Enable divide-by-zero exceptions in the FPU status register.
     __builtin_sh_set_fpscr(__builtin_sh_get_fpscr() | 0b111100000000);
     {   // RIP FPU!
-        volatile double d = 0.0, c = 0.0, e = d / c; (void)e;
+        volatile double d = 0.0, c = 0.0;
+        [[maybe_unused]] volatile double e = d / c;
     }
 }
 
