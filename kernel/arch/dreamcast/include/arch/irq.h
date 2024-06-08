@@ -27,6 +27,8 @@
         - Add support for `EXPMASK` (assuming DC's SH4 supports it).
         - Stop including trap.h from irq.h.
         - Explicitly label unimplemented interrupts for DC with separate type
+        - Truly support nested interrupts and exceptions
+            - irq_context_t needs to not be static, ASM adjustment.
 */
 
 #ifndef __ARCH_IRQ_H
@@ -48,6 +50,19 @@ __BEGIN_DECLS
 
     This is an API for managing interrupts, their masks, and their
     handler routines along with thread context information.
+
+    ## IRQ Handler Propagation
+    Interrupt processing routes an interrupt request through a configurable
+    chain of handlers, propagating the requeset down the chain. See \ref
+    irq_handlers for more details.
+
+    ## Nested IRQ Handlers
+    While the mechanism is in place for the future, KOS currently only
+    gracefully handles one level of interrupts or a maximum depth of 1.
+    The exception to this rule is when another one fires, and the
+    `EXC_DOUBLE_FAULT` handler is called. From within this handler,
+    there will be a depth of 2 right before the system must terminate,
+    as there is no graceful way to recover from this state.
 
     \warning
     This is a low-level, internal kernel API. Many of these
@@ -277,6 +292,9 @@ typedef enum irq_exception {
 
     Checks how deeply neested the caller is within interrupt handlers.
 
+    \note
+    See \ref irqs for more information on nested interrupts.
+
     \retval 0                   There is no interrupt active.
     \retval >0                  Caller is N interrupts deep.
     
@@ -295,6 +313,9 @@ bool irq_inside_int(void);
 
 /** Returns the active IRQ source N levels deep.
 
+    \note
+    See \ref irqs for more information on nested interrupts.
+
     \param  level           0-based index for depth of the active IRQ
                             (0 is the current IRQ, depth-1 is first IRQ).
 
@@ -307,12 +328,15 @@ irq_t irq_active_int(size_t level);
 
 /** Returns whether the current IRQ has been handled.
 
-    \param  level           0-based index for depth of the active IRQ
-                            (0 is the current IRQ, depth-1 is first IRQ).
-
     Used to determine whether the active interrupt has been accepted by a
     handler callback or whether the next handler in the chain should be
     called.
+
+    \note
+    See \ref irqs for more information on nested interrupts.
+
+    \param  level           0-based index for depth of the active IRQ
+                            (0 is the current IRQ, depth-1 is first IRQ).
 
     \retval false           The active interrupt has not been handled OR
                             there is no currently active interrupt.
@@ -473,9 +497,10 @@ void irq_handle_int(bool handled);
     The only exception to this rule is the \ref EXC_DOUBLE_FAULT software
     exception which is the only handler that fires in the case of an exception
     being raised while already in an interrupt handling an exception. If this
-    handler does not handle the exception, the kernel panics and aborts.
-
-
+    handler does not handle the exception, the kernel panics and aborts. This
+    is what is expected to happen by default, as KOS currently does not handle
+    IRQs-within-IRQs getting separate contexts, so it's almost impossible to
+    recover from such an event.
 
     @{
 */
@@ -562,6 +587,13 @@ irq_handler irq_get_handler(irq_t source, void **data);
     when an exception is raised while already in an exception handler, in which
     case only the individual handler installed for \ref EXC_DOUBLE_FAULT will
     be called.
+
+    \note
+    By default the global exception handler is expected to reject or ignore the
+    IRQ rather than handle it, causing it to continue propagating onwards to
+    the individual/single interrupt handlers. If you wish to accept and handle
+    the IRQ, terminating it, and preventing it from propagating onward, you
+    must explicitly call irq_handle_int() with `TRUE`.
 
 
     \param  hnd             A pointer to the procedure to handle the exception.
