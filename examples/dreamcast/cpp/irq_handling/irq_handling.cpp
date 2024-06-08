@@ -11,7 +11,7 @@
     custom IRQ handlers to do exception handling and propagation using the new
     and updated IRQ chaining mechanism in KOS.
 
-    The example is being written in unapologetically modern C++(26) to provide
+    The example is being written in unapologetically modern C++ to provide
     some useful utilties for installing arbitrary high-level C++ callables like
     stateful lambdas as IRQ handlers, which can easily be warezed by C++
     developers and integrated within their own projects.
@@ -34,7 +34,7 @@
 template <>
 struct std::formatter<irq_t>: formatter<const char *> {
     auto format(irq_t &code, format_context &ctx) const {
-        // Call into the base class to format the enum values like a const char*.
+        // Call into the base class to format the enum like a const char*.
         switch(code) {
             case EXC_FPU:
                 return formatter<const char *>::format("EXC_FPU",         ctx);
@@ -58,7 +58,7 @@ namespace irq {
 
     // Sanity check for our context type.
     static_assert(sizeof(context) == sizeof(irq_context_t),
-                  "Could not safely inherit iq_context_t in C++'s irq::context!");
+                  "Could not safely inherit iq_context_t in irq::context!");
 
     // Create a concept that represents a generalized C++ callable which is
     // capable of being invoked as an interrupt handler.
@@ -70,7 +70,7 @@ namespace irq {
     // Create a type-erased container that can store any handler concept.
     using erased_handler = std::function<bool(irq_t, context *)>;
 
-    // Anonymous namespace used to prevent our internal adapter from being exported
+    // Anonymous namespace used to prevent our internals from being exported.
     namespace {
 
         // C function used as the irq_handler callback to the C API, whose job
@@ -86,14 +86,16 @@ namespace irq {
         }
     }
 
-    // Function template for registering a single handler to handle multiple IRQ codes
+    // Function template for registering a single handler to handle multiple
+    // IRQ codes simultaneously.
     template<irq_t... codes>
     bool set_handler(handler auto &&callback) {
         // Convert whatever specific type of callable C++ object we get
         // (function pointer, member function, function object, etc) into a
         // generic, type-erased form we can then pass back to our C callback
         // as a void* userdata.
-        auto* erased = new erased_handler(std::forward<decltype(callback)>(callback));
+        auto* erased = 
+            new erased_handler(std::forward<decltype(callback)>(callback));
 
         // Perform parameter pack expansion, registering the same handler to
         // handle each of the given IRQ codes, bitwise AND-ing their return
@@ -104,7 +106,8 @@ namespace irq {
     // Function for installing a handler as the global IRQ handler using the
     // same mechanism described above for individual IRQ codes.
     bool set_global_handler(handler auto &&callback) {
-        auto* erased = new erased_handler(std::forward<decltype(callback)>(callback));
+        auto* erased = 
+            new erased_handler(std::forward<decltype(callback)>(callback));
         return irq_set_global_handler(cpp_handler_adapter, erased);
     }
 }
@@ -146,7 +149,8 @@ static void divide_by_zero_exception() {
     __builtin_sh_set_fpscr(__builtin_sh_get_fpscr() | 0b111100000000);
     {   // RIP FPU!
         volatile double d = 0.0, c = 0.0;
-        [[maybe_unused]] volatile double e = d / c;
+        volatile double e = d / c;
+        (void)e;
     }
 }
 
@@ -161,16 +165,18 @@ int main(int argc, char* argv[]) {
 
     // Install a global IRQ handler which will catch everything.
     irq::set_global_handler(
-        meta_handler("Global Handler", global_ctrl, [](irq_t, irq::context *ctx) {
-            // Advance to the next instruction to not infinite loop.
-            ctx->pc += 2;
-        }));
+        meta_handler("Global Handler", global_ctrl, [](irq_t, irq::context *ctx)
+            {
+                        // Advance to the next instruction to not infinite loop.
+                        ctx->pc += 2;
+                    }));
 
     // Install a single handler for EXC_FPU, EXC_GENERAL_FPU, and EXC_SLOT_FPU
     irq::set_handler<EXC_FPU, EXC_GENERAL_FPU, EXC_SLOT_FPU>(
-        meta_handler("Single Handler", fpu_ctrl, [](irq_t, irq::context *ctx) {
-            ctx->pc += 2;   // Advance to the next instruction.
-        }));
+        meta_handler("Single Handler", fpu_ctrl, 
+                [](irq_t, irq::context *ctx) {
+                ctx->pc += 2;   // Advance to the next instruction.
+            }));
 
     // Install an unhandled exception handler at the end of the chain.
     irq::set_handler<EXC_UNHANDLED_EXC>(
@@ -235,10 +241,12 @@ int main(int argc, char* argv[]) {
     
     // Print out our results and return with a standard exit code.
     if(success) { 
-        std::println(stdout, "\n========== C++ IRQ HANDLING TEST: PASSED! ===========");
+        std::println(stdout, 
+                     "\n========= C++ IRQ HANDLING TEST: PASSED! ==========");
         return EXIT_SUCCESS;
     } else {
-        std::println(stderr, "\n!!!!!!!!!! C++ IRQ HANDLING TEST: FAILED! !!!!!!!!!!");
+        std::println(stderr, 
+                     "\n!!!!!!!!! C++ IRQ HANDLING TEST: FAILED! !!!!!!!!!");
         return EXIT_FAILURE;
     }
 }
