@@ -23,9 +23,9 @@
 #include <kos/library.h>
 
 /* Macros for accessing related registers. */
-#define TRA    ( *((volatile uint32_t*)(0xff000020)) ) /* TRAPA Exception Register */
-#define EXPEVT ( *((volatile uint32_t*)(0xff000024)) ) /* Exception Event Register */
-#define INTEVT ( *((volatile uint32_t*)(0xff000028)) ) /* Interrupt Event Register */
+#define TRA    ( *((volatile uint32_t *)(0xff000020)) ) /* TRAPA Exception Register */
+#define EXPEVT ( *((volatile uint32_t *)(0xff000024)) ) /* Exception Event Register */
+#define INTEVT ( *((volatile uint32_t *)(0xff000028)) ) /* Interrupt Event Register */
 
 /* IRQ handler closure */
 struct irq_cb {
@@ -41,36 +41,41 @@ struct trapa_cb {
 
 /* Linked list of IRQ states, one is pushed onto the stack
    every time the top-level ISR is entered. */
-struct irq_state {               // SIZE
-    bool              handled;   // 1 byte  /* mov.b only has 15-byte displacement */
-    uint8_t           code;      // 1 byte  
-    uint16_t          evt;       // 2 bytes       
-    struct irq_state *previous;  // 4 bytes
-};                               // 8 BYTES TOTAL
+struct irq_state {            // SIZE
+    bool           handled;   // 1 byte  /* mov.b only has 15-byte displacement */
+    uint8_t        code;      // 1 byte
+    uint16_t       evt;       // 2 bytes
+    volatile struct
+        irq_state *previous;  // 4 bytes
+};                            // 8 BYTES TOTAL
 
 /* Individual exception handlers */
-static struct irq_cb     irq_handlers[0x100];
+static struct irq_cb   irq_handlers[0x100];
 /* TRAPA exception handlers. */
-static struct trapa_cb   trapa_handlers[0x100];
+static struct trapa_cb trapa_handlers[0x100];
 /* Global exception handler */
-static struct irq_cb     global_irq_handler;
+static struct irq_cb   global_irq_handler;
 /* Default IRQ context location */
-static irq_context_t     irq_context_default;
+static irq_context_t   irq_context_default;
 /* Current IRQ state linked list pointer */
-static struct irq_state *irq_state_current;
+static volatile struct irq_state *        /* Points to most recent IRQ state */
+       volatile        irq_state_current; /* Volatile pointer to volatile struct */
 
+/* Called when entiringan IRQ to push its state onto the stack as current. */
 inline static void irq_state_push(struct irq_state *current) {
     current->previous = irq_state_current;
     irq_state_current = current;
 }
 
+/* Called when exiting an IRQ to pop its state from the stack. */
 inline static void irq_state_pop(void) {
     assert(irq_state_current);
     irq_state_current = irq_state_current->previous;
 }
 
-inline static struct irq_state *irq_state_n(size_t level) {
-    struct irq_state *state = irq_state_current;
+/* Called to grab the IRQ state at a particular stack level. */
+inline static volatile struct irq_state *irq_state_n(size_t level) {
+    volatile struct irq_state *state = irq_state_current;
     
     for(size_t depth = 0; depth < level; ++depth) {
         if(!state) break;
@@ -80,14 +85,19 @@ inline static struct irq_state *irq_state_n(size_t level) {
     return state;
 }
 
+/* How deeply nested in IRQ calls are we? */
 size_t irq_int_depth(void) {
-    struct irq_state *state = irq_state_current;
     size_t depth = 0;
+    const irq_mask_t imask = irq_disable();
+
+    const volatile struct irq_state *state = irq_state_current;
     
     while(state) {
         ++depth;
         state = state->previous;
     }
+
+    irq_restore(imask);
 
     return depth;
 }
@@ -99,15 +109,25 @@ bool irq_inside_int(void) {
 
 /* What's the active IRQ? */
 irq_t irq_active_int(size_t level) {
-    struct irq_state *state = irq_state_n(level);
-    return state? state->evt : 0;
+    const irq_mask_t imask = irq_disable();
+
+    const volatile struct irq_state *state = irq_state_n(level);
+    const irq_t irq = state? state->evt : 0;
+
+    irq_restore(imask);
+    return irq;
 }
 
 /* Have we handled the active interrupt? */
 bool irq_handled_int(size_t level) {
-    struct irq_state *state = irq_state_n(level);
+    const irq_mask_t imask = irq_disable();
+
+    const volatile struct irq_state *state = irq_state_n(level);
     assert(state);
-    return state->handled;
+    const bool handled = state->handled;
+    
+    irq_restore(imask);
+    return handled;
 }
 
 /* Set whether we've handled the active interrupt or not. */
@@ -163,6 +183,7 @@ int trapa_set_handler(trapa_t code, trapa_handler hnd, void *data) {
     return 0;
 }
 
+/* Get a particular trapa handler */
 trapa_handler trapa_get_handler(trapa_t code, void **data) {
     if(data)
         *data = trapa_handlers[code].data;
@@ -171,7 +192,7 @@ trapa_handler trapa_get_handler(trapa_t code, void **data) {
 }
 
 /* Get a string description of the exception */
-static char *irq_exception_string(int evt) {
+static char *irq_exception_string(irq_t evt) {
     switch(evt) {
         case EXC_ILLEGAL_INSTR:
             return "Illegal instruction";
@@ -208,7 +229,7 @@ static char *irq_exception_string(int evt) {
 
 /* Print a kernel panic reg dump */
 extern irq_context_t *irq_srt_addr;
-static void irq_dump_regs(int code, int evt) {
+static void irq_dump_regs(int code, irq_t evt) {
     uint32_t fp;
     uint32_t *regs = irq_srt_addr->r;
 
@@ -278,7 +299,8 @@ void irq_handle_exception(int code) {
             irq_state.evt = INTEVT;
     }
 
-    /* Check for double exception fault. */
+    /* Check for double exception fault: special case since we do not
+       currently support nesting of exceptions. */
     if(__unlikely(irq_state.previous)) {
         hnd = &irq_handlers[EXC_DOUBLE_FAULT >> 4];
 
@@ -365,25 +387,11 @@ irq_context_t *irq_get_context(void) {
    to the architecture maximum). */
 void irq_create_context(irq_context_t *context, uint32_t stkpntr,
                         uint32_t routine, const uint32_t *args, bool usermode) {
-    /* Clear out user and FP regs */
-    for(int i = 0; i < 16; i++) {
-        context->r[i] = 0;
-        context->fr[i] = 0;
-        context->frbank[i] = 0;
-    }
-
-    /* Set misc system regs */
-    context->gbr = context->mach = context->macl = 0;
-    context->vbr = 0;   /* This is not relevant because the
-                           context switcher doesn't touch it */
-
-    /* Set default floating point control regs */
-    context->fpscr = 0;
-    context->fpul = 0;
+    /* Clear out all registers. */
+    bzero(context, sizeof(irq_context_t));
 
     /* Setup the program frame */
     context->pc = (uint32_t)routine;
-    context->pr = 0;
     context->sr = 0x40000000;   /* note: need to handle IMASK */
     context->r[15] = stkpntr;
     context->r[14] = 0xffffffff;
@@ -424,6 +432,8 @@ static bool initted = false;
 
 /* Init routine */
 int irq_init(void) {
+    assert(!initted);
+
     /* Save SR and VBR */
     __asm__("stc    sr,r0\n"
             "mov.l  r0,%0" : : "m"(pre_sr));

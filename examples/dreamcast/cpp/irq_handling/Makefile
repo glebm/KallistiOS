@@ -1,6 +1,6 @@
 #
 # C++ IRQ Handling Test/Example
-# (c) 2024 Falco Girgis
+# Copyright (C) 2024 Falco Girgis
 #   
 
 TARGET = irq_handling.elf
