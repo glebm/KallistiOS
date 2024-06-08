@@ -100,4 +100,4 @@ trapa_handler trapa_get_handler(trapa_t trap, void **data);
 
 __END_DECLS
 
-#endif
+#endif /* __ARCH_TRAP_H */
