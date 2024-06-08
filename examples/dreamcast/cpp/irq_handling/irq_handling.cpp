@@ -9,7 +9,7 @@
 /*
     This file serves as both an example of and a demonstration for installing
     custom IRQ handlers to do exception handling and propagation using the new
-    and updated IRQ chaining mechanism in KOS 2.1.0.
+    and updated IRQ chaining mechanism in KOS.
 
     The example is being written in unapologetically modern C++(26) to provide
     some useful utilties for installing arbitrary high-level C++ callables like
