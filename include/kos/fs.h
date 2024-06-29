@@ -747,7 +747,7 @@ ssize_t fs_path_append(char *dst, const char *src, size_t len);
 
     \param  path            The path to normalize.
     \param  resolved        The buffer to store resolved normalized path. It has 
-                            to be PATH_MAX in length.
+                            to be PATH_MAX bytes in size.
     
     \return                 A pointer to the normalized path on success, 
                             or NULL on failure, in which case the path which 
