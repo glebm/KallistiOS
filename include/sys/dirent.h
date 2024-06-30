@@ -32,6 +32,17 @@ __BEGIN_DECLS
     @{
 */
 
+/** \name  Member Availability Macros
+    \brief Signifies presence of optional dirent fields
+
+    @{
+*/
+#define _DIRENT_HAVE_D_OFF      /** \brief dirent::d_off is available. */
+#define _DIRENT_HAVE_D_RECLEN   /** \brief dirent::d_reclen is available. */
+#define _DIRENT_HAVE_D_NAMLEN   /** \brief dirent::d_namlen is available. */
+#define _DIRENT_HAVE_D_TYPE     /** \brief dirent::d_type is available. */
+/** @} */
+
 /** \name  Directory File Types
     \brief POSIX file types for dirent::d_name
 
@@ -54,26 +65,44 @@ __BEGIN_DECLS
 #define DT_WHT      14  /**< \brief Whiteout (ignored) */
 /** @} */
 
-/** \brief POSIX directory entry structure.
+/** \name  Type/Mode Conversions
+    \brief Macros for converting between dirent type and file mode.
+
+    @{
+*/
+/*! \brief Converts a stat::st_mode value to a dirent::d_type value. */
+#define IFTODT(mode)    (((mode) & S_IFMT) >> __builtin_clz(S_IFMT))
+/*! \brief Converts a dirent::d_type value to stat::st_mode value */
+#define DTTOIF(type)    ((type) << __builtin_clz(S_IFMT))
+/** @} */
+
+/** \brief POSIX/libc directory entry structure.
 
     This structure contains information about a single entry in a directory in
     the VFS.
  */
 struct dirent {
-    int      d_ino;    /**< \brief File unique identifier */
-    off_t    d_off;    /**< \brief File offset */
-    uint16_t d_reclen; /**< \brief Record length */
+    union {
+        ino_t d_ino;    /**< \brief File unique identifier (POSIX) */
+        ino_t d_fileno; /**< \brief File Serial Number (libc) */
+    };
+
+    off_t    d_off;    /**< \brief Offset to next record */
+    uint16_t d_reclen; /**< \brief Total struct length */
+    uint8_t  d_namlen; /**< \brief length of dirent::d_name string (libc) */
     uint8_t  d_type;   /**< \brief File type */
+
     /** \brief File name
 
         \warning
         This field is a flexible array member, which means the structure
         requires manual over-allocation to reserve storage for this string.
+
         \note
         This allows us to optimize our memory usage by only allocating
         exactly as many bytes as the string is long for this field.
     */
-    char     d_name[];
+    char d_name[];
 };
 
 /** \brief Type representing a directory stream.
@@ -123,6 +152,9 @@ typedef struct {
     \see    readdir
 */
 DIR *opendir(const char *name);
+
+
+DIR *fdopendir(int fd);
 
 /** \brief  Closes a directory that was previously opened.
 

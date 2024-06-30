@@ -50,7 +50,7 @@ __BEGIN_DECLS
 */
 typedef struct kos_dirent {
     int size;               /**< \brief Size of the file in bytes. */
-    char name[NAME_MAX];  /**< \brief Name of the file. */
+    char name[NAME_MAX];    /**< \brief Name of the file. */
     time_t time;            /**< \brief Last access/mod/change time (depends on VFS) */
     uint32 attr;            /**< \brief Attributes of the file. */
 } dirent_t;

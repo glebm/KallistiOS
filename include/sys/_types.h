@@ -197,6 +197,11 @@ typedef _CLOCK_T_   __clock_t;
 #define AT_REMOVEDIR            8
 #endif
 
+#ifndef AT_FDCWD
+/** \brief Virtual file descriptor for "current working directory." */
+#define AT_FDCWD        -100
+#endif
+
 #ifndef IOV_MAX
 /** \brief  Maximum length of an iovec, in elements. */
 #define IOV_MAX                 1024

@@ -1,7 +1,7 @@
 /* KallistiOS ##version##
 
    opendir.c
-   Copyright (C)2004 Megan Potter
+   Copyright (C) 2004 Megan Potter
 
 */
 
@@ -11,20 +11,22 @@
 #include <stdlib.h>
 #include <kos/fs.h>
 
-DIR * opendir(const char * name) {
-    file_t fd;
-    DIR * newd;
-
-    // Try to open the dir itself
-    fd = fs_open(name, O_DIR | O_RDONLY);
+DIR *opendir(const char * name) {
+    file_t fd = fs_open(name, O_DIR | O_RDONLY);
 
     if(fd < 0) {
         // VFS will set errno
         return NULL;
     }
 
+    return fdopendir(fd);
+}
+
+DIR *fdopendir(int fd) {
+    DIR *newd;
+
     // Ok, got it. Alloc a struct to return.
-    newd = malloc(sizeof(DIR));
+    newd = calloc(1, sizeof(DIR));
 
     if(!newd) {
         errno = ENOMEM;
@@ -32,7 +34,6 @@ DIR * opendir(const char * name) {
     }
 
     newd->fd = fd;
-    memset(&newd->d_ent, 0, sizeof(struct dirent));
 
     return newd;
 }
