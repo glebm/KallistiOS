@@ -6,6 +6,7 @@
 
 #include <kos.h>
 #include <time.h>
+#include <chrono>
 #include <dcplib/fnt.h>
 
 fntRenderer *text;
@@ -63,7 +64,18 @@ void drawFrame() {
 
     bgframe();
 
-    timespec_get(&spec, TIME_UTC);
+    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+    duration -= seconds;
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+
+    spec.tv_sec = seconds.count();
+    spec.tv_nsec = nanoseconds.count();
+
+     timespec_get(&spec, TIME_UTC);
+
     localtime_r(&spec.tv_sec, &tm);
 
     pvr_wait_ready();
@@ -78,7 +90,7 @@ void drawFrame() {
     text->begin();
     text->setColor(1, 1, 1);
     text->start2f(20, y);
-    text->puts("(High Res) Simple DC Clock");
+    text->puts("High Res C++ DC Clock");
     text->end();
     y += 50;
 

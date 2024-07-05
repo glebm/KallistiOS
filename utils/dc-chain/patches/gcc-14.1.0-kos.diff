@@ -96,10 +96,23 @@ diff -ruN gcc-14.1.0/libobjc/Makefile.in gcc-14.1.0-kos/libobjc/Makefile.in
  
  mostlyclean:
  	-$(LIBTOOL_CLEAN) rm -f libobjc$(libsuffix).la libobjc_gc$(libsuffix).la *.lo
+diff -ruN gcc-14.1.0/libstdc++-v3/src/c++11/chrono.cc gcc-14.1.0-kos/libstdc++-v3/src/c++11/chrono.cc
+--- gcc-14.1.0/libstdc++-v3/src/c++11/chrono.cc	2024-01-04 16:01:37.608069611 -0600
++++ gcc-14.1.0-kos/src/c++11/chrono.cc	2024-01-04 16:01:42.916094494 -0600
+@@ -27,0 +27,9 @@
++#undef _POSIX_C_SOURCE
++#define _POSIX_C_SOURCE 199309L
++#define _TIME_H
++#include <kos/time.h>
++#undef _TIME_H
++#include <ctime>
++#include <kos/time.h>
++//+#define _GLIBCXX_USE_CLOCK_MONOTONIC 1
++#define _GLIBCXX_USE_CLOCK_REALTIME 1
 diff -ruN gcc-14.1.0/libstdc++-v3/config/cpu/sh/atomicity.h gcc-14.1.0-kos/libstdc++-v3/config/cpu/sh/atomicity.h
 --- gcc-14.1.0/libstdc++-v3/config/cpu/sh/atomicity.h	2024-01-04 16:01:37.608069611 -0600
 +++ gcc-14.1.0-kos/libstdc++-v3/config/cpu/sh/atomicity.h	2024-01-04 16:01:42.916094494 -0600
-@@ -22,14 +22,40 @@
+@@ -22,14 +22,32 @@
  // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
  // <http://www.gnu.org/licenses/>.
  
@@ -112,20 +125,11 @@ diff -ruN gcc-14.1.0/libstdc++-v3/config/cpu/sh/atomicity.h gcc-14.1.0-kos/libst
 -// atomic model on SH without modifying GCC itself, because libstdc++ always
 -// thinks the target doesn't do any atomics and uses the default mutex based
 -// implementation from cpu/generic/atomicity_mutex.
-+/* This is generic/atomicity.h */
- 
++/* Manually provide the "soft-imask" atomics model to back C++ atomics. */
+
  #include <ext/atomicity.h>
 +#include <ext/concurrence.h>
-+
-+namespace 
-+{
-+  __gnu_cxx::__mutex&
-+  get_atomic_mutex()
-+  {
-+    static __gnu_cxx::__mutex atomic_mutex;
-+    return atomic_mutex;
-+  }
-+} // anonymous namespace
++#include <arch/irq.h>
 +
 +namespace __gnu_cxx _GLIBCXX_VISIBILITY(default)
 +{
@@ -135,10 +139,11 @@ diff -ruN gcc-14.1.0/libstdc++-v3/config/cpu/sh/atomicity.h gcc-14.1.0-kos/libst
 +  __attribute__ ((__unused__))
 +  __exchange_and_add(volatile _Atomic_word* __mem, int __val) throw ()
 +  {
-+    __gnu_cxx::__scoped_lock sentry(get_atomic_mutex());
++    const auto irq_state = irq_disable();
 +    _Atomic_word __result;
 +    __result = *__mem;
 +    *__mem += __val;
++    irq_restore(irq_state);
 +    return __result;
 +  }
 +
