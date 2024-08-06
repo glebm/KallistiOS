@@ -231,7 +231,7 @@ void *client_thread(void *p) {
         uint64 time = timer_ms_gettime64();
 
         /* If this goes for any more than a few loops, it just never stops */
-        while(o > 0) {
+        while((o > 0) && (o <= size)) {
             int r = write(hs->socket, sampletext, strlen(sampletext));
 
             if(r <= 0)
