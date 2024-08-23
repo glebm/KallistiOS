@@ -13,116 +13,85 @@
     handle stereo (though the stereo is very likely KOS specific
     since we make no effort to interleave it). Please see README.GPL
     in the KOS docs dir for more info on the GPL license.
+    
+	Encode and decode algorithms for  AICA ADPCM - 2019 by superctr.
+	The only difference between YMZ280B and AICA ADPCM is that the nibbles are swapped.
+
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
-static int diff_lookup[16] = {
-    1, 3, 5, 7, 9, 11, 13, 15,
-    -1, -3, -5, -7, -9, -11, -13, -15,
-};
+#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
-static int index_scale[16] = {
-    0x0e6, 0x0e6, 0x0e6, 0x0e6, 0x133, 0x199, 0x200, 0x266,
-    0x0e6, 0x0e6, 0x0e6, 0x0e6, 0x133, 0x199, 0x200, 0x266 /* same value for speedup */
-};
+static inline int16_t ymz_step(uint8_t step, int16_t* history, int16_t* step_size)
+{
+	static const int step_table[8] = {
+		230, 230, 230, 230, 307, 409, 512, 614
+	};
 
-static inline int limit(int val, int min, int max) {
-    if(val < min) return min;
-    else if(val > max) return max;
-    else return val;
+	int sign = step & 8;
+	int delta = step & 7;
+	int diff = ((1+(delta<<1)) * *step_size) >> 3;
+	int newval = *history;
+	int nstep = (step_table[delta] * *step_size) >> 8;
+	// Only found in the official AICA encoder
+	// but it's possible all chips (including ADPCM-B) does this.
+	diff = CLAMP(diff, 0, 32767);
+	if (sign > 0)
+		newval -= diff;
+	else
+		newval += diff;
+	// *step_size = CLAMP(nstep, 511, 32767);
+	*step_size = CLAMP(nstep, 127, 24576);
+	*history = newval = CLAMP(newval, -32768, 32767);
+	return newval;
 }
 
-void pcm2adpcm(unsigned char *dst, const short *src, size_t length) {
-    int signal, step;
-    signal = 0;
-    step = 0x7f;
+void pcm2adpcm(uint8_t *outbuffer, int16_t *buffer, size_t len) {
+	long i;
+	int16_t step_size = 127;
+	int16_t history = 0;
+	uint8_t buf_sample = 0, nibble = 0;
+	unsigned int adpcm_sample;
 
-    /* length /= 4; */
-    length = (length + 3) / 4;
-
-    do {
-        int data, val, diff;
-
-        /* hign nibble */
-        diff = *src++ - signal;
-        diff = (diff * 8) / step;
-
-        val = abs(diff) / 2;
-
-        if(val > 7) val = 7;
-
-        if(diff < 0) val += 8;
-
-        signal += (step * diff_lookup[val]) / 8;
-        signal = limit(signal, -32768, 32767);
-
-        step = (step * index_scale[val]) >> 8;
-        step = limit(step, 0x7f, 0x6000);
-
-        data = val;
-
-        /* low nibble */
-        diff = *src++ - signal;
-        diff = (diff * 8) / step;
-
-        val = (abs(diff)) / 2;
-
-        if(val > 7) val = 7;
-
-        if(diff < 0) val += 8;
-
-        signal += (step * diff_lookup[val]) / 8;
-        signal = limit(signal, -32768, 32767);
-
-        step = (step * index_scale[val]) >> 8;
-        step = limit(step, 0x7f, 0x6000);
-
-        data |= val << 4;
-
-        *dst++ = data;
-
-    }
-    while(--length);
+	for(i=0;i<len;i++)
+	{
+		// we remove a few bits of accuracy to reduce some noise.
+		int step = ((*buffer++) & -8) - history;
+		adpcm_sample = (abs(step)<<16) / (step_size<<14);
+		adpcm_sample = CLAMP(adpcm_sample, 0, 7);
+		if(step < 0)
+			adpcm_sample |= 8;
+		if(!nibble)
+			*outbuffer++ = buf_sample | (adpcm_sample<<4);
+		else
+			buf_sample = (adpcm_sample&15);
+		nibble^=1;
+		ymz_step(adpcm_sample, &history, &step_size);
+	}
 }
 
-void adpcm2pcm(short *dst, const unsigned char *src, size_t length) {
-    int signal, step;
-    signal = 0;
-    step = 0x7f;
+void adpcm2pcm(int16_t *outbuffer, uint8_t *buffer, size_t len) {
+	long i;
 
-    do {
-        int data, val;
+	int16_t step_size = 127;
+	int16_t history = 0;
+	uint8_t nibble = 4;
 
-        data = *src++;
-
-        /* low nibble */
-        val = data & 15;
-
-        signal += (step * diff_lookup[val]) / 8;
-        signal = limit(signal, -32768, 32767);
-
-        step = (step * index_scale[val & 7]) >> 8;
-        step = limit(step, 0x7f, 0x6000);
-
-        *dst++ = signal;
-
-        /* high nibble */
-        val = (data >> 4) & 15;
-
-        signal += (step * diff_lookup[val]) / 8;
-        signal = limit(signal, -32768, 32767);
-
-        step = (step * index_scale[val & 7]) >> 8;
-        step = limit(step, 0x7f, 0x6000);
-
-        *dst++ = signal;
-
-    }
-    while(--length);
+	for(i=0;i<len;i++)
+	{
+		int8_t step = (*(int8_t*)buffer)<<nibble;
+		step >>= 4;
+		if(!nibble)
+			buffer++;
+		nibble^=4;
+		history = history * 254 / 256; // High pass
+		*outbuffer++ = ymz_step(step, &history, &step_size);
+	}
 }
 
 void deinterleave(void *buffer, size_t size) {
