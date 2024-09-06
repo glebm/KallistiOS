@@ -175,7 +175,13 @@ int pvr_list_finish(void) {
 
 #endif  /* !NDEBUG */
 
-    if(!pvr_state.dma_mode) {
+    /* Check for immediate submission:
+       A. If we are not in DMA mode, we must be submitting polygons
+          immediately.
+       B. If we are in DMA mode, yet we've used the PVR DR API with
+          the current list type, assume we're doing hybrid drawing and
+          are directly submitting this list type. */
+    if(!pvr_state.dma_mode || pvr_state.dr_used) {
         /* Release Store Queues if they are used */
         if(pvr_state.dr_used) {
             pvr_dr_finish();
@@ -271,8 +277,12 @@ int pvr_scene_finish(void) {
         b = pvr_state.dma_buffers + pvr_state.ram_target;
 
         for(i = 0; i < PVR_OPB_COUNT; i++) {
-            // Not enabled -> skip
-            if(!(pvr_state.lists_enabled & (1 << i)))
+            /* Check whether the current list type should be skipped:
+               A. We never enabled the list globally with pvr_init().
+               B. We never associated an in-RAM DMA vertex buffer with
+                  the given list type, because we're using hybrid
+                  rendering and submitted that list type directly. */
+            if(!(pvr_state.lists_enabled & (1 << i)) || !b->base[i])
                 continue;
 
             // Make sure there's at least one primitive in each.
