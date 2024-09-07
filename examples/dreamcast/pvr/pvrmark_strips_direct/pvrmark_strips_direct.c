@@ -1,7 +1,13 @@
 /* KallistiOS ##version##
 
    pvrmark_strips_direct.c
-   (c)2002 Megan Potter
+   Copyright (C) 2002 Megan Potter
+   Copyright (C) 2024 Falco Girgis
+*/
+
+/*
+   This file serves as both an example of and benchmark for KOS's
+   rendering fast path: the PVR direct rendering API. 
 */
 
 #include <kos.h>
@@ -15,9 +21,11 @@ pvr_init_params_t pvr_params = {
 
 enum { PHASE_HALVE, PHASE_INCR, PHASE_DECR, PHASE_FINAL };
 
-int polycnt;
-int phase = PHASE_HALVE;
-float avgfps = -1;
+static int polycnt;
+static int phase = PHASE_HALVE;
+static float avgfps = -1;
+static pvr_poly_hdr_t hdr;
+static time_t begin;
 
 void running_stats(void) {
     pvr_stats_t stats;
@@ -56,8 +64,6 @@ int check_start(void) {
         return 0;
 }
 
-pvr_poly_hdr_t hdr;
-
 void setup(void) {
     pvr_poly_cxt_t cxt;
 
@@ -69,16 +75,17 @@ void setup(void) {
     pvr_poly_compile(&hdr, &cxt);
 }
 
-int oldseed = 0xdeadbeef;
+
+#define nextnum() seed = seed * 1164525 + 1013904223;
+#define getnum(mn) (seed & ((mn) - 1))
+
 void do_frame(void) {
     pvr_vertex_t * vert;
     int x, y, z;
     int i, col;
+    static int oldseed = 0xdeadbeef;
     int seed = oldseed;
     pvr_dr_state_t dr_state;
-
-#define nextnum() seed = seed * 1164525 + 1013904223;
-#define getnum(mn) (seed & ((mn) - 1))
 
     vid_border_color(0, 0, 0);
     pvr_wait_ready();
@@ -103,9 +110,7 @@ void do_frame(void) {
     vert->x = x;
     vert->y = y;
     vert->z = z;
-    vert->u = vert->v = 0.0f;
     vert->argb = col | (col << 8) | (col << 16) | 0xff000000;
-    vert->oargb = 0;
     pvr_dr_commit(vert);
 
     for(i = 0; i < polycnt; i++) {
@@ -120,15 +125,23 @@ void do_frame(void) {
         vert->x = x;
         vert->y = y;
         vert->z = z;
-        vert->u = vert->v = 0.0f;
         vert->argb = col | (col << 8) | (col << 16) | 0xff000000;
-        vert->oargb = 0;
-
-        if(i == (polycnt - 1))
-            vert->flags = PVR_CMD_VERTEX_EOL;
-
         pvr_dr_commit(vert);
     }
+
+    x = (x + ((getnum(64)) - 32)) & 1023;
+    nextnum();
+    y = (y + ((getnum(64)) - 32)) % 511;
+    nextnum();
+    col = getnum(256);
+    nextnum();
+    vert = pvr_dr_target(dr_state);
+    vert->flags = PVR_CMD_VERTEX_EOL;
+    vert->x = x;
+    vert->y = y;
+    vert->z = z;
+    vert->argb = col | (col << 8) | (col << 16) | 0xff000000;
+    pvr_dr_commit(vert);
 
     pvr_list_finish();
     pvr_scene_finish();
@@ -136,7 +149,6 @@ void do_frame(void) {
     oldseed = seed;
 }
 
-time_t begin;
 void switch_tests(int ppf) {
     printf("Beginning new test: %d polys per frame (%d per second at 60fps)\n",
            ppf, ppf * 60);
@@ -146,50 +158,58 @@ void switch_tests(int ppf) {
 
 void check_switch(void) {
     time_t now;
+    int new_polycnt = polycnt;
 
     now = time(NULL);
 
     if(now >= (begin + 5)) {
-        begin = time(NULL);
         printf("  Average Frame Rate: ~%f fps (%d pps)\n", (double)avgfps, (int)(polycnt * avgfps));
 
         switch(phase) {
             case PHASE_HALVE:
 
                 if(avgfps < 55) {
-                    switch_tests(polycnt / 2);
+                    new_polycnt = polycnt / 2;
                 }
                 else {
                     printf("  Entering PHASE_INCR\n");
                     phase = PHASE_INCR;
+                    break;
                 }
 
                 break;
             case PHASE_INCR:
 
                 if(avgfps >= 55) {
-                    switch_tests(polycnt + 500);
+                    new_polycnt = polycnt + 5000;
                 }
                 else {
                     printf("  Entering PHASE_DECR\n");
                     phase = PHASE_DECR;
+                    break;
                 }
 
                 break;
             case PHASE_DECR:
 
                 if(avgfps < 55) {
-                    switch_tests(polycnt - 200);
+                    new_polycnt = polycnt - 200;
                 }
                 else {
                     printf("  Entering PHASE_FINAL\n");
                     phase = PHASE_FINAL;
+                    break;
                 }
 
                 break;
             case PHASE_FINAL:
                 break;
         }
+
+        begin = time(NULL);
+
+        if(new_polycnt != polycnt)
+            switch_tests(new_polycnt);
     }
 }
 
