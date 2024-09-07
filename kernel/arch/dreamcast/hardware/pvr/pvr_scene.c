@@ -1,13 +1,15 @@
 /* KallistiOS ##version##
 
    pvr_scene.c
-   Copyright (C)2002,2004 Megan Potter
+   Copyright (C) 2002,2004 Megan Potter
+   Copyright (C) 2024 Falco Girgis
 
  */
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <kos/string.h>
 #include <kos/thread.h>
 #include <dc/pvr.h>
 #include <dc/sq.h>
@@ -223,15 +225,22 @@ int pvr_prim(void * data, int size) {
         dbglog(DBG_WARNING, "pvr_prim: attempt to submit to unopened list\n");
         return -1;
     }
-
 #endif  /* !NDEBUG */
 
-    /* Immediately send data via SQs. */
-    if(!pvr_list_dma) 
+    if(!pvr_list_dma) {
+#ifndef NDEBUG
+        if((uintptr_t)data & 0x7) {
+            dbglog(DBG_WARNING, "pvr_prim: attempt to submit data unaligned "
+                                "to 8 bytes.\n");
+            return -1;
+        }
+#endif  /* !NDEBUG */
+
+        /* Immediately send data via SQs. */
         sq_fast_cpy(SQ_MASK_DEST(PVR_TA_INPUT), data, size >> 5);
+    }
     /* Defer data to RAM buffer for DMA-ing later. */
-    else 
-        return pvr_list_prim(pvr_state.list_reg_open, data, size);
+    else return pvr_list_prim(pvr_state.list_reg_open, data, size);
 
     return 0;
 }
@@ -240,12 +249,19 @@ int pvr_list_prim(pvr_list_t list, void * data, int size) {
     volatile pvr_dma_buffers_t * b;
 
     b = pvr_state.dma_buffers + pvr_state.ram_target;
+
+    /* Ensure we associated a DMA vertex buffer with this list type. */
     assert(b->base[list]);
 
+    /* Ensure data size is multiple of 32-bytes. */
     assert(!(size & 31));
+    /* Ensure at least 4-byte alignment. */
+    assert(!((uintptr_t)data & 0x3));
 
     memcpy(b->base[list] + b->ptr[list], data, size);
     b->ptr[list] += size;
+
+    /* Ensure we didn't overflow the vertex buffer. */
     assert(b->ptr[list] <= b->size[list]);
 
     return 0;
@@ -303,7 +319,7 @@ int pvr_scene_finish(void) {
             }
 
             // Put a zero-marker on the end.
-            memset(b->base[i] + b->ptr[i], 0, 32);
+            memset4(b->base[i] + b->ptr[i], 0, 32);
             b->ptr[i] += 32;
 
             // Verify that there is no overrun.
