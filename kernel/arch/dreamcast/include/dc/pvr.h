@@ -57,6 +57,8 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
+#include <stdalign.h>
+
 #include <arch/memory.h>
 #include <arch/types.h>
 #include <arch/cache.h>

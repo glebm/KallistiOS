@@ -170,6 +170,7 @@ __BEGIN_DECLS
     these from your pvr_poly_cxt_t and use it for submission to the hardware.
 */
 typedef struct pvr_poly_hdr {
+    alignas(32)
     uint32_t cmd;                /**< \brief TA command */
     uint32_t mode1;              /**< \brief Parameter word 1 */
     uint32_t mode2;              /**< \brief Parameter word 2 */
@@ -185,6 +186,7 @@ typedef struct pvr_poly_hdr {
     This is the equivalent of pvr_poly_hdr_t, but for use with intensity color.
 */
 typedef struct pvr_poly_ic_hdr {
+    alignas(32)
     uint32_t cmd;                /**< \brief TA command */
     uint32_t mode1;              /**< \brief Parameter word 1 */
     uint32_t mode2;              /**< \brief Parameter word 2 */
@@ -201,6 +203,7 @@ typedef struct pvr_poly_ic_hdr {
     used with modifier volumes.
 */
 typedef struct pvr_poly_mod_hdr {
+    alignas(32)
     uint32_t cmd;                /**< \brief TA command */
     uint32_t mode1;              /**< \brief Parameter word 1 */
     uint32_t mode2_0;            /**< \brief Parameter word 2 (outside volume) */
@@ -217,6 +220,7 @@ typedef struct pvr_poly_mod_hdr {
     be rendered. Note that the color data is here, not in the vertices.
 */
 typedef struct pvr_sprite_hdr {
+    alignas(32)
     uint32_t cmd;                /**< \brief TA command */
     uint32_t mode1;              /**< \brief Parameter word 1 */
     uint32_t mode2;              /**< \brief Parameter word 2 */
@@ -233,6 +237,7 @@ typedef struct pvr_sprite_hdr {
     modifier volume.
 */
 typedef struct pvr_mod_hdr {
+    alignas(32)
     uint32_t cmd;                /**< \brief TA command */
     uint32_t mode1;              /**< \brief Parameter word 1 */
     uint32_t d1;                 /**< \brief Dummy value */
@@ -261,6 +266,7 @@ typedef struct pvr_mod_hdr {
     \sa pvr_vertex_pcm, pvr_vertex_tpcm
 */
 typedef struct pvr_vertex {
+    alignas(32)
     uint32_t flags;              /**< \brief TA command (vertex flags) */
     float   x;                   /**< \brief X coordinate */
     float   y;                   /**< \brief Y coordinate */
@@ -279,6 +285,7 @@ typedef struct pvr_vertex {
     \sa pvr_vertex, pvr_vertex_tpcm
 */
 typedef struct pvr_vertex_pcm {
+    alignas(32)
     uint32_t flags;              /**< \brief TA command (vertex flags) */
     float   x;                   /**< \brief X coordinate */
     float   y;                   /**< \brief Y coordinate */
@@ -298,22 +305,23 @@ typedef struct pvr_vertex_pcm {
     \sa pvr_vertex, pvr_vertex_pcm
 */
 typedef struct pvr_vertex_tpcm {
-    uint32_t flags;              /**< \brief TA command (vertex flags) */
+    alignas(32)
+    uint32_t flags;             /**< \brief TA command (vertex flags) */
     float   x;                  /**< \brief X coordinate */
     float   y;                  /**< \brief Y coordinate */
     float   z;                  /**< \brief Z coordinate */
     float   u0;                 /**< \brief Texture U coordinate (outside) */
     float   v0;                 /**< \brief Texture V coordinate (outside) */
-    uint32_t argb0;              /**< \brief Vertex color (outside) */
-    uint32_t oargb0;             /**< \brief Vertex offset color (outside) */
+    uint32_t argb0;             /**< \brief Vertex color (outside) */
+    uint32_t oargb0;            /**< \brief Vertex offset color (outside) */
     float   u1;                 /**< \brief Texture U coordinate (inside) */
     float   v1;                 /**< \brief Texture V coordinate (inside) */
-    uint32_t argb1;              /**< \brief Vertex color (inside) */
-    uint32_t oargb1;             /**< \brief Vertex offset color (inside) */
-    uint32_t d1;                 /**< \brief Dummy value */
-    uint32_t d2;                 /**< \brief Dummy value */
-    uint32_t d3;                 /**< \brief Dummy value */
-    uint32_t d4;                 /**< \brief Dummy value */
+    uint32_t argb1;             /**< \brief Vertex color (inside) */
+    uint32_t oargb1;            /**< \brief Vertex offset color (inside) */
+    uint32_t d1;                /**< \brief Dummy value */
+    uint32_t d2;                /**< \brief Dummy value */
+    uint32_t d3;                /**< \brief Dummy value */
+    uint32_t d4;                /**< \brief Dummy value */
 } pvr_vertex_tpcm_t;
 
 /** PVR vertex type: Textured sprite.
@@ -329,6 +337,7 @@ typedef struct pvr_vertex_tpcm {
     \sa pvr_sprite_col
 */
 typedef struct pvr_sprite_txr {
+    alignas(32)
     uint32_t flags;               /**< \brief TA command (vertex flags) */
     float   ax;                   /**< \brief First X coordinate */
     float   ay;                   /**< \brief First Y coordinate */
@@ -355,6 +364,7 @@ typedef struct pvr_sprite_txr {
     \sa pvr_sprite_txr
 */
 typedef struct pvr_sprite_col {
+    alignas(32)
     uint32_t flags;              /**< \brief TA command (vertex flags) */
     float   ax;                  /**< \brief First X coordinate */
     float   ay;                  /**< \brief First Y coordinate */
@@ -379,6 +389,7 @@ typedef struct pvr_sprite_col {
     triangular modifier areas.
 */
 typedef struct pvr_modifier_vol {
+    alignas(32)
     uint32_t flags;              /**< \brief TA command (vertex flags) */
     float   ax;                  /**< \brief First X coordinate */
     float   ay;                  /**< \brief First Y coordinate */
