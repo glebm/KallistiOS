@@ -4,6 +4,7 @@ Platform-specific changes are prefixed with the platform name, otherwise the cha
 
 ## KallistiOS version 2.2.0
 - Added pvrtex utility by TapamN to utils [DF == Daniel Fairchild]
+- Refactored and broke PVR API into multiple header files [FG]
 
 ## KallistiOS version 2.1.0
 - Cleaned up generated stubs files on a make clean [Lawrence Sebald == LS]
