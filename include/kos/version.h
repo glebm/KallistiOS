@@ -249,7 +249,7 @@
     \returns        Packed version identifier.
 */
 #define KOS_VERSION_MAKE(major, minor, patch) \
-    ((kos_version_t)((major) << 16) | ((minor) << 8) | (patch))
+    (((major) << 16) | ((minor) << 8) | (patch))
 
 /** Creates a version string from its constituents. 
 
