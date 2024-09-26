@@ -16,7 +16,6 @@
 
 #include <dc/cdrom.h>
 #include <dc/g1ata.h>
-#include <dc/syscalls.h>
 
 #include <kos/thread.h>
 #include <kos/mutex.h>
@@ -50,30 +49,29 @@ cdda is playing without hiccups (by severely reducing the number of gd
 commands being sent).
 */
 
-typedef int gdc_cmd_hnd_t;
-
 /* The G1 ATA access mutex */
 mutex_t _g1_ata_mutex = MUTEX_INITIALIZER;
 
 /* Shortcut to cdrom_reinit_ex. Typically this is the only thing changed. */
-int cdrom_set_sector_size(int size) {
-    return cdrom_reinit_ex(-1, -1, size);
+cd_cmd_ret_t cdrom_set_sector_size(size_t size) {
+    return cdrom_reinit_ex(CD_READ_DEFAULT, CD_TRACK_TYPE_DEFAULT, size);
 }
 
 /* Command execution sequence */
-int cdrom_exec_cmd(int cmd, void *param) {
+cd_cmd_ret_t cdrom_exec_cmd(cd_cmd_code_t cmd, void *param) {
     return cdrom_exec_cmd_timed(cmd, param, 0);
 }
 
-int cdrom_exec_cmd_timed(int cmd, void *param, int timeout) {
+cd_cmd_ret_t cdrom_exec_cmd_timed(cd_cmd_code_t cmd, void *param, uint32_t timeout) {
     int32_t status[4] = {
         0, /* Error code 1 */
         0, /* Error code 2 */
         0, /* Transferred size */
         0  /* ATA status waiting */
     };
-    gdc_cmd_hnd_t hnd;
-    int n, rv = ERR_OK;
+    gdc_cmd_id_t id;
+    cmd_cmd_chk_t n;
+    cd_cmd_ret_t rv = CD_ERR_OK;
     uint64_t begin;
 
     assert(cmd > 0 && cmd < CMD_MAX);
@@ -81,16 +79,16 @@ int cdrom_exec_cmd_timed(int cmd, void *param, int timeout) {
 
     /* Submit the command */
     for(n = 0; n < 10; ++n) {
-        hnd = syscall_gdrom_send_command(cmd, param);
-        if (hnd != 0) {
+        id = syscall_gdrom_send_command(cmd, param);
+        if (id != 0) {
             break;
         }
         syscall_gdrom_exec_server();
         thd_pass();
     }
 
-    if(hnd <= 0)
-        return ERR_SYS;
+    if(id <= 0)
+        return CD_ERR_SYS;
 
     /* Wait command to finish */
     if(timeout) {
@@ -98,16 +96,16 @@ int cdrom_exec_cmd_timed(int cmd, void *param, int timeout) {
     }
     do {
         syscall_gdrom_exec_server();
-        n = syscall_gdrom_check_command(hnd, status);
+        n = syscall_gdrom_check_command(id, status);
 
-        if(n != PROCESSING && n != BUSY) {
+        if(n != CD_CMD_PROCESSING && n != CD_CMD_BUSY) {
             break;
         }
         if(timeout) {
             if((timer_ms_gettime64() - begin) >= (unsigned)timeout) {
-                syscall_gdrom_abort_command(hnd);
+                syscall_gdrom_abort_command(id);
                 syscall_gdrom_exec_server();
-                rv = ERR_TIMEOUT;
+                rv = CD_ERR_TIMEOUT;
                 dbglog(DBG_ERROR, "cdrom_exec_cmd_timed: Timeout exceeded\n");
                 break;
             }
@@ -115,29 +113,29 @@ int cdrom_exec_cmd_timed(int cmd, void *param, int timeout) {
         thd_pass();
     } while(1);
 
-    if(rv != ERR_OK)
+    if(rv != CD_ERR_OK)
         return rv;
-    else if(n == COMPLETED || n == STREAMING)
-        return ERR_OK;
-    else if(n == NO_ACTIVE)
-        return ERR_NO_ACTIVE;
+    else if(n == CD_CMD_COMPLETED || n == CD_CMD_STREAMING)
+        return CD_ERR_OK;
+    else if(n == CD_CMD_INACTIVE)
+        return CD_ERR_NO_ACTIVE;
     else {
         switch(status[0]) {
             case 2:
-                return ERR_NO_DISC;
+                return CD_ERR_NO_DISC;
             case 6:
-                return ERR_DISC_CHG;
+                return CD_ERR_DISC_CHG;
             default:
-                return ERR_SYS;
+                return CD_ERR_SYS;
         }
         if(status[1] != 0)
-            return ERR_SYS;
+            return CD_ERR_SYS;
     }
 }
 
 /* Return the status of the drive as two integers (see constants) */
 int cdrom_get_status(int *status, int *disc_type) {
-    int rv = ERR_OK;
+    int rv = CD_ERR_OK;
     uint32_t params[2];
 
     /* We might be called in an interrupt to check for ISO cache
@@ -149,8 +147,9 @@ int cdrom_get_status(int *status, int *disc_type) {
 
     do {
         rv = syscall_gdrom_check_drive(params);
-
-        if(rv != BUSY) {
+        /* DH: This may not be correct, it's unclear if check_drive 
+        returns the same as check_command */
+        if(rv != CD_CMD_BUSY) {
             break;
         }
         thd_pass();
@@ -176,35 +175,34 @@ int cdrom_get_status(int *status, int *disc_type) {
     return rv;
 }
 
-/* Helper function to account for long-standing typo */
-int cdrom_change_dataype(int sector_part, int cdxa, int sector_size) {
-    return cdrom_change_datatype(sector_part, cdxa, sector_size);
-}
-
 /* Wrapper for the change datatype syscall */
-int cdrom_change_datatype(int sector_part, int cdxa, int sector_size) {
+cd_cmd_ret_t cdrom_change_datatype(cd_read_sec_part_t sector_part, cd_track_type_t track_type, int sector_size) {
     uint32_t params[4];
 
     mutex_lock_scoped(&_g1_ata_mutex);
 
     /* Check if we are using default params */
     if(sector_size == 2352) {
-        if(cdxa == -1)
-            cdxa = 0;
+        if(track_type == CD_TRACK_TYPE_DEFAULT)
+            track_type = CD_TRACK_TYPE_ANY;
 
-        if(sector_part == -1)
-            sector_part = CDROM_READ_WHOLE_SECTOR;
+        if(sector_part == CD_READ_DEFAULT)
+            sector_part = CD_READ_WHOLE_SECTOR;
     }
     else {
-        if(cdxa == -1) {
-            /* If not overriding cdxa, check what the drive thinks we should 
+        if(track_type == CD_TRACK_TYPE_DEFAULT) {
+            /* If not overriding track_type, check what the drive thinks we should 
                use */
             syscall_gdrom_check_drive(params);
-            cdxa = (params[1] == 32 ? 2048 : 1024);
+
+            if(params[1] == CD_CDROM_XA)
+                track_type = CD_TRACK_TYPE_MODE2_FORM1;
+            else
+                track_type = CD_TRACK_TYPE_MODE1;
         }
 
-        if(sector_part == -1)
-            sector_part = CDROM_READ_DATA_AREA;
+        if(sector_part == CD_READ_DEFAULT)
+            sector_part = CD_READ_DATA_AREA;
 
         if(sector_size == -1)
             sector_size = 2048;
@@ -212,59 +210,54 @@ int cdrom_change_datatype(int sector_part, int cdxa, int sector_size) {
 
     params[0] = 0;              /* 0 = set, 1 = get */
     params[1] = sector_part;    /* Get Data or Full Sector */
-    params[2] = cdxa;           /* CD-XA mode 1/2 */
+    params[2] = track_type;     /* CD-XA mode 1/2 */
     params[3] = sector_size;    /* sector size */
 
     return syscall_gdrom_sector_mode(params);
 }
 
 /* Re-init the drive, e.g., after a disc change, etc */
-int cdrom_reinit(void) {
+cd_cmd_ret_t cdrom_reinit(void) {
     /* By setting -1 to each parameter, they fall to the old defaults */
-    return cdrom_reinit_ex(-1, -1, -1);
+    return cdrom_reinit_ex(CD_READ_DEFAULT, CD_TRACK_TYPE_DEFAULT, -1);
 }
 
 /* Enhanced cdrom_reinit, takes the place of the old 'sector_size' function */
-int cdrom_reinit_ex(int sector_part, int cdxa, int sector_size) {
+cd_cmd_ret_t cdrom_reinit_ex(cd_read_sec_part_t sector_part, cd_track_type_t track_type, int sector_size) {
     int r;
 
     do {
         r = cdrom_exec_cmd_timed(CMD_INIT, NULL, 10000);
-    } while(r == ERR_DISC_CHG);
+    } while(r == CD_ERR_DISC_CHG);
 
-    if(r == ERR_NO_DISC || r == ERR_SYS || r == ERR_TIMEOUT) {
+    if(r == CD_ERR_NO_DISC || r == CD_ERR_SYS || r == CD_ERR_TIMEOUT) {
         return r;
     }
 
-    r = cdrom_change_datatype(sector_part, cdxa, sector_size);
-
-    return r;
+    return cdrom_change_datatype(sector_part, track_type, sector_size);
 }
 
 /* Read the table of contents */
-int cdrom_read_toc(CDROM_TOC *toc_buffer, int session) {
+cd_cmd_ret_t cdrom_read_toc(cd_toc_t *toc_buffer, uint32_t session) {
     struct {
-        int session;
-        void *buffer;
+        uint32_t session;
+        void    *buffer;
     } params;
-    int rv;
 
     params.session = session;
     params.buffer = toc_buffer;
 
-    rv = cdrom_exec_cmd(CMD_GETTOC2, &params);
-
-    return rv;
+    return cdrom_exec_cmd(CMD_GETTOC2, &params);
 }
 
 /* Enhanced Sector reading: Choose mode to read in. */
-int cdrom_read_sectors_ex(void *buffer, int sector, int cnt, int mode) {
+cd_cmd_ret_t cdrom_read_sectors_ex(void *buffer, uint32_t sector, size_t cnt, cd_read_mode_t mode) {
     struct {
-        int sec, num;
-        void *buffer;
-        int is_test;
+        uint32_t    sec;
+        size_t      num;
+        void       *buffer;
+        int         is_test;
     } params;
-    int rv = ERR_OK;
 
     params.sec = sector;    /* Starting sector */
     params.num = cnt;       /* Number of sectors */
@@ -277,15 +270,15 @@ int cdrom_read_sectors_ex(void *buffer, int sector, int cnt, int mode) {
        testing is needed from someone with such a device.
     */
     if(mode == CDROM_READ_DMA)
-        rv = cdrom_exec_cmd(CMD_DMAREAD, &params);
+        return cdrom_exec_cmd(CMD_DMAREAD, &params);
     else if(mode == CDROM_READ_PIO)
-        rv = cdrom_exec_cmd(CMD_PIOREAD, &params);
-
-    return rv;
+        return cdrom_exec_cmd(CMD_PIOREAD, &params);
+    else
+        return CD_ERR_SYS;
 }
 
 /* Basic old sector read */
-int cdrom_read_sectors(void *buffer, int sector, int cnt) {
+cd_cmd_ret_t cdrom_read_sectors(void *buffer, uint32_t sector, size_t cnt) {
     return cdrom_read_sectors_ex(buffer, sector, cnt, CDROM_READ_PIO);
 }
 
@@ -295,24 +288,22 @@ int cdrom_read_sectors(void *buffer, int sector, int cnt) {
    a time. */
 /* XXX: Use some CD-Gs and other stuff to test if you get more than just the 
    Q byte */
-int cdrom_get_subcode(void *buffer, int buflen, int which) {
+cd_cmd_ret_t cdrom_get_subcode(void *buffer, size_t buflen, cd_sub_type_t which) {
     struct {
-        int which;
-        int buflen;
-        void *buffer;
+        cd_sub_type_t   which;
+        size_t          buflen;
+        void           *buffer;
     } params;
-    int rv;
 
     params.which = which;
     params.buflen = buflen;
     params.buffer = buffer;
-    rv = cdrom_exec_cmd(CMD_GETSCD, &params);
-    return rv;
+    return cdrom_exec_cmd(CMD_GETSCD, &params);
 }
 
 /* Locate the LBA sector of the data track; use after reading TOC */
-uint32 cdrom_locate_data_track(CDROM_TOC *toc) {
-    int i, first, last;
+uint32_t cdrom_locate_data_track(cd_toc_t *toc) {
+    uint32_t i, first, last;
 
     first = TOC_TRACK(toc->first);
     last = TOC_TRACK(toc->last);
@@ -335,13 +326,12 @@ uint32 cdrom_locate_data_track(CDROM_TOC *toc) {
    repeat -- number of times to repeat (0-15, 15=infinite)
    mode   -- CDDA_TRACKS or CDDA_SECTORS
  */
-int cdrom_cdda_play(uint32 start, uint32 end, uint32 repeat, int mode) {
+cd_cmd_ret_t cdrom_cdda_play(uint32 start, uint32 end, uint32 repeat, cd_cdda_mode_t mode) {
     struct {
-        int start;
-        int end;
-        int repeat;
+        uint32_t start;
+        uint32_t end;
+        uint32_t repeat;
     } params;
-    int rv = ERR_OK;
 
     /* Limit to 0-15 */
     if(repeat > 15)
@@ -352,32 +342,26 @@ int cdrom_cdda_play(uint32 start, uint32 end, uint32 repeat, int mode) {
     params.repeat = repeat;
 
     if(mode == CDDA_TRACKS)
-        rv = cdrom_exec_cmd(CMD_PLAY, &params);
+        return cdrom_exec_cmd(CMD_PLAY, &params);
     else if(mode == CDDA_SECTORS)
-        rv = cdrom_exec_cmd(CMD_PLAY2, &params);
-
-    return rv;
+        return cdrom_exec_cmd(CMD_PLAY2, &params);
+    else
+        return CD_ERR_SYS;
 }
 
 /* Pause CDDA audio playback */
-int cdrom_cdda_pause(void) {
-    int rv;
-    rv = cdrom_exec_cmd(CMD_PAUSE, NULL);
-    return rv;
+cd_cmd_ret_t cdrom_cdda_pause(void) {
+    return cdrom_exec_cmd(CMD_PAUSE, NULL);
 }
 
 /* Resume CDDA audio playback */
-int cdrom_cdda_resume(void) {
-    int rv;
-    rv = cdrom_exec_cmd(CMD_RELEASE, NULL);
-    return rv;
+cd_cmd_ret_t cdrom_cdda_resume(void) {
+    return cdrom_exec_cmd(CMD_RELEASE, NULL);
 }
 
 /* Spin down the CD */
-int cdrom_spin_down(void) {
-    int rv;
-    rv = cdrom_exec_cmd(CMD_STOP, NULL);
-    return rv;
+cd_cmd_ret_t cdrom_spin_down(void) {
+    return cdrom_exec_cmd(CMD_STOP, NULL);
 }
 
 /* Initialize: assume no threading issues */
