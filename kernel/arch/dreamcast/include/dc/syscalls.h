@@ -280,26 +280,6 @@ typedef enum cd_cmd_code {
     CMD_MAX               = 47,  /**< \brief Max of GD syscall commands */
 } cd_cmd_code_t;
 
-/** \brief      TOC structure returned by the BIOS.
-    \ingroup    gdrom_syscalls
-
-    This is the structure that the CMD_GETTOC2 syscall command will return for
-    the TOC. Note the data is in FAD, not LBA/LSN.
-
-*/
-typedef struct cd_toc {
-    uint32_t  entry[99];          /**< \brief TOC space for 99 tracks */
-    uint32_t  first;              /**< \brief Point A0 information (1st track) */
-    uint32_t  last;               /**< \brief Point A1 information (last track) */
-    uint32_t  leadout_sector;     /**< \brief Point A2 information (leadout) */
-} cd_toc_t;
-
-/* Compat. Not sure if this is a good way to mark it, or if this is useful to do at 
-    all. But 'CDROM_TOC' violates our style guide which has caps reserved for defines
-    or macros.
-*/
-#define CDROM_TOC __depr("Use the type cd_toc_t rather than CDROM_TOC.") cd_toc_t
-
 /** \brief      Responses from GDROM syscalls
     \ingroup    gdrom_syscalls
 
@@ -350,6 +330,38 @@ typedef enum cd_track_type {
     CD_TRACK_TYPE_DEFAULT     = -1
 } cd_track_type_t;
 
+/** \brief      TOC structure returned by the BIOS.
+    \ingroup    gdrom_syscalls
+
+    This is the structure that the CMD_GETTOC2 syscall command will return for
+    the TOC. Note the data is in FAD, not LBA/LSN.
+
+*/
+typedef struct cd_toc {
+    uint32_t  entry[99];          /**< \brief TOC space for 99 tracks */
+    uint32_t  first;              /**< \brief Point A0 information (1st track) */
+    uint32_t  last;               /**< \brief Point A1 information (last track) */
+    uint32_t  leadout_sector;     /**< \brief Point A2 information (leadout) */
+} cd_toc_t;
+
+/* Compat. Not sure if this is a good way to mark it, or if this is useful to do at
+    all. But 'CDROM_TOC' violates our style guide which has caps reserved for defines
+    or macros.
+*/
+#define CDROM_TOC __depr("Use the type cd_toc_t rather than CDROM_TOC.") cd_toc_t
+
+/** \brief      Params for PLAY command
+    \ingroup    gdrom_syscalls
+
+    Params for CMD_PLAY and CMD_PLAY2.
+
+*/
+typedef struct cd_cmd_play_params {
+    uint32_t start;     /**< \brief Track to play from */
+    uint32_t end;       /**< \brief Track to play to */
+    uint32_t repeat;    /**< \brief Times to repeat (0-15, 15=infinite) */
+} cd_cmd_play_params_t;
+
 /** \brief      Read Sector Part
     \ingroup    gdrom_syscalls
 
@@ -378,6 +390,15 @@ typedef enum cd_sub_type {
     CD_SUB_TRACK_ISRC     = 3,    /**< \brief Read the ISRC Subcode Data */
     CD_SUB_RESERVED       = 4     /**< \brief Reserved */
 } cd_sub_type_t;
+
+/** \brief      Params for GETSCD command
+    \ingroup    gdrom_syscalls
+*/
+typedef struct cd_cmd_getscd_params {
+    cd_sub_type_t   which;
+    size_t          buflen;
+    void           *buffer;
+} cd_cmd_getscd_params_t;
 
 /** \brief      Subcode Audio Statuses
     \ingroup    gdrom_syscalls

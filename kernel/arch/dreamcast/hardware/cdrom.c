@@ -287,11 +287,7 @@ cd_cmd_ret_t cdrom_read_sectors(void *buffer, uint32_t sector, size_t cnt) {
 /* XXX: Use some CD-Gs and other stuff to test if you get more than just the 
    Q byte */
 cd_cmd_ret_t cdrom_get_subcode(void *buffer, size_t buflen, cd_sub_type_t which) {
-    struct {
-        cd_sub_type_t   which;
-        size_t          buflen;
-        void           *buffer;
-    } params;
+    cd_cmd_getscd_params_t params;
 
     params.which = which;
     params.buflen = buflen;
@@ -318,18 +314,9 @@ uint32_t cdrom_locate_data_track(cd_toc_t *toc) {
     return 0;
 }
 
-/* Play CDDA tracks
-   start  -- track to play from
-   end    -- track to play to
-   repeat -- number of times to repeat (0-15, 15=infinite)
-   mode   -- CDDA_TRACKS or CDDA_SECTORS
- */
+/* Play CDDA tracks */
 cd_cmd_ret_t cdrom_cdda_play(uint32 start, uint32 end, uint32 repeat, cd_cdda_mode_t mode) {
-    struct {
-        uint32_t start;
-        uint32_t end;
-        uint32_t repeat;
-    } params;
+    cd_cmd_play_params_t params;
 
     /* Limit to 0-15 */
     if(repeat > 15)
