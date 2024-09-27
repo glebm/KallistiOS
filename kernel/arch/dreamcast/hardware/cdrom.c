@@ -71,14 +71,14 @@ cd_cmd_ret_t cdrom_exec_cmd_timed(cd_cmd_code_t cmd, void *param, uint32_t timeo
     };
     gdc_cmd_id_t id;
     cmd_cmd_chk_t n;
-    cd_cmd_ret_t rv = CD_ERR_OK;
+    int i;
     uint64_t begin;
 
     assert(cmd > 0 && cmd < CMD_MAX);
     mutex_lock_scoped(&_g1_ata_mutex);
 
     /* Submit the command */
-    for(n = 0; n < 10; ++n) {
+    for(i = 0; i < 10; ++i) {
         id = syscall_gdrom_send_command(cmd, param);
         if (id != 0) {
             break;
@@ -105,20 +105,17 @@ cd_cmd_ret_t cdrom_exec_cmd_timed(cd_cmd_code_t cmd, void *param, uint32_t timeo
             if((timer_ms_gettime64() - begin) >= (unsigned)timeout) {
                 syscall_gdrom_abort_command(id);
                 syscall_gdrom_exec_server();
-                rv = CD_ERR_TIMEOUT;
                 dbglog(DBG_ERROR, "cdrom_exec_cmd_timed: Timeout exceeded\n");
-                break;
+                return CD_ERR_TIMEOUT;
             }
         }
         thd_pass();
     } while(1);
 
-    if(rv != CD_ERR_OK)
-        return rv;
-    else if(n == CD_CMD_COMPLETED || n == CD_CMD_STREAMING)
+    if(n == CD_CMD_COMPLETED || n == CD_CMD_STREAMING)
         return CD_ERR_OK;
     else if(n == CD_CMD_INACTIVE)
-        return CD_ERR_NO_ACTIVE;
+        return CD_ERR_INACTIVE;
     else {
         switch(status[0]) {
             case 2:

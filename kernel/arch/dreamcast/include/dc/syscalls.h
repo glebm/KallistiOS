@@ -303,7 +303,7 @@ typedef enum cd_cmd_ret {
     CD_ERR_DISC_CHG  = 2,   /**< \brief Disc changed, but not reinitted yet */
     CD_ERR_SYS       = 3,   /**< \brief System error */
     CD_ERR_ABORTED   = 4,   /**< \brief Command aborted */
-    CD_ERR_NO_ACTIVE = 5,   /**< \brief System inactive? */
+    CD_ERR_INACTIVE  = 5,   /**< \brief System inactive? */
     CD_ERR_TIMEOUT   = 6,   /**< \brief Aborted due to timeout */
 } cd_cmd_ret_t;
 

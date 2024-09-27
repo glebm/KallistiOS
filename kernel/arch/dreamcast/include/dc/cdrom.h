@@ -73,8 +73,8 @@ typedef enum cd_cdda_mode {
     cdrom_read_sectors_ex.
 */
 typedef enum cd_read_mode {
-    CDROM_READ_PIO = 0,    /**< \brief Read sector(s) in PIO mode */
-    CDROM_READ_DMA = 1     /**< \brief Read sector(s) in DMA mode */
+    CDROM_READ_PIO,    /**< \brief Read sector(s) in PIO mode */
+    CDROM_READ_DMA     /**< \brief Read sector(s) in DMA mode */
 } cd_read_mode_t;
 
 /** \defgroup cd_toc_access         TOC Access Macros
