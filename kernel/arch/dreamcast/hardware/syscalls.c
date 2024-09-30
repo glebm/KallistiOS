@@ -179,7 +179,7 @@ gdc_cmd_id_t syscall_gdrom_send_command(cd_cmd_code_t cmd, void *params) {
     return request_id;
 }
 
-cmd_cmd_chk_t syscall_gdrom_check_command(gdc_cmd_id_t id, int32_t status[4]) {
+cd_cmd_chk_t syscall_gdrom_check_command(gdc_cmd_id_t id, int32_t status[4]) {
     MAKE_SYSCALL_INT(VEC_MISC_GDROM, FUNC_GDROM_CHECK_COMMAND, 
         id, status, SUPER_FUNC_GDROM);
 }

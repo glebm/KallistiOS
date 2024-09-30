@@ -295,6 +295,15 @@ typedef enum cd_cmd_ret {
     CD_ERR_TIMEOUT   = 6,   /**< \brief Aborted due to timeout */
 } cd_cmd_ret_t;
 
+/* These are defines provided for compatibility. */
+#define ERR_OK          __depr("Please use the new CD_ prefixed versions.") CD_ERR_OK
+#define ERR_NO_DISC     __depr("Please use the new CD_ prefixed versions.") CD_ERR_NO_DISC
+#define ERR_DISC_CHG    __depr("Please use the new CD_ prefixed versions.") CD_ERR_DISC_CHG
+#define ERR_SYS         __depr("Please use the new CD_ prefixed versions.") CD_ERR_SYS
+#define ERR_ABORTED     __depr("Please use the new CD_ prefixed versions.") CD_ERR_ABORTED
+#define ERR_NO_ACTIVE   __depr("Please use the new CD_ prefixed versions.") CD_ERR_INACTIVE
+#define ERR_TIMEOUT     __depr("Please use the new CD_ prefixed versions.") CD_ERR_TIMEOUT
+
 /** \brief      Responses from GDROM check command syscall
     \ingroup    gdrom_syscalls
 
@@ -307,7 +316,15 @@ typedef enum cd_cmd_chk {
     CD_CMD_COMPLETED  =  2,   /**< \brief Command completed successfully */
     CD_CMD_STREAMING  =  3,   /**< \brief Stream type command is in progress */
     CD_CMD_BUSY       =  4,   /**< \brief GD syscalls is busy */
-} cmd_cmd_chk_t;
+} cd_cmd_chk_t;
+
+/* These are defines provided for compatibility. */
+#define FAILED      __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_FAILED
+#define NO_ACTIVE   __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_INACTIVE
+#define PROCESSING  __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_PROCESSING
+#define COMPLETED   __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_COMPLETED
+#define STREAMING   __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_STREAMING
+#define BUSY        __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_BUSY
 
 /** \brief      Track type to read as (if applicable).
     \ingroup    gdrom_syscalls
@@ -483,7 +500,7 @@ gdc_cmd_id_t syscall_gdrom_send_command(cd_cmd_code_t cmd, void *params);
 
     \sa syscall_gdrom_send_command(), syscall_gdrom_exec_server()
 */
-cmd_cmd_chk_t syscall_gdrom_check_command(gdc_cmd_id_t id, int32_t status[4]);
+cd_cmd_chk_t syscall_gdrom_check_command(gdc_cmd_id_t id, int32_t status[4]);
 
 /** \brief      Process queued GDROM commands.
     \ingroup    gdrom_syscalls

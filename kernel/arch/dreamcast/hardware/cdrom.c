@@ -70,7 +70,7 @@ cd_cmd_ret_t cdrom_exec_cmd_timed(cd_cmd_code_t cmd, void *param, uint32_t timeo
         0  /* ATA status waiting */
     };
     gdc_cmd_id_t id;
-    cmd_cmd_chk_t n;
+    cd_cmd_chk_t n;
     int i;
     uint64_t begin;
 
