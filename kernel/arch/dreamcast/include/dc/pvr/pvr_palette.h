@@ -50,12 +50,12 @@ __BEGIN_DECLS
     Entries in the PVR's palettes can be of any of these formats. Note that you
     can only have one format active at a time.
 */
-typedef enum pvr_pal {
+typedef enum pvr_palfmt {
     PVR_PAL_ARGB1555 = 0, /**< \brief 16-bit ARGB1555 palette format */
     PVR_PAL_RGB565   = 1, /**< \brief 16-bit RGB565 palette format */
     PVR_PAL_ARGB4444 = 2, /**< \brief 16-bit ARGB4444 palette format */
     PVR_PAL_ARGB8888 = 3  /**< \brief 32-bit ARGB8888 palette format */
-} pvr_pal_t;
+} pvr_palfmt_t;
 
 /** \brief   Set the palette format.
     \ingroup pvr_pal_mgmt
@@ -71,7 +71,7 @@ typedef enum pvr_pal {
 
     \param  fmt             The format to use
 */
-void pvr_set_pal_format(pvr_pal_t fmt);
+void pvr_set_pal_format(pvr_palfmt_t fmt);
 
 /** \brief   Set a palette value.
     \ingroup pvr_pal_mgmt

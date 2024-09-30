@@ -25,7 +25,7 @@ void pvr_txr_load(const void *src, pvr_ptr_t dst, size_t count) {
         count = (count + 4) & ~3;
     }
 
-    pvr_sq_load((uint32 *)dst, (uint32 *)src, count, PVR_DMA_VRAM64);
+    pvr_sq_load((uint32 *)dst, (const uint32 *)src, count, PVR_DMA_VRAM64);
 }
 
 /* Linear/iterative twiddling algorithm from Marcus' tatest */

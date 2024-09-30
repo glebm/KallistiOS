@@ -416,6 +416,9 @@ int pvr_list_finish(void);
     \note
     Calls pvr_sq_load() internally when PVR DMA is disabled or pvr_list_prim()
     internally when PVR DMA is enabled.
+    
+    \warning
+    \p data must be 32-byte aligned!
 
     \param  data            The primitive to submit.
     \param  size            The length of the primitive, in bytes. Must be a

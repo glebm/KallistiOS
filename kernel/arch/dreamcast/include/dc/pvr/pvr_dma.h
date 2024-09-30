@@ -43,14 +43,14 @@ __BEGIN_DECLS
 /** \brief    Transfer modes with TA/PVR DMA and Store Queues
     \ingroup  pvr_dma
 */
-typedef enum pvr_dma {
+typedef enum pvr_dma_type {
     PVR_DMA_VRAM64    = 0, /**< Transfer to VRAM using TA bus */
     PVR_DMA_VRAM32    = 1, /**< Transfer to VRAM using TA bus */
     PVR_DMA_TA        = 2, /**< Transfer to the tile accelerator */
     PVR_DMA_YUV       = 3, /**< Transfer to the YUV converter (TA) */
     PVR_DMA_VRAM32_SB = 4, /**< Transfer to/from VRAM using PVR i/f */
     PVR_DMA_VRAM64_SB = 5  /**< Transfer to/from VRAM using PVR i/f */
-} pvr_dma_t;
+} pvr_dma_type_t;
 
 /** \brief   PVR DMA interrupt callback type.
     \ingroup pvr_dma
@@ -92,7 +92,7 @@ typedef void (*pvr_dma_callback_t)(void *data);
     \em     EIO - I/O error
 */
 int pvr_dma_transfer(const void *src, uintptr_t dest, size_t bytes,
-                     pvr_dma_t type, bool block, 
+                     pvr_dma_type_t type, bool block, 
                      pvr_dma_callback_t callback, void *cbdata);
 
 
@@ -207,7 +207,8 @@ void pvr_dma_shutdown(void);
 
     \sa pvr_sq_set32()
 */
-void *pvr_sq_load(void *dest, const void *src, size_t bytes, pvr_dma_t type);
+void *pvr_sq_load(void *dest, const void *src, size_t bytes, 
+                  pvr_dma_type_t type);
 
 /** \brief   Set a block of PVR memory to a 16-bit value.
     \ingroup store_queues
@@ -230,7 +231,7 @@ void *pvr_sq_load(void *dest, const void *src, size_t bytes, pvr_dma_t type);
 
     \sa pvr_sq_set32()
 */
-void *pvr_sq_set16(void *dest, uint32_t c, size_t bytes, pvr_dma_t type);
+void *pvr_sq_set16(void *dest, uint32_t c, size_t bytes, pvr_dma_type_t type);
 
 /** \brief   Set a block of PVR memory to a 32-bit value.
     \ingroup store_queues
@@ -252,7 +253,7 @@ void *pvr_sq_set16(void *dest, uint32_t c, size_t bytes, pvr_dma_t type);
 
     \sa pvr_sq_set16()
 */
-void *pvr_sq_set32(void *dest, uint32_t c, size_t bytes, pvr_dma_t type);
+void *pvr_sq_set32(void *dest, uint32_t c, size_t bytes, pvr_dma_type_t type);
 
 __END_DECLS
 

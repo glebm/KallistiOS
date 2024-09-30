@@ -17,7 +17,7 @@
 */
 
 /* Set the palette format */
-void pvr_set_pal_format(pvr_pal_t fmt) {
+void pvr_set_pal_format(pvr_palfmt_t fmt) {
     PVR_SET(PVR_PALETTE_CFG, fmt);
 }
 
