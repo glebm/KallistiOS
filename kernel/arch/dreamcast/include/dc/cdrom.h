@@ -179,11 +179,10 @@ int cdrom_get_status(int *status, int *disc_type);
     \param track_type       What track type to read as (if applicable).
     \param sector_size      What sector size to read (eg. - 2048, 2532).
 
-    \return                 \ref cd_cmd_ret_t
+    \return                 \ref syscall_gdrom_sector_mode
     \see    cd_read_sector_part
 */
-cd_cmd_ret_t
-cdrom_change_datatype(cd_read_sec_part_t sector_part,
+int cdrom_change_datatype(cd_read_sec_part_t sector_part,
                       cd_track_type_t track_type, int sector_size);
 
 /** \brief    Re-initialize the GD-ROM drive.
@@ -219,13 +218,13 @@ cdrom_reinit_ex(cd_read_sec_part_t sector_part,
 /** \brief    Read the table of contents from the disc.
     \ingroup  gdrom
 
-    This function reads the TOC from the specified session of the disc.
+    This function reads the TOC from the specified area of the disc.
 
     \param  toc_buffer      Space to store the returned TOC in.
-    \param  session         The session of the disc to read.
+    \param  area            The area of the disc to read (low = 0, high = 1).
     \return                 \ref cd_cmd_ret_t
 */
-cd_cmd_ret_t cdrom_read_toc(cd_toc_t *toc_buffer, uint32_t session);
+cd_cmd_ret_t cdrom_read_toc(cd_toc_t *toc_buffer, cd_area_t area);
 
 /** \brief    Read one or more sector from a CD-ROM.
     \ingroup  gdrom

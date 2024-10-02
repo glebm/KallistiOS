@@ -74,7 +74,6 @@ cd_cmd_ret_t cdrom_exec_cmd_timed(cd_cmd_code_t cmd, void *param, uint32_t timeo
     int i;
     uint64_t begin;
 
-    assert(cmd > 0 && cmd < CMD_MAX);
     mutex_lock_scoped(&_g1_ata_mutex);
 
     /* Submit the command */
@@ -173,9 +172,9 @@ int cdrom_get_status(int *status, int *disc_type) {
 }
 
 /* Wrapper for the change datatype syscall */
-cd_cmd_ret_t cdrom_change_datatype(cd_read_sec_part_t sector_part, cd_track_type_t track_type, int sector_size) {
-    uint32_t params[4];
+int cdrom_change_datatype(cd_read_sec_part_t sector_part, cd_track_type_t track_type, int sector_size) {
     cd_check_drive_params_t check_params = {0};
+    cd_sec_mode_params_t params;
 
     mutex_lock_scoped(&_g1_ata_mutex);
 
@@ -206,10 +205,10 @@ cd_cmd_ret_t cdrom_change_datatype(cd_read_sec_part_t sector_part, cd_track_type
             sector_size = 2048;
     }
 
-    params[0] = 0;              /* 0 = set, 1 = get */
-    params[1] = sector_part;    /* Get Data or Full Sector */
-    params[2] = track_type;     /* CD-XA mode 1/2 */
-    params[3] = sector_size;    /* sector size */
+    params.RW           = 0;            /* 0 = set, 1 = get */
+    params.sector_part  = sector_part;
+    params.track_type   = track_type;
+    params.sector_size  = sector_size;
 
     return syscall_gdrom_sector_mode(params);
 }
@@ -236,13 +235,10 @@ cd_cmd_ret_t cdrom_reinit_ex(cd_read_sec_part_t sector_part, cd_track_type_t tra
 }
 
 /* Read the table of contents */
-cd_cmd_ret_t cdrom_read_toc(cd_toc_t *toc_buffer, uint32_t session) {
-    struct {
-        uint32_t session;
-        void    *buffer;
-    } params;
+cd_cmd_ret_t cdrom_read_toc(cd_toc_t *toc_buffer, cd_area_t area) {
+    cd_cmd_toc_params_t params;
 
-    params.session = session;
+    params.area = area;
     params.buffer = toc_buffer;
 
     return cdrom_exec_cmd(CMD_GETTOC2, &params);
@@ -250,17 +246,12 @@ cd_cmd_ret_t cdrom_read_toc(cd_toc_t *toc_buffer, uint32_t session) {
 
 /* Enhanced Sector reading: Choose mode to read in. */
 cd_cmd_ret_t cdrom_read_sectors_ex(void *buffer, uint32_t sector, size_t cnt, cd_read_mode_t mode) {
-    struct {
-        uint32_t    sec;
-        size_t      num;
-        void       *buffer;
-        int         is_test;
-    } params;
+    cd_read_params_t params;
 
-    params.sec = sector;    /* Starting sector */
-    params.num = cnt;       /* Number of sectors */
-    params.buffer = buffer; /* Output buffer */
-    params.is_test = 0;     /* Enable test mode */
+    params.start_sec = sector;  /* Starting sector */
+    params.num_sec = cnt;       /* Number of sectors */
+    params.buffer = buffer;     /* Output buffer */
+    params.is_test = false;     /* Enable test mode */
 
     /* The DMA mode blocks the thread it is called in by the way we execute
        gd syscalls. It does however allow for other threads to run. */

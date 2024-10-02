@@ -344,7 +344,7 @@ static int init_percd(void) {
         return -1;
     }
 
-    if((j = cdrom_read_toc(&toc, 0)) != CD_ERR_OK) {
+    if((j = cdrom_read_toc(&toc, CD_AREA_LOW)) != CD_ERR_OK) {
         dbglog(DBG_ERROR, "fs_iso9660:init_percd: cdrom_read_toc returned %d\n", j);
         return -1;
     }

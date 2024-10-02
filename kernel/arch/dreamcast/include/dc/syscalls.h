@@ -326,12 +326,27 @@ typedef enum cd_cmd_chk {
 #define STREAMING   __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_STREAMING
 #define BUSY        __depr("Please use the new CD_CMD_ prefixed versions.") CD_CMD_BUSY
 
+/** \brief      Read Sector Part
+    \ingroup    gdrom_syscalls
+
+    Parts of the a disc sector to read. These are possible values for the
+    second parameter word sent with syscall_gdrom_sector_mode.
+
+    \note CD_READ_DEFAULT not supported by the syscall and is provided
+    for compatibility in cdrom_reinit_ex
+*/
+typedef enum cd_read_sec_part {
+    CD_READ_WHOLE_SECTOR = 0x1000,    /**< \brief Read the whole sector */
+    CD_READ_DATA_AREA    = 0x2000,    /**< \brief Read the data area */
+    CD_READ_DEFAULT      = -1         /**< \brief cdrom_reinit default */
+} cd_read_sec_part_t;
+
 /** \brief      Track type to read as (if applicable).
     \ingroup    gdrom_syscalls
 
     Track type used to read a sector. These are possible values for the
-    second parameter word sent with syscall_gdrom_sector_mode.
-    
+    third parameter word sent with syscall_gdrom_sector_mode.
+
     \note CD_TRACK_TYPE_DEFAULT not supported by the syscall and is provided
     for compatibility in cdrom_reinit_ex
 */
@@ -346,6 +361,33 @@ typedef enum cd_track_type {
     CD_TRACK_TYPE_ANY         = 0x0000,
     CD_TRACK_TYPE_DEFAULT     = -1
 } cd_track_type_t;
+
+/** \brief      Sector mode params
+    \ingroup    gdrom_syscalls
+
+    These are the parameters sent to syscall_gdrom_sector_mode.
+
+*/
+typedef struct cd_sec_mode_params {
+    uint32_t            RW;             /* 0 = set, 1 = get */
+    cd_read_sec_part_t  sector_part;    /* Get Data or Full Sector */
+    cd_track_type_t     track_type;     /* CD-XA mode 1/2 */
+    int                 sector_size;    /* sector size */
+} cd_sec_mode_params_t;
+
+/** \brief      Params for READ commands.
+    \ingroup    gdrom_syscalls
+
+    These are the parameters for the CMD_PIOREAD and CMD_DMAREAD commands.
+
+*/
+typedef struct cd_read_params {
+    uint32_t    start_sec;  /* Starting sector */
+    size_t      num_sec;    /* Number of sectors */
+    void       *buffer;     /* Output buffer */
+    bool        is_test;    /* Enable test mode */
+} cd_read_params_t;
+
 
 /** \brief      TOC structure returned by the BIOS.
     \ingroup    gdrom_syscalls
@@ -367,6 +409,29 @@ typedef struct cd_toc {
 */
 #define CDROM_TOC __depr("Use the type cd_toc_t rather than CDROM_TOC.") cd_toc_t
 
+/** \brief      Disc area to read TOC from.
+    \ingroup    gdrom_syscalls
+
+    This is the allowed values for the first param of the GETTOC commands,
+    defining which disc area to read the TOC from.
+
+*/
+typedef enum cd_area {
+    CD_AREA_LOW     = 0,
+    CD_AREA_HIGH    = 1
+} cd_area_t;
+
+/** \brief      Params for GETTOC commands
+    \ingroup    gdrom_syscalls
+
+    Params for CMD_GETTOC and CMD_GETTOC2.
+
+*/
+typedef struct cd_cmd_toc_params {
+    cd_area_t  area;
+    cd_toc_t   *buffer;
+} cd_cmd_toc_params_t;
+
 /** \brief      Params for PLAY command
     \ingroup    gdrom_syscalls
 
@@ -378,21 +443,6 @@ typedef struct cd_cmd_play_params {
     uint32_t end;       /**< \brief Track to play to */
     uint32_t repeat;    /**< \brief Times to repeat (0-15, 15=infinite) */
 } cd_cmd_play_params_t;
-
-/** \brief      Read Sector Part
-    \ingroup    gdrom_syscalls
-
-    Parts of the a disc sector to read. These are possible values for the
-    third parameter word sent with syscall_gdrom_sector_mode.
-    
-    \note CD_READ_DEFAULT not supported by the syscall and is provided
-    for compatibility in cdrom_reinit_ex
-*/
-typedef enum cd_read_sec_part {
-    CD_READ_WHOLE_SECTOR = 0x1000,    /**< \brief Read the whole sector */
-    CD_READ_DATA_AREA    = 0x2000,    /**< \brief Read the data area */
-    CD_READ_DEFAULT      = -1         /**< \brief cdrom_reinit default */
-} cd_read_sec_part_t;
 
 /** \brief      Types of data to read from sector subcode
     \ingroup    gdrom_syscalls
@@ -537,7 +587,7 @@ int syscall_gdrom_abort_command(gdc_cmd_id_t id);
     \retval 0               On success.
     \retval -1              On failure.
 */
-int syscall_gdrom_sector_mode(uint32_t mode[4]);
+int syscall_gdrom_sector_mode(cd_sec_mode_params_t mode);
 
 /** \brief      Setup GDROM DMA callback.
     \ingroup    gdrom_syscalls
