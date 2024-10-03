@@ -7,6 +7,9 @@
    Copyright (C) 2023 Ruslan Rostovtsev
 */
 
+#include <stdlib.h>
+#include <sys/queue.h>
+
 #include <arch/cache.h>
 #include <arch/mmu.h>
 #include <dc/sq.h>
@@ -41,20 +44,43 @@
 
 static mutex_t sq_mutex = RECURSIVE_MUTEX_INITIALIZER;
 
-static mmu_token_t mmu_token;
+typedef struct sq_state {
+    SLIST_ENTRY(sq_state) state_entry;
+    void *dest0;
+    void *dest1;
+    mmu_token_t mmu_token;
+} sq_state_t;
+
+static SLIST_HEAD(sqstate_list, sq_state) sqstate_list_head = SLIST_HEAD_INITIALIZER(sqstate_list_head);
 
 void sq_lock(void *dest) {
+    sq_state_t *new_state = malloc(sizeof(sq_state_t));
+
     mutex_lock(&sq_mutex);
 
     /* Disable MMU, because SQs work differently when it's enabled, and we
      * don't support it. */
-    mmu_token = mmu_disable();
+    new_state->mmu_token = mmu_disable();
 
-    SET_QACR_REGS(dest, dest);
+    new_state->dest0 = new_state->dest1 = dest;
+
+    SET_QACR_REGS(new_state->dest0, new_state->dest1);
+
+    SLIST_INSERT_HEAD(&sqstate_list_head, new_state, state_entry);
 }
 
 void sq_unlock(void) {
-    mmu_restore(mmu_token);
+    sq_state_t *tmp_state = SLIST_FIRST(&sqstate_list_head);
+    mmu_restore(tmp_state->mmu_token);
+
+    SLIST_REMOVE_HEAD(&sqstate_list_head, state_entry);
+    free(tmp_state);
+
+    tmp_state = SLIST_FIRST(&sqstate_list_head);
+
+    if(tmp_state != NULL)
+        SET_QACR_REGS(tmp_state->dest0, tmp_state->dest1);
+
     mutex_unlock(&sq_mutex);
 }
 
@@ -77,6 +103,8 @@ __attribute__((noinline)) void *sq_cpy(void *dest, const void *src, size_t n) {
         return dest;
 
     sq_lock(dest);
+
+    SET_QACR_REGS(dest, dest);
 
     /* If src is not 8-byte aligned, slow path */
     if ((uintptr_t)src & 7) {
@@ -131,6 +159,8 @@ void *sq_set32(void *dest, uint32_t c, size_t n) {
         return dest;
 
     sq_lock(dest);
+
+    SET_QACR_REGS(dest, dest);
 
     while(n--) {
         /* Fill both store queues with c */
