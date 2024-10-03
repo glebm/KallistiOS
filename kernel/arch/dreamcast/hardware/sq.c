@@ -39,7 +39,7 @@
         QACR1 = (((uintptr_t)(dest1)) >> 24) & 0x1c; \
     } while(0)
 
-static mutex_t sq_mutex = MUTEX_INITIALIZER;
+static mutex_t sq_mutex = RECURSIVE_MUTEX_INITIALIZER;
 
 static mmu_token_t mmu_token;
 
